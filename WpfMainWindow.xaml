@@ -1,0 +1,2446 @@
+﻿<UserControl
+    x:Class="GB_NewCadPlus_III.WpfMainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="clr-namespace:GB_NewCadPlus_III"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:MaxWidth="350"
+    d:MinHeight="800"
+    d:MinWidth="350"
+    mc:Ignorable="d">
+    <UserControl.Resources>
+        <!--  自定义控件的资源样式  -->
+        <!--  按钮样式  -->
+        <Style TargetType="Button">
+            <Setter Property="Width" Value="65" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="1" />
+            <Setter Property="Background" Value="LightGray" />
+            <Setter Property="BorderBrush" Value="Gray" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="DarkGray" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="DimGray" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="LightGray" />
+                                <Setter Property="Foreground" Value="Gray" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TabControlStyle" TargetType="{x:Type TabControl}">
+            <Setter Property="Background" Value="White" />
+            <!--  背景颜色  -->
+            <Setter Property="BorderBrush" Value="Gray" />
+            <!--  边框颜色  -->
+            <Setter Property="BorderThickness" Value="2" />
+            <!--  边框宽度  -->
+            <Setter Property="Foreground" Value="Black" />
+            <!--  字体颜色  -->
+            <Setter Property="FontSize" Value="14" />
+            <!--  字体大小  -->
+            <Setter Property="FontWeight" Value="Bold" />
+            <!--  字体加粗  -->
+
+
+        </Style>
+        <!--  修改TabItem的样式，使其适应纵向布局  -->
+        <Style x:Key="VerticalTabStyle" TargetType="{x:Type TabItem}">
+            <!--  纵向TabItem样式  -->
+            <Setter Property="Height" Value="50" />
+            <!--  高度  -->
+            <Setter Property="Width" Value="28" />
+            <!--  宽度  -->
+            <Setter Property="Margin" Value="0,0,0,0" />
+            <!--  间隔  -->
+            <Setter Property="Padding" Value="0" />
+            <!--  内间距  -->
+            <Setter Property="FontSize" Value="13" />
+            <!--  字体大小  -->
+            <Setter Property="FontWeight" Value="Bold" />
+            <!--  字体加粗  -->
+            <Setter Property="Template">
+                <!--  模板  -->
+                <Setter.Value>
+                    <!--  模板内容  -->
+                    <ControlTemplate TargetType="{x:Type TabItem}">
+                        <!--  控件模板  -->
+                        <Grid>
+                            <!--  网格  -->
+                            <Border
+                                Name="Border"
+                                Margin="0,0,-1,0"
+                                Background="LightBlue"
+                                BorderBrush="Gray"
+                                BorderThickness="1,1,0,1">
+                                <ContentPresenter
+                                    x:Name="ContentSite"
+                                    Margin="-10,0,-10,0"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    ContentSource="Header"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <ContentPresenter.RenderTransform>
+                                        <RotateTransform Angle="270" />
+                                    </ContentPresenter.RenderTransform>
+                                </ContentPresenter>
+                            </Border>
+                            <!--  边框  -->
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <!--  触发器  -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <!--  选中时  -->
+                                <Setter TargetName="Border" Property="Background" Value="LightGoldenrodYellow" />
+                                <!--  背景颜色  -->
+                                <Setter TargetName="Border" Property="BorderThickness" Value="1,1,0,1" />
+                                <!--  边框宽度  -->
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--  修改TextBox的样式，实现水印功能  -->
+        <Style x:Key="WatermarkTextBoxStyle" TargetType="{x:Type TextBox}">
+            <Setter Property="Padding" Value="3,0,0,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Grid>
+                            <!--  定义边框背景和边框线  -->
+                            <!--  设置边框背景色，绑定到控件的Background属性  -->
+                            <!--  设置边框画笔颜色，绑定到控件的BorderBrush属性  -->
+                            <!--  设置边框厚度，绑定到控件的BorderThickness属性  -->
+                            <!--  设置边框圆角半径为5个像素  -->
+                            <Border
+                                x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                                <!--  内容显示区域，用于显示用户输入的文字  -->
+                                <!--  定义ScrollViewer的名称，这是TextBox必须的部分  -->
+                                <ScrollViewer
+                                    x:Name="PART_ContentHost"
+                                    Margin="{TemplateBinding Padding}"
+                                    VerticalAlignment="Center" />
+                            </Border>
+                            <!--  水印文字x:Name="WatermarkText"显示区域  -->
+                            <!--  水印提示文字Text内容  -->
+                            <!--  水印文字Foreground颜色  -->
+                            <!--  水印文字FontSize大小  -->
+                            <!--  垂直居中VerticalAlignment对齐  -->
+                            <!--  左边距Margin微调  -->
+                            <!--  默认隐藏水印文字Visibility  -->
+                            <TextBlock
+                                x:Name="WatermarkText"
+                                Margin="5,0,0,0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                FontStyle="Italic"
+                                Foreground="Gray"
+                                IsHitTestVisible="False"
+                                Text="{TemplateBinding Tag}"
+                                Visibility="Collapsed" />
+                        </Grid>
+                        <!--  定义触发器  -->
+                        <ControlTemplate.Triggers>
+                            <!--  当TextBox为空时显示水印  -->
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <!--  当TextBox获得焦点时隐藏水印  -->
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                            <!--  当TextBox失去焦点且为空时显示水印  -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsFocused" Value="False" />
+                                    <Condition Property="Text" Value="" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Visible" />
+                            </MultiTrigger>
+                            <!--  边框样式触发器  -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#FFFBFF" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FFB0B0B0" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FF569DE5" />
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FF569DE5" />
+                                <Setter TargetName="border" Property="BorderThickness" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <!--  Grid白色背景，最小、大的宽度350，最小高度900  -->
+    <Grid
+        MinWidth="350"
+        MinHeight="700"
+        MaxWidth="350"
+        Background="White">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="0*" />
+        </Grid.ColumnDefinitions>
+        <TabControl
+            MinWidth="350"
+            MinHeight="700"
+            MaxWidth="330"
+            Style="{StaticResource TabControlStyle}">
+            <!--  第一TabControlItem(图元)  -->
+            <TabItem Header="CAD图元">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="125" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="40" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="1*" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="2" />
+                        <RowDefinition Height="35" />
+                        <RowDefinition Height="148" />
+                    </Grid.RowDefinitions>
+                    <Grid
+                        Grid.Row="0"
+                        Margin="0,0,0,0"
+                        Background="Azure">
+                        <Button
+                            x:Name="上"
+                            Width="32"
+                            Height="32"
+                            Margin="267,82,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="上_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/上.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="右上"
+                            Width="32"
+                            Height="32"
+                            Margin="230,82,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="右上_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/右上.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="右"
+                            Width="32"
+                            Height="32"
+                            Margin="230,45,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="右_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/右.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="右下"
+                            Width="32"
+                            Height="32"
+                            Margin="230,8,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="右下_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/右下.png" />
+                            </Button.Background>
+                        </Button>
+
+                        <Button
+                            x:Name="左上"
+                            Width="32"
+                            Height="32"
+                            Margin="304,82,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="左上_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/左上.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="左"
+                            Width="32"
+                            Height="32"
+                            Margin="304,45,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="左_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/左.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="左下"
+                            Width="32"
+                            Height="32"
+                            Margin="304,8,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="左下_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/左下.png" />
+                            </Button.Background>
+                        </Button>
+                        <Button
+                            x:Name="下"
+                            Width="32"
+                            Height="32"
+                            Margin="267,8,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Click="下_Btn_Click">
+                            <Button.Background>
+                                <ImageBrush ImageSource="pack://application:,,,/GB_NewCadPlus_III;component/Resources/下.png" />
+                            </Button.Background>
+                        </Button>
+                        <TextBlock
+                            Margin="5,0,300,100"
+                            FontSize="15"
+                            FontWeight="Bold"
+                            Text="预览：" />
+                        <Viewbox Margin="5,0,120,0" />
+
+                    </Grid>
+                    <Grid Grid.Row="1" />
+                    <Grid Grid.Row="2" Background="FloralWhite">
+                        <Button
+                            x:Name="查找"
+                            Width="60"
+                            Height="30"
+                            Margin="5,5,275,5"
+                            Click="查找_Btn_Click"
+                            Content="查找"
+                            FontSize="14" />
+                        <TextBox
+                            Width="120"
+                            Height="32"
+                            Margin="70,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="15"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="请输入关键字"
+                            TextWrapping="Wrap" />
+                        <Button
+                            x:Name="PU"
+                            Width="45"
+                            Height="NaN"
+                            Margin="195,5,100,5"
+                            Click="功能1_Btn_Click"
+                            Content="PU"
+                            FontSize="14" />
+                        <Button
+                            x:Name="Audit"
+                            Width="45"
+                            Height="30"
+                            Margin="245,5,52,5"
+                            Click="功能2_Btn_Click"
+                            Content="Audit"
+                            FontSize="14" />
+                        <Button
+                            x:Name="Recover"
+                            Width="45"
+                            Height="30"
+                            Margin="294,5,3,5"
+                            Click="功能3_Btn_Click"
+                            Content="恢复"
+                            FontSize="14" />
+                    </Grid>
+                    <Grid Grid.Row="3" />
+                    <Grid Grid.Row="4" Background="Azure">
+                        <TabControl
+                            x:Name="MainTabControl"
+                            Margin="0,0,0,0"
+                            Background="Azure"
+                            ItemContainerStyle="{StaticResource VerticalTabStyle}"
+                            TabStripPlacement="Left">
+                            <TabItem x:Name="公用图" Header="公共图">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition Height="4*" />
+                                    </Grid.RowDefinitions>
+                                    <WrapPanel Grid.Row="0">
+                                        <Button
+                                            x:Name="共用条件"
+                                            Width="88"
+                                            Height="30"
+                                            Margin="5,5,0,0"
+                                            Click="共用条件_Btn_Click"
+                                            Content="共用条件"
+                                            FontSize="14" />
+                                        <Button
+                                            x:Name="所有条件开关"
+                                            Width="88"
+                                            Height="30"
+                                            Margin="5,5,0,0"
+                                            Click="所有条件开关_Btn_Click"
+                                            Content="所有条件开关"
+                                            FontSize="14" />
+
+                                        <Button
+                                            x:Name="设备开关"
+                                            Width="88"
+                                            Height="30"
+                                            Margin="5,5,0,0"
+                                            Click="设备开关_Btn_Click"
+                                            Content="设备开关"
+                                            FontSize="14" />
+                                    </WrapPanel>
+                                    <ScrollViewer
+                                        Grid.Row="1"
+                                        Margin="3"
+                                        VerticalScrollBarVisibility="Auto">
+                                        <WrapPanel x:Name="PublicButtonsPanel" Orientation="Vertical" />
+                                    </ScrollViewer>
+                                </Grid>
+                            </TabItem>
+
+                            <TabItem x:Name="工艺" Header="工艺">
+
+                                <TabControl>
+                                    <TabItem x:Name="工艺图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="2*" />
+                                                <RowDefinition Height="150" />
+                                            </Grid.RowDefinitions>
+                                            <ScrollViewer x:Name="ScrollViewer1" Grid.Row="1">
+                                                <Grid Grid.Row="1">
+                                                    <Button
+                                                        x:Name="纯化水"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="5,47,190,83"
+                                                        Click="纯化水_Btn_Clic"
+                                                        Content="纯化水"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="纯蒸汽"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="98,47,97,83"
+                                                        Click="纯蒸汽_Btn_Click"
+                                                        Content="纯蒸汽"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="注射用水"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="190,47,5,83"
+                                                        Click="注射用水_Btn_Click"
+                                                        Content="注射用水"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="氧气"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="5,71,190,59"
+                                                        Click="氧气_Btn_Click"
+                                                        Content="氧气"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="氮气"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="97,71,98,59"
+                                                        Click="氮气_Btn_Click"
+                                                        Content="氮气"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="二氧化碳"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="190,71,5,59"
+                                                        Click="二氧化碳_Btn_Click"
+                                                        Content="二氧化碳"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="无菌压缩空气"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="5,95,190,35"
+                                                        Click="无菌压缩空气_Btn_Click"
+                                                        Content="无菌压缩空气"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="仪表压缩空气"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="98,95,97,35"
+                                                        Click="仪表压缩空气_Btn_Click"
+                                                        Content="仪表压缩空气"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="低压蒸汽"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="190,95,5,35"
+                                                        Click="低压蒸汽_Btn_Click"
+                                                        Content="低压蒸汽"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="低温循环上水"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="5,119,190,11"
+                                                        Click="低温循环上水_Btn_Click"
+                                                        Content="低温循环上水"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="常温循环上水"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="97,119,98,11"
+                                                        Click="常温循环上水_Btn_Click"
+                                                        Content="常温循环上水"
+                                                        FontSize="14" />
+                                                    <Button
+                                                        x:Name="凝结回水"
+                                                        Width="88"
+                                                        Height="20"
+                                                        Margin="190,119,5,11"
+                                                        Click="凝结回水_Btn_Click"
+                                                        Content="凝结回水"
+                                                        FontSize="14" />
+
+                                                </Grid>
+                                            </ScrollViewer>
+
+                                            <ScrollViewer
+                                                Grid.Row="0"
+                                                Margin="3,3,3,3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="CraftButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="工艺图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <WrapPanel Grid.Row="0">
+
+                                                <Button
+                                                    x:Name="设备表导入"
+                                                    Width="88"
+                                                    Height="30"
+                                                    Margin="5,5,0,0"
+                                                    Click="设备表导入_Btn_Click"
+                                                    Content="设备表导入"
+                                                    FontSize="14" />
+                                                <Button
+                                                    x:Name="设备表导出"
+                                                    Width="88"
+                                                    Height="30"
+                                                    Margin="5,5,0,0"
+                                                    Click="设备表导出_Btn_Click"
+                                                    Content="设备表导出"
+                                                    FontSize="14" />
+                                                <Button
+                                                    x:Name="区域开关"
+                                                    Width="88"
+                                                    Height="30"
+                                                    Margin="5,5,0,0"
+                                                    Click="区域开关_Btn_Click"
+                                                    Content="区域开关"
+                                                    FontSize="14" />
+                                            </WrapPanel>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+
+                            </TabItem>
+
+                            <TabItem x:Name="建筑" Header="建筑">
+                                <TabControl>
+                                    <TabItem x:Name="建筑图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="建筑列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="ArchitectureButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="建筑图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="300" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="33*"/>
+                                                    <RowDefinition Height="67*"/>
+                                                </Grid.RowDefinitions>
+                                                <GroupBox
+                                                    x:Name="TJ工具制图"
+                                                    Height="160"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ工具制图" Grid.RowSpan="2">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="62"
+                                                            Height="25"
+                                                            Margin="0,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="吊顶高度" />
+                                                        <TextBox
+                                                            Name="吊顶高度"
+                                                            Width="80"
+                                                            Height="20"
+                                                            Margin="63,5,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="吊顶"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="148,5,75,71"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="吊顶_Btn_Clic"
+                                                            Content="吊顶"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="不吊顶"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="220,5,3,71"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="不吊顶_Btn_Click"
+                                                            Content="不吊顶"
+                                                            FontWeight="Bold" />
+                                                        <Label
+                                                            Width="62"
+                                                            Height="25"
+                                                            Margin="0,25,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="偏移距离" />
+                                                        <TextBox
+                                                            Width="80"
+                                                            Height="20"
+                                                            Margin="63,29,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="30" />
+                                                        <Button
+                                                            x:Name="防撞护板"
+                                                            Width="137"
+                                                            Height="20"
+                                                            Margin="148,30,3,46"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="防撞护板_Btn_Clic"
+                                                            Content="防撞护板"
+                                                            FontWeight="Bold" />
+                                                        <TextBox
+                                                            Width="30"
+                                                            Height="20"
+                                                            Margin="10,55,247,21"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            RenderTransformOrigin="0.5,0.5"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="1">
+                                                            <TextBox.RenderTransform>
+                                                                <TransformGroup>
+                                                                    <ScaleTransform />
+                                                                    <SkewTransform />
+                                                                    <RotateTransform Angle="0" />
+                                                                    <TranslateTransform />
+                                                                </TransformGroup>
+                                                            </TextBox.RenderTransform>
+                                                        </TextBox>
+                                                        <Label
+                                                            Width="10"
+                                                            Height="20"
+                                                            Margin="45,55,0,0"
+                                                            Padding="0,0,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Content="-" />
+                                                        <TextBox
+                                                            Width="25"
+                                                            Height="20"
+                                                            Margin="59,55,204,21"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="1" />
+                                                        <TextBox
+                                                            Width="25"
+                                                            Height="20"
+                                                            Margin="89,55,174,21"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="1" />
+                                                        <TextBox
+                                                            Width="25"
+                                                            Height="20"
+                                                            Margin="119,55,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="01" />
+                                                        <Button
+                                                            x:Name="房间编号"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="148,55,75,21"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="房间编号_Btn_Clic"
+                                                            Content="房间编号"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="编号检查"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="220,55,3,21"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="编号检查_Btn_Click"
+                                                            Content="编号检查"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="冷藏库降板"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="10,80,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="冷藏库降板_Btn_Click"
+                                                            Content="冷藏库降板"
+                                                            FontWeight="Bold"
+                                                            RenderTransformOrigin="0.077,0.91" />
+
+                                                        <Button
+                                                            x:Name="冷冻库降板"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="79,80,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="冷冻库降板_Btn_Click"
+                                                            Content="冷冻库降板"
+                                                            FontWeight="Bold" />
+
+                                                        <Button
+                                                            x:Name="特殊地面做法要求"
+                                                            Width="137"
+                                                            Height="20"
+                                                            Margin="148,80,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="特殊地面做法要求_Btn_Click"
+                                                            Content="特殊地面做法要求"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="排水沟"
+                                                            Width="65"
+                                                            Height="20"
+                                                            Margin="10,106,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Click="排水沟_Btn_Click"
+                                                            Content="排水沟"
+                                                            FontWeight="Bold" />
+                                                        <Label
+                                                            Width="24"
+                                                            Height="24"
+                                                            Margin="79,103,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="宽" />
+                                                        <TextBox
+                                                            Width="70"
+                                                            Height="20"
+                                                            Margin="105,106,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Foreground="#FF7D7D7D"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="输入宽度" />
+
+                                                        <Label
+                                                            Width="24"
+                                                            Height="24"
+                                                            Margin="180,104,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="高" />
+                                                        <TextBox
+                                                            Width="70"
+                                                            Height="20"
+                                                            Margin="206,107,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Foreground="#FF7D7D7D"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="输入高度" />
+
+
+                                                    </Grid>
+                                                </GroupBox>
+                                                <GroupBox
+                                                    x:Name="TJ建筑孔洞"
+                                                    Height="80"
+                                                    Margin="0,66,0,0"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ建筑孔洞" Grid.Row="1">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙建筑开洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="横墙建筑开洞_Btn_Clic"
+                                                            Content="横墙建筑开洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="纵墙建筑开洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙建筑开洞_Btn_Click"
+                                                            Content="纵墙建筑开洞"
+                                                            FontWeight="Bold" />
+
+                                                    </Grid>
+
+                                                </GroupBox>
+
+
+
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem x:Name="结构" Header="结构">
+                                <TabControl>
+                                    <TabItem x:Name="结构图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="结构列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="StructureButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="结构图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <GroupBox
+                                                    x:Name="TJ结过建筑孔洞"
+                                                    Height="80"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ结过建筑孔洞">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙结开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="结开建筑洞_Btn_Clic"
+                                                            Content="横墙结开建筑洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="纵墙结开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙结开建筑洞_Btn_Click"
+                                                            Content="纵墙结开建筑洞"
+                                                            FontWeight="Bold" />
+                                                        <TextBox
+                                                            Width="0"
+                                                            Height="0"
+                                                            Margin="154,18,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Text="TextBox"
+                                                            TextWrapping="Wrap" />
+
+                                                    </Grid>
+
+                                                </GroupBox>
+                                                <GroupBox
+                                                    x:Name="TJ结构孔洞"
+                                                    Margin="0,80,0,0"
+                                                    Header="TJ结构孔洞">
+                                                    <Grid>
+                                                        <Button
+                                                            x:Name="矩形结开洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,17,189,59"
+                                                            Click="矩形结开洞_Btn_Click"
+                                                            Content="矩形结开洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="直径结开洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,41,189,35"
+                                                            Click="直径结开洞_Btn_Click"
+                                                            Content="直径结开洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="半径结开洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,65,189,11"
+                                                            Click="半径结开洞_Btn_Click"
+                                                            Content="半径结开洞"
+                                                            FontWeight="Bold" />
+                                                        <GroupBox
+                                                            x:Name="结外扩"
+                                                            Margin="100,0,128,0"
+                                                            FontSize="10"
+                                                            Header="外扩">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,26,-68,26"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="直径"
+                                                                    FontSize="12" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,51,-68,0"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="半径"
+                                                                    FontSize="12" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="结X"
+                                                            Width="60"
+                                                            Height="40"
+                                                            Margin="165,0,63,56"
+                                                            FontSize="10"
+                                                            Header="X:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Width="45"
+                                                                    Height="23"
+                                                                    Margin="0,0,0,-5"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="结Y"
+                                                            Width="60"
+                                                            Margin="230,0,-2,0"
+                                                            FontSize="10"
+                                                            Header="Y:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                    </Grid>
+                                                </GroupBox>
+
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem x:Name="给排水" Header="给排水">
+                                <TabControl>
+                                    <TabItem x:Name="给排水图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="给排水列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="PlumbingButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="给排水图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <GroupBox
+                                                    x:Name="TJ给排水过建筑孔洞"
+                                                    Height="80"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ给排水过建筑孔洞">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙水开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="横墙水开建筑洞_Btn_Clic"
+                                                            Content="横墙水开建筑洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="纵墙水开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙水开建筑洞_Btn_Click"
+                                                            Content="纵墙水开建筑洞"
+                                                            FontWeight="Bold" />
+                                                        <TextBox
+                                                            Width="0"
+                                                            Height="0"
+                                                            Margin="154,18,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Text="TextBox"
+                                                            TextWrapping="Wrap" />
+
+                                                    </Grid>
+
+                                                </GroupBox>
+                                                <GroupBox
+                                                    x:Name="TJ给排水过结构孔洞"
+                                                    Margin="0,80,0,0"
+                                                    Header="TJ给排水过结构孔洞">
+                                                    <Grid>
+                                                        <Button
+                                                            x:Name="矩形水开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,17,189,59"
+                                                            Click="矩形水开结构洞_Btn_Click"
+                                                            Content="矩形水开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="直径水开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,41,189,35"
+                                                            Click="直径水开结构洞_Btn_Click"
+                                                            Content="直径水开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="半径水开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,65,189,11"
+                                                            Click="半径水开结构洞_Btn_Click"
+                                                            Content="半径水开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <GroupBox
+                                                            x:Name="水外扩"
+                                                            Margin="100,0,128,0"
+                                                            FontSize="10"
+                                                            Header="外扩">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,26,-68,26"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="直径"
+                                                                    FontSize="12" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,51,-68,0"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="半径"
+                                                                    FontSize="12" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="水X"
+                                                            Width="60"
+                                                            Height="40"
+                                                            Margin="165,0,63,56"
+                                                            FontSize="10"
+                                                            Header="X:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Width="45"
+                                                                    Height="23"
+                                                                    Margin="0,0,0,-5"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="水Y"
+                                                            Width="60"
+                                                            Margin="230,0,-2,0"
+                                                            FontSize="10"
+                                                            Header="Y:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                    </Grid>
+                                                </GroupBox>
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem
+                                x:Name="暖通"
+                                Height="50"
+                                VerticalAlignment="Top"
+                                Header="暖通">
+                                <TabControl>
+                                    <TabItem x:Name="暖通图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="暖通列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="HVACButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="暖通图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <GroupBox
+                                                    Height="80"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ暖通过建筑孔洞">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙暖开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="横墙暖开建筑洞_Btn_Clic"
+                                                            Content="横墙暖开建筑洞" />
+                                                        <Button
+                                                            x:Name="纵墙暖开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙暖开建筑洞_Btn_Click"
+                                                            Content="纵墙暖开建筑洞" />
+                                                    </Grid>
+
+                                                </GroupBox>
+                                                <GroupBox Margin="0,80,0,0" Header="TJ暖通过结构孔洞">
+
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="76*" />
+                                                            <ColumnDefinition Width="7*" />
+                                                            <ColumnDefinition Width="205*" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Button
+                                                            x:Name="矩形暖开结构洞"
+                                                            Grid.ColumnSpan="3"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,17,189,59"
+                                                            Click="矩形暖开结构洞_Btn_Click"
+                                                            Content="矩形暖开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="直径暖开结构洞"
+                                                            Grid.ColumnSpan="3"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,41,189,35"
+                                                            Click="直径暖开结构洞_Btn_Click"
+                                                            Content="直径暖开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="半径暖开结构洞"
+                                                            Grid.ColumnSpan="3"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,65,189,11"
+                                                            Click="半径暖开结构洞_Btn_Click"
+                                                            Content="半径暖开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <GroupBox
+                                                            x:Name="暖外扩"
+                                                            Grid.Column="2"
+                                                            Margin="17,0,128,0"
+                                                            FontSize="10"
+                                                            Header="外扩">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,26,-68,26"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="直径"
+                                                                    FontSize="12" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,51,-68,0"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="半径"
+                                                                    FontSize="12" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="暖X"
+                                                            Grid.Column="2"
+                                                            Width="60"
+                                                            Height="40"
+                                                            Margin="82,0,63,56"
+                                                            FontSize="10"
+                                                            Header="X:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Width="45"
+                                                                    Height="23"
+                                                                    Margin="0,0,0,-5"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="暖Y"
+                                                            Grid.Column="2"
+                                                            Width="60"
+                                                            Margin="147,0,-2,0"
+                                                            FontSize="10"
+                                                            Header="Y:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+
+
+                                                            </Grid>
+                                                        </GroupBox>
+
+
+
+                                                    </Grid>
+                                                </GroupBox>
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem
+                                x:Name="电气"
+                                Height="50"
+                                VerticalAlignment="Bottom"
+                                Header="电气">
+                                <TabControl>
+                                    <TabItem x:Name="电气图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3,3,5,3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="ElectricalButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="电气图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <GroupBox
+                                                    x:Name="TJ电气过建筑孔洞"
+                                                    Height="80"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ电气过建筑孔洞">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙电开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="横墙电开建筑洞_Btn_Clic"
+                                                            Content="横墙电开建筑洞"
+                                                            FontWeight="Bold" />
+
+                                                        <Button
+                                                            x:Name="纵墙电开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙电开建筑洞_Btn_Click"
+                                                            Content="纵墙电开建筑洞"
+                                                            FontWeight="Bold" />
+                                                    </Grid>
+
+                                                </GroupBox>
+                                                <GroupBox
+                                                    x:Name="TJ电气过结构孔洞"
+                                                    Margin="0,80,0,0"
+                                                    Header="TJ电气过结构孔洞">
+                                                    <Grid>
+                                                        <Button
+                                                            x:Name="矩形电开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,17,189,59"
+                                                            Click="矩形电开结构洞_Btn_Click"
+                                                            Content="矩形电开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="直径电开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,41,189,35"
+                                                            Click="直径电开结构洞_Btn_Click"
+                                                            Content="直径电开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="半径电开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,65,189,11"
+                                                            Click="半径电开结构洞_Btn_Click"
+                                                            Content="半径电开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <GroupBox
+                                                            x:Name="电外扩"
+                                                            Margin="100,0,128,0"
+                                                            FontSize="10"
+                                                            Header="外扩">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,26,-68,26"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="直径"
+                                                                    FontSize="12" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,51,-68,0"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="半径"
+                                                                    FontSize="12" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="电X"
+                                                            Width="60"
+                                                            Height="40"
+                                                            Margin="165,0,63,56"
+                                                            FontSize="10"
+                                                            Header="X:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Width="45"
+                                                                    Height="23"
+                                                                    Margin="0,0,0,-5"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="电Y"
+                                                            Width="60"
+                                                            Margin="230,0,-2,0"
+                                                            FontSize="10"
+                                                            Header="Y:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                    </Grid>
+                                                </GroupBox>
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem x:Name="自控" Header="自控">
+                                <TabControl>
+                                    <TabItem x:Name="自控图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="自控列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="ControlButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem
+                                        x:Name="自控图层"
+                                        Height="21"
+                                        VerticalAlignment="Top"
+                                        Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="200" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <Grid Grid.Row="0">
+                                                <GroupBox
+                                                    x:Name="TJ自控过建筑孔洞"
+                                                    Height="80"
+                                                    VerticalAlignment="Top"
+                                                    Header="TJ自控过建筑孔洞">
+                                                    <Grid>
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,26,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+                                                        <Label
+                                                            Width="70"
+                                                            Height="25"
+                                                            Margin="3,3,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Content="左右加宽" />
+
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,3,115,28"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <TextBox
+                                                            Width="100"
+                                                            Height="25"
+                                                            Margin="73,28,115,3"
+                                                            HorizontalContentAlignment="Center"
+                                                            VerticalContentAlignment="Center"
+                                                            Style="{StaticResource WatermarkTextBoxStyle}"
+                                                            Tag="50" />
+                                                        <Button
+                                                            x:Name="横墙自控开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,6,5,30"
+                                                            Click="横墙自控开建筑洞_Btn_Clic"
+                                                            Content="横墙自控开建筑洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="纵墙自控开建筑洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="183,31,5,5"
+                                                            Click="纵墙自控开建筑洞_Btn_Click"
+                                                            Content="纵墙自控开建筑洞"
+                                                            FontWeight="Bold" />
+                                                    </Grid>
+
+                                                </GroupBox>
+                                                <GroupBox
+                                                    x:Name="TJ自控过结构孔洞"
+                                                    Margin="0,80,0,0"
+                                                    Header="TJ自控过结构孔洞">
+                                                    <Grid>
+                                                        <Button
+                                                            x:Name="矩形自控开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,17,189,59"
+                                                            Click="矩形自控开结构洞_Btn_Click"
+                                                            Content="矩形自控开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="直径自控开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,41,189,35"
+                                                            Click="直径自控开结构洞_Btn_Click"
+                                                            Content="直径自控开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <Button
+                                                            x:Name="半径自控开结构洞"
+                                                            Width="100"
+                                                            Height="20"
+                                                            Margin="-1,65,189,11"
+                                                            Click="半径自控开结构洞_Btn_Click"
+                                                            Content="半径自控开结构洞"
+                                                            FontWeight="Bold" />
+                                                        <GroupBox
+                                                            x:Name="自控外扩"
+                                                            Margin="100,0,128,0"
+                                                            FontSize="10"
+                                                            Header="外扩">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="75" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,26,-68,26"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="直径"
+                                                                    FontSize="12" />
+                                                                <Label
+                                                                    Width="50"
+                                                                    Height="25"
+                                                                    Margin="66,51,-68,0"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    Content="半径"
+                                                                    FontSize="12" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="自控X"
+                                                            Width="60"
+                                                            Height="40"
+                                                            Margin="165,0,63,56"
+                                                            FontSize="10"
+                                                            Header="X:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Width="45"
+                                                                    Height="23"
+                                                                    Margin="0,0,0,-5"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+
+                                                            </Grid>
+                                                        </GroupBox>
+                                                        <GroupBox
+                                                            x:Name="自控Y"
+                                                            Width="60"
+                                                            Margin="230,0,-2,0"
+                                                            FontSize="10"
+                                                            Header="Y:">
+                                                            <Grid>
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    VerticalAlignment="Center"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                                <TextBox
+                                                                    Height="25"
+                                                                    Margin="0,52,0,0"
+                                                                    VerticalAlignment="Top"
+                                                                    HorizontalContentAlignment="Center"
+                                                                    VerticalContentAlignment="Center"
+                                                                    FontSize="13"
+                                                                    Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                    Tag="0" />
+                                                            </Grid>
+                                                        </GroupBox>
+                                                    </Grid>
+                                                </GroupBox>
+                                            </Grid>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+
+                            <TabItem x:Name="总图" Header="总图">
+                                <TabControl>
+                                    <TabItem x:Name="总图图元" Header=" 图元集 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock
+                                                Grid.Row="0"
+                                                Margin="5"
+                                                FontSize="14"
+                                                FontWeight="Bold"
+                                                Foreground="#0078D4"
+                                                Text="总图列表" />
+                                            <ScrollViewer
+                                                Grid.Row="1"
+                                                Margin="3"
+                                                VerticalScrollBarVisibility="Auto">
+                                                <WrapPanel x:Name="GeneralButtonsPanel" Orientation="Vertical" />
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="总图图层" Header=" 图层管理 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="30" />
+                                                <RowDefinition Height="2*" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
+                                    </TabItem>
+                                </TabControl>
+                            </TabItem>
+                        </TabControl>
+                    </Grid>
+                    <Grid Grid.Row="5" />
+
+                    <Grid Grid.Row="7" Background="FloralWhite">
+                        <Button
+                            Width="130"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="151,4,11,6"
+                            FontSize="14">
+                            <TextBlock Text="应用图元" />
+                        </Button>
+                        <Button
+                            Width="130"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="11,4,151,6"
+                            FontSize="14">
+                            <TextBlock Text="还原初始值" />
+                        </Button>
+                    </Grid>
+                    <Grid Grid.Row="8" Background="Azure">
+                        <ScrollViewer Margin="0,5,0,0" VerticalScrollBarVisibility="Auto">
+                            <WrapPanel x:Name="属性">
+                                <TextBlock Margin="5,3,110,3" Text="属性1" />
+                                <TextBlock Margin="5,3,110,3" Text="属性2" />
+                                <TextBlock Margin="5,3,110,3" Text="属性3" />
+                                <TextBlock Margin="5,3,110,3" Text="属性4" />
+                                <TextBlock Margin="5,3,110,3" Text="属性5" />
+                                <TextBlock Margin="5,3,110,3" Text="属性6" />
+                                <TextBlock Margin="5,3,110,3" Text="属性7" />
+                                <TextBlock Margin="5,3,110,3" Text="属性8" />
+                                <TextBlock Margin="5,3,110,3" Text="属性9" />
+                                <TextBlock Margin="5,3,100,3" Text="属性10" />
+                                <TextBlock Margin="5,3,100,3" Text="属性11" />
+                                <TextBlock Margin="5,3,100,3" Text="属性12" />
+                                <TextBlock Margin="5,3,100,3" Text="属性13" />
+                                <TextBlock Margin="5,3,100,3" Text="属性14" />
+                                <TextBlock Margin="5,3,100,3" Text="属性15" />
+                                <TextBlock Margin="5,3,100,3" Text="属性16" />
+                                <TextBlock Margin="5,3,100,3" Text="属性17" />
+                                <TextBlock Margin="5,3,100,3" Text="属性18" />
+                                <TextBlock Margin="5,3,100,3" Text="属性19" />
+                            </WrapPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+
+            </TabItem>
+            <!--  第一TabControlItem(检查模块)  -->
+            <TabItem Header=" SW图元 ">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50" />
+                        <RowDefinition Height="50" />
+                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="50" />
+                        <RowDefinition Height="5*" />
+                    </Grid.RowDefinitions>
+                    <TabControl Grid.Row="3" />
+                </Grid>
+
+            </TabItem>
+            <!--  第一TabControlItem(管理员模块)  -->
+            <TabItem Header="管理员模块">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50" />
+                        <RowDefinition Height="50" />
+                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="145" />
+                        <RowDefinition Height="30" />
+                        <RowDefinition Height="145" />
+                    </Grid.RowDefinitions>
+                    <!--  第一行  -->
+                    <Grid Grid.Row="0" Background="FloralWhite">
+
+                        <Button
+                            Width="130"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="11,4,151,6"
+                            Click="LoadCadDatabase_Btn_Click"
+                            FontSize="14">
+                            <TextBlock Text="加载CAD数据库" />
+                        </Button>
+                        <Button
+                            Width="130"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="151,4,11,6"
+                            Click="LoadSwDatabase_Btn_Click"
+                            FontSize="14">
+                            <TextBlock Text="加载SW数据库" />
+                        </Button>
+                    </Grid>
+                    <!--  第二行  -->
+                    <Grid Grid.Row="1" Background="Azure">
+
+                        <Button
+                            Width="80"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="5,12,257,13"
+                            Click="NewCategory_MenuItem_Click"
+                            FontSize="14">
+                            <TextBlock Text="新建分类" />
+                        </Button>
+                        <Button
+                            Width="80"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="88,12,174,13"
+                            Click="AddSubcategory_MenuItem_Click"
+                            FontSize="14">
+                            <TextBlock Text="添加子分类" />
+                        </Button>
+                        <Button
+                            Width="80"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="171,12,91,13"
+                            Click="Edit_MenuItem_Click"
+                            FontSize="14">
+                            <TextBlock Text="修改" />
+                        </Button>
+                        <Button
+                            Width="80"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="254,12,8,13"
+                            Click="Delete_MenuItem_Click"
+                            FontSize="14">
+                            <TextBlock Text="删除" />
+                        </Button>
+
+                    </Grid>
+                    <!--  第三行，管理员模块中的Grid.Row="2"  -->
+                    <Grid
+                        x:Name="CategoryDisplayGrid"
+                        Grid.Row="2"
+                        Background="FloralWhite">
+
+                        <!--  这里将显示分类树  -->
+                        <TreeView
+                            x:Name="CategoryTreeView"
+                            Margin="0,5,5,5"
+                            Background="White">
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="True" />
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                        </TreeView>
+
+                    </Grid>
+                    <!--  第四行  -->
+                    <Grid Grid.Row="3" Background="Azure">
+
+                        <Button
+                            Width="NaN"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="10,5,262,115"
+                            Click="AddGraphic_Btn_Click"
+                            FontSize="14">
+                            <TextBlock x:Name="add_Graphice" Text="添加图元" />
+                        </Button>
+                        <Button
+                            Width="NaN"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="10,32,262,88"
+                            Click="AddPreviewImage_Btn_Click"
+                            FontSize="14">
+                            <TextBlock x:Name="del_Graphice" Text="添加预览图" />
+                        </Button>
+                        <Button
+                            Width="NaN"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="10,60,262,60"
+                            Click="DeleteGraphic_Btn_Click"
+                            FontSize="14">
+                            <TextBlock Text="删除图元" />
+                        </Button>
+                        <Button
+                            Width="NaN"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="10,88,262,32"
+                            Click="ResetToInitial_Btn_Click"
+                            FontSize="14">
+                            <TextBlock Text="还原初始值" />
+                        </Button>
+                        <Button
+                            Width="NaN"
+                            Height="25"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="10,115,262,5"
+                            Click="ApplyProperties_Btn_Click"
+                            FontSize="14">
+                            <TextBlock Text="应用属性" />
+                        </Button>
+                        <Viewbox
+                            x:Name="ViewImage"
+                            Margin="90,0,0,0"
+                            Stretch="Fill" />
+
+                    </Grid>
+                    <Grid Grid.Row="4" Background="FloralWhite">
+
+                        <TextBlock
+                            Margin="5,3,5,3"
+                            VerticalAlignment="Center"
+                            FontWeight="Normal"
+                            Foreground="Gray"
+                            Text="图元路径" />
+                    </Grid>
+                    <Grid Grid.Row="5">
+                        <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
+                            <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" />
+
+
+
+                            <!--<WrapPanel x:Name="属性值" >
+                                <TextBlock Text="图元id" Margin= "5,3,5,3"/><TextBox Height="22" TextWrapping="Wrap" Text="表名：id" Width="65" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="上级分类" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="表：cad_graphice_id" Width="139" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性3" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性4" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性5" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性6" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性7" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性8" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性9" Margin= "5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性10" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性11" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性12" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性13" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性14" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性15" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性16" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性17" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性18" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性19" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                                <TextBlock Text="属性20" Margin="5,3,5,3"/>
+                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
+                            </WrapPanel>-->
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+
+            </TabItem>
+        </TabControl>
+
+    </Grid>
+</UserControl>

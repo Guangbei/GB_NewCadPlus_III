@@ -1,0 +1,152 @@
+﻿<Window
+    x:Class="GB_NewCadPlus_III.DatabaseConfigWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="数据库配置"
+    Width="400"
+    Height="300"
+    ResizeMode="NoResize"
+    WindowStartupLocation="CenterOwner">
+    <!--  窗口在所有者窗口居中  -->
+    <!--  禁止调整窗口大小  -->
+
+    <Grid Margin="15">
+        <!--  主网格，设置外边距  -->
+        <Grid.RowDefinitions>
+            <!--  定义行  -->
+            <RowDefinition Height="Auto" />
+            <!--  服务器行  -->
+            <RowDefinition Height="Auto" />
+            <!--  数据库行  -->
+            <RowDefinition Height="Auto" />
+            <!--  用户名行  -->
+            <RowDefinition Height="Auto" />
+            <!--  密码行  -->
+            <RowDefinition Height="Auto" />
+            <!--  端口行  -->
+            <RowDefinition Height="*" />
+            <!--  测试连接按钮行  -->
+            <RowDefinition Height="Auto" />
+            <!--  按钮行  -->
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <!--  定义列  -->
+            <ColumnDefinition Width="Auto" />
+            <!--  标签列  -->
+            <ColumnDefinition Width="*" />
+            <!--  输入框列  -->
+        </Grid.ColumnDefinitions>
+
+        <!--  服务器配置  -->
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="0"
+            Margin="0,0,10,10"
+            VerticalAlignment="Center"
+            Text="服务器:" />
+        <!--  服务器标签  -->
+        <TextBox
+            x:Name="txtServer"
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="0,0,0,10"
+            Text="localhost" />
+        <!--  服务器输入框  -->
+
+        <!--  数据库名  -->
+        <TextBlock
+            Grid.Row="1"
+            Grid.Column="0"
+            Margin="0,0,10,10"
+            VerticalAlignment="Center"
+            Text="数据库:" />
+        <!--  数据库标签  -->
+        <TextBox
+            x:Name="txtDatabase"
+            Grid.Row="1"
+            Grid.Column="1"
+            Margin="0,0,0,10"
+            Text="工艺数据库" />
+        <!--  数据库输入框  -->
+
+        <!--  用户名  -->
+        <TextBlock
+            Grid.Row="2"
+            Grid.Column="0"
+            Margin="0,0,10,10"
+            VerticalAlignment="Center"
+            Text="用户名:" />
+        <!--  用户名标签  -->
+        <TextBox
+            x:Name="txtUserId"
+            Grid.Row="2"
+            Grid.Column="1"
+            Margin="0,0,0,10"
+            Text="root" />
+        <!--  用户名输入框  -->
+
+        <!--  密码  -->
+        <TextBlock
+            Grid.Row="3"
+            Grid.Column="0"
+            Margin="0,0,10,10"
+            VerticalAlignment="Center"
+            Text="密码:" />
+        <!--  密码标签  -->
+        <PasswordBox
+            x:Name="txtPassword"
+            Grid.Row="3"
+            Grid.Column="1"
+            Margin="0,0,0,10" />
+        <!--  密码输入框  -->
+
+        <!--  端口  -->
+        <TextBlock
+            Grid.Row="4"
+            Grid.Column="0"
+            Margin="0,0,10,10"
+            VerticalAlignment="Center"
+            Text="端口:" />
+        <!--  端口标签  -->
+        <TextBox
+            x:Name="txtPort"
+            Grid.Row="4"
+            Grid.Column="1"
+            Margin="0,0,0,10"
+            Text="3306" />
+        <!--  端口输入框  -->
+
+        <!--  测试连接按钮  -->
+        <Button
+            Grid.Row="5"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            Height="30"
+            Margin="0,10"
+            Click="TestConnection_Click"
+            Content="测试连接" />
+        <!--  测试连接按钮  -->
+
+        <!--  按钮区域  -->
+        <StackPanel
+            Grid.Row="6"
+            Grid.Column="0"
+            Grid.ColumnSpan="2"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <!--  水平按钮栈  -->
+            <Button
+                Width="80"
+                Margin="0,0,10,0"
+                Click="OK_Click"
+                Content="确定" />
+            <!--  确定按钮  -->
+            <Button
+                Width="80"
+                Click="Cancel_Click"
+                Content="取消" />
+            <!--  取消按钮  -->
+        </StackPanel>
+    </Grid>
+</Window>
