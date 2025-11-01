@@ -1,32 +1,11 @@
-﻿// AutoCAD相关命名空间
-using Autodesk.AutoCAD.ApplicationServices; // 应用程序服务
-using Autodesk.AutoCAD.DatabaseServices; // 数据库服务（块、实体等）
-using Autodesk.AutoCAD.EditorInput; // 编辑器交互（用户输入）
-using Autodesk.AutoCAD.Geometry; // 几何图形（点、向量等）
-using Autodesk.AutoCAD.Runtime; // 命令特性
-using IFoxCAD.Cad;
-
+﻿
 // Excel操作命名空间
 using OfficeOpenXml;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Configuration;
 using System.Data;
-using System.Diagnostics;
 using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Windows.Forms;
-using static IFoxCAD.Cad.OpFilter;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using AttributeCollection = Autodesk.AutoCAD.DatabaseServices.AttributeCollection;
-using DataColumn = System.Data.DataColumn;
 using DataTable = System.Data.DataTable;
-using GB_NewCadPlus_III;
 
 namespace GB_NewCadPlus_III
 {
