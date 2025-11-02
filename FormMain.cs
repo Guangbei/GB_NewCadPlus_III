@@ -368,50 +368,50 @@ namespace GB_NewCadPlus_III
         // 0.25 = 逆时针45
         public void button_向下_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("下");
+            var command = UnifiedCommandManager.GetCommand("下");
             command?.Invoke();
         }
 
         public void button_向左下_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左下");
+            var command = UnifiedCommandManager.GetCommand("左下");
             command?.Invoke();
         }
 
         public void button_向左_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左");
+            var command = UnifiedCommandManager.GetCommand("左");
             command?.Invoke();
         }
 
         public void button_向左上_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左上");
+            var command = UnifiedCommandManager.GetCommand("左上");
             command?.Invoke();
         }
 
         public void button_向上_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("上");
+            var command = UnifiedCommandManager.GetCommand("上");
             command?.Invoke();
 
         }
 
         public void button_向右上_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右上");
+            var command = UnifiedCommandManager.GetCommand("右上");
             command?.Invoke();
         }
 
         public void button_向右_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右");
+            var command = UnifiedCommandManager.GetCommand("右");
             command?.Invoke();
         }
 
         public void button_向右下_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右下");
+            var command = UnifiedCommandManager.GetCommand("右下");
             command?.Invoke();
         }
         #endregion
@@ -1109,7 +1109,7 @@ namespace GB_NewCadPlus_III
         }
         public void button_G_纯化水_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("纯化水");
+            var command = UnifiedCommandManager.GetCommand("纯化水");
             command?.Invoke();
             //ExecuteProcessCommand("纯化水", "PW,DN??,??L/h", "TJ(工艺专业GY)", 40, 0);
         }
@@ -1238,13 +1238,13 @@ namespace GB_NewCadPlus_III
         #region 建筑
         public void button_JZ_吊顶_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("吊顶");
+            var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }
 
         public void button_JZ_不吊顶_Click(object sender, EventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("不吊顶");
+            var command = UnifiedCommandManager.GetCommand("不吊顶");
             command?.Invoke();
         }
         public void button_冷藏库降板_Click(object sender, EventArgs e)
@@ -1255,7 +1255,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";//设置为被插入的图层名
             VariableDictionary.layerColorIndex = 30;//设置为被插入的图层颜色
             Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
-            var command = UnifiedButtonCommandManager.GetCommandForButton("冷藏库降板");
+            var command = UnifiedCommandManager.GetCommand("冷藏库降板");
             command?.Invoke();
         }
 
@@ -1267,7 +1267,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";//设置为被插入的图层名
             VariableDictionary.layerColorIndex = 30;//设置为被插入的图层颜色
             Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
-            var command = UnifiedButtonCommandManager.GetCommandForButton("冷藏库降板");
+            var command = UnifiedCommandManager.GetCommand("冷藏库降板");
             command?.Invoke();
         }
         public void button_排水沟_Click(object sender, EventArgs e)
@@ -1283,7 +1283,7 @@ namespace GB_NewCadPlus_III
             //VariableDictionary.btnBlockLayer = VariableDictionary.btnFileName;
             //VariableDictionary.resourcesFile = Resources.PTJ_消火栓;
             Env.Document.SendStringToExecute("Rec2PolyLine_3 ", false, false, false);
-            var command = UnifiedButtonCommandManager.GetCommandForButton("排水沟");
+            var command = UnifiedCommandManager.GetCommand("排水沟");
             command?.Invoke();
         }
        
@@ -1417,7 +1417,7 @@ namespace GB_NewCadPlus_III
             {
                 textBox_房间号副号.Text = (Convert.ToInt32(textBox_房间号副号.Text) + 1).ToString();
             }
-            var command = UnifiedButtonCommandManager.GetCommandForButton("房间编号");
+            var command = UnifiedCommandManager.GetCommand("房间编号");
             command?.Invoke();
         }
         #endregion

@@ -25,6 +25,11 @@ namespace GB_NewCadPlus_III
         private DatabaseManager _databaseManager;
 
         /// <summary>
+        /// 数据库连接字符串（应该从配置文件读取）
+        /// </summary>
+        private readonly string _connectionString = "Server=localhost;Database=cad_sw_library;Uid=root;Pwd=root;";
+
+        /// <summary>
         /// 是否使用数据库模式
         /// </summary>
         private bool _useDatabaseMode = false;
@@ -62,18 +67,14 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 当前选中的节点对象（用于修改操作）
         /// </summary>
-        private object _currentSelectedNode = null;
+        private object? _currentSelectedNode = null;
 
         /// <summary>
         /// 用于显示分类树的TreeView控件
         /// </summary>
         private System.Windows.Controls.TreeView _categoryTreeView;
 
-        /// <summary>
-        /// 数据库连接字符串（应该从配置文件读取）
-        /// </summary>
-        private readonly string _connectionString = "Server=localhost;Database=cad_sw_library;Uid=root;Pwd=root;";
-
+      
         /// <summary>
         /// 添加预览图片显示的Viewbox引用
         /// </summary>
@@ -120,29 +121,25 @@ namespace GB_NewCadPlus_III
                 System.Diagnostics.Debug.WriteLine("开始初始化数据库连接...");
                 _databaseManager = new DatabaseManager(_connectionString);
 
-                if (_databaseManager.IsDatabaseAvailable)
+                // 测试数据库连接
+                var categories = await _databaseManager.GetAllCadCategoriesAsync();
+                if (categories != null)
                 {
-                    _useDatabaseMode = true;
-                    System.Diagnostics.Debug.WriteLine("数据库连接成功，使用数据库模式");
-                }
-                else
-                {
-                    _useDatabaseMode = false;
-                    System.Diagnostics.Debug.WriteLine("数据库连接失败，使用Resources文件夹模式");
+                    System.Diagnostics.Debug.WriteLine($"数据库连接成功，找到 {categories.Count} 个分类");
                 }
             }
             catch (Exception ex)
             {
-                _useDatabaseMode = false;
-                System.Diagnostics.Debug.WriteLine($"数据库初始化失败: {ex.Message}，使用Resources文件夹模式");
+                System.Diagnostics.Debug.WriteLine($"数据库初始化失败: {ex.Message}");
+                _databaseManager = null;
             }
         }
 
         /// <summary>
         /// 窗口初始化时运行加载项
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param Name="sender"></param>
+        /// <param Name="e"></param>
         private void WpfMainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // 获取预览Viewbox的引用
@@ -189,8 +186,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// TabControl选择改变事件
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param Name="sender"></param>
+        /// <param Name="e"></param>
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("TabControl选择改变事件触发");
@@ -243,8 +240,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从数据库加载指定分类的按钮
         /// </summary>
-        /// <param name="categoryName">分类名称</param>
-        /// <param name="tabItem">目标TabItem</param>
+        /// <param Name="categoryName">分类名称</param>
+        /// <param Name="tabItem">目标TabItem</param>
         private async Task LoadButtonsForCategoryFromDatabase(string categoryName, TabItem tabItem)
         {
             try
@@ -282,7 +279,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 查找TabItem的父级TabItem
         /// </summary>
-        /// <param name="tabItem"></param>
+        /// <param Name="tabItem"></param>
         /// <returns></returns>
         private TabItem FindParentTabItem(TabItem tabItem)
         {
@@ -301,8 +298,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 为特定TabItem加载按钮
         /// </summary>
-        /// <param name="tabItem"></param>
-        /// <param name="folderName"></param>
+        /// <param Name="tabItem"></param>
+        /// <param Name="folderName"></param>
         private void LoadButtonsForTabItem(TabItem tabItem, string folderName)
         {
             System.Diagnostics.Debug.WriteLine($"尝试加载 {folderName} 的按钮");
@@ -343,8 +340,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 查找目标面板 - 处理嵌套TabControl结构
         /// </summary>
-        /// <param name="tabItem"></param>
-        /// <param name="folderName"></param>
+        /// <param Name="tabItem"></param>
+        /// <param Name="folderName"></param>
         /// <returns></returns>
         private WrapPanel FindTargetPanel(TabItem tabItem, string folderName)
         {
@@ -391,7 +388,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 通过文件夹名称获取对应的面板引用
         /// </summary>
-        /// <param name="folderName"></param>
+        /// <param Name="folderName"></param>
         /// <returns></returns>
         private WrapPanel GetPanelByFolderName(string folderName)
         {
@@ -423,8 +420,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 根据数据库中的信息加载按钮到指定面板（支持二级分类结构，带边框和背景色）
         /// </summary>
-        /// <param name="categoryName">分类名称（与TabItem的Header相同）</param>
-        /// <param name="panel">要添加按钮的面板</param>
+        /// <param Name="categoryName">分类名称（与TabItem的Header相同）</param>
+        /// <param Name="panel">要添加按钮的面板</param>
         private async void LoadButtonsForItem(string categoryName, WrapPanel panel)
         {
             try
@@ -456,8 +453,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从数据库加载按钮（新方法）
         /// </summary>
-        /// <param name="folderName">分类名称</param>
-        /// <param name="panel">目标面板</param>
+        /// <param Name="folderName">分类名称</param>
+        /// <param Name="panel">目标面板</param>
         private async Task LoadButtonsFromDatabase(string folderName, WrapPanel panel)
         {
             try
@@ -479,7 +476,7 @@ namespace GB_NewCadPlus_III
                 }
 
                 // 获取该分类下的所有子分类
-                var subcategories = await _databaseManager.GetCadSubcategoriesByCategoryIdAsync(category.id);
+                var subcategories = await _databaseManager.GetCadSubcategoriesByCategoryIdAsync(category.Id);
                 System.Diagnostics.Debug.WriteLine($"找到 {subcategories.Count} 个子分类");
 
                 // 定义背景色列表，用于区分不同区域
@@ -499,7 +496,7 @@ namespace GB_NewCadPlus_III
                 // 遍历所有子分类
                 foreach (var subcategory in subcategories)
                 {
-                    System.Diagnostics.Debug.WriteLine($"处理子分类: {subcategory.display_name}");
+                    System.Diagnostics.Debug.WriteLine($"处理子分类: {subcategory.DisplayName}");
 
                     // 为每个子分类创建一个带边框和背景色的区域
                     Border sectionBorder = new Border
@@ -522,7 +519,7 @@ namespace GB_NewCadPlus_III
                     // 添加区域标题
                     TextBlock sectionHeader = new TextBlock
                     {
-                        Text = subcategory.display_name,
+                        Text = subcategory.DisplayName,
                         FontSize = 14,
                         FontWeight = FontWeights.Bold,
                         Margin = new Thickness(0, 5, 0, 10),
@@ -531,13 +528,13 @@ namespace GB_NewCadPlus_III
                     sectionPanel.Children.Add(sectionHeader);
 
                     // 从数据库获取该子分类下的所有图元文件
-                    var graphics = await _databaseManager.GetCadGraphicsBySubcategoryIdAsync(subcategory.id);
-                    System.Diagnostics.Debug.WriteLine($"在 {subcategory.display_name} 中找到 {graphics.Count} 个图元文件");
+                    var graphics = await _databaseManager.GetCadGraphicsBySubcategoryIdAsync(subcategory.Id);
+                    System.Diagnostics.Debug.WriteLine($"在 {subcategory.DisplayName} 中找到 {graphics.Count} 个图元文件");
 
                     if (graphics.Count > 0)
                     {
                         // 按显示名称排序
-                        graphics.Sort((x, y) => x.display_name.CompareTo(y.display_name));
+                        graphics.Sort((x, y) => x.DisplayName.CompareTo(y.DisplayName));
 
                         // 按3列分组处理
                         int columns = 3;
@@ -556,12 +553,12 @@ namespace GB_NewCadPlus_III
                                 var graphic = graphics[i + j];
 
                                 // 检查是否是预定义的按钮
-                                //var commandInfo = ButtonCommandMapper.GetCommandInfo(graphic.display_name);
-                                string buttonName = graphic.display_name;
+                                //var commandInfo = ButtonCommandMapper.GetCommandInfo(graphic.DisplayName);
+                                string buttonName = graphic.DisplayName;
                                 // 创建按钮
                                 Button btn = new Button
                                 {
-                                    Content = graphic.display_name,
+                                    Content = graphic.DisplayName,
                                     Width = 88,
                                     Height = 30,
                                     Margin = new Thickness(0, 0, 5, 0),
@@ -571,7 +568,7 @@ namespace GB_NewCadPlus_III
                                 };
 
                                 // 检查是否是预定义的按钮
-                                if (UnifiedButtonCommandManager.IsPredefinedButton(buttonName))
+                                if (UnifiedCommandManager.IsPredefinedCommand(buttonName))
                                 {
                                     // 如果是预定义按钮
                                     btn.Tag = new ButtonTagCommandInfo
@@ -634,8 +631,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从Resources文件夹加载按钮（支持命令映射）
         /// </summary>
-        /// <param name="folderName">文件夹名称</param>
-        /// <param name="panel">目标面板</param>
+        /// <param Name="folderName">文件夹名称</param>
+        /// <param Name="panel">目标面板</param>
         private void LoadButtonsFromResources(string folderName, WrapPanel panel)
         {
             try
@@ -771,7 +768,7 @@ namespace GB_NewCadPlus_III
                                     };
 
                                     // 检查是否是预定义的按钮
-                                    if (UnifiedButtonCommandManager.IsPredefinedButton(buttonName))
+                                    if (UnifiedCommandManager.IsPredefinedCommand(buttonName))
                                     {
                                         // 如果是预定义按钮
                                         btn.Tag = new ButtonTagCommandInfo
@@ -839,7 +836,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 提取字符串中的中文字符，去除所有符号与英文字母
         /// </summary>
-        /// <param name="input">输入字符串</param>
+        /// <param Name="input">输入字符串</param>
         /// <returns>只包含中文字符的字符串</returns>
         private string ExtractChineseCharacters(string input)
         {
@@ -868,8 +865,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 动态生成按钮的统一点击事件处理
         /// </summary>
-        /// <param name="sender">事件发送者</param>
-        /// <param name="e">路由事件参数</param>
+        /// <param Name="sender">事件发送者</param>
+        /// <param Name="e">路由事件参数</param>
         private void DynamicButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -880,7 +877,7 @@ namespace GB_NewCadPlus_III
                     if (_useDatabaseMode && btn.Tag is CadGraphic cadGraphic)
                     {
                         // 数据库模式：处理数据库图元
-                        System.Diagnostics.Debug.WriteLine($"点击了数据库图元按钮: {cadGraphic.display_name}");
+                        System.Diagnostics.Debug.WriteLine($"点击了数据库图元按钮: {cadGraphic.DisplayName}");
                         ExecuteDynamicButtonActionFromDatabase(cadGraphic);
                     }
                     else if (!_useDatabaseMode && btn.Tag is string filePath)
@@ -912,8 +909,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 执行Resources图元按钮点击后的操作
         /// </summary>
-        /// <param name="buttonName">按钮名称</param>
-        /// <param name="filePath">文件路径</param>
+        /// <param Name="buttonName">按钮名称</param>
+        /// <param Name="filePath">文件路径</param>
         private void ExecuteDynamicButtonActionFromResources(string buttonName, string filePath)
         {
             try
@@ -938,7 +935,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 执行数据库图元按钮点击后的操作
         /// </summary>
-        /// <param name="cadGraphic">图元信息</param>
+        /// <param Name="cadGraphic">图元信息</param>
         private async void ExecuteDynamicButtonActionFromDatabase(CadGraphic cadGraphic)
         {
             try
@@ -965,7 +962,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从数据库信息显示预览图
         /// </summary>
-        /// <param name="cadBlock">图元信息</param>
+        /// <param Name="cadBlock">图元信息</param>
         private void ShowPreviewImageFromDatabase(CadGraphic cadGraphic)
         {
             try
@@ -977,7 +974,7 @@ namespace GB_NewCadPlus_III
                 previewViewbox.Child = null;
 
                 // 检查预览图路径是否存在
-                if (!string.IsNullOrEmpty(cadGraphic.preview_image_path) && System.IO.File.Exists(cadGraphic.preview_image_path))
+                if (!string.IsNullOrEmpty(cadGraphic.PreviewImagePath) && System.IO.File.Exists(cadGraphic.PreviewImagePath))
                 {
                     // 创建Image控件显示预览图
                     System.Windows.Controls.Image previewImage = new System.Windows.Controls.Image
@@ -989,7 +986,7 @@ namespace GB_NewCadPlus_III
                     // 创建BitmapImage并加载预览图文件
                     BitmapImage bitmap = new BitmapImage();
                     bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(cadGraphic.preview_image_path);
+                    bitmap.UriSource = new Uri(cadGraphic.PreviewImagePath);
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.EndInit();
 
@@ -1022,8 +1019,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从数据库信息设置相关变量
         /// </summary>
-        /// <param name="cadBlock">图元信息</param>
-        /// <param name="blockAttribute">图元属性</param>
+        /// <param Name="cadBlock">图元信息</param>
+        /// <param Name="blockAttribute">图元属性</param>
         private void SetRelatedVariablesFromDatabase(CadGraphic cadGraphic, CadGraphicAttribute cadGraphicAttribute)
         {
             try
@@ -1032,9 +1029,9 @@ namespace GB_NewCadPlus_III
                 if (cadGraphicAttribute != null)
                 {
                     VariableDictionary.entityRotateAngle = (double)(cadGraphicAttribute.Angle ?? 0);
-                    VariableDictionary.btnFileName = cadGraphic.file_name;
-                    VariableDictionary.btnBlockLayer = cadGraphicAttribute.layer_name ?? "TJ(工艺专业GY)";
-                    VariableDictionary.layerColorIndex = cadGraphicAttribute.color_index ?? 40;
+                    VariableDictionary.btnFileName = cadGraphic.FileName;
+                    VariableDictionary.btnBlockLayer = cadGraphic.LayerName ?? "TJ(工艺专业GY)";
+                    VariableDictionary.layerColorIndex = cadGraphic.ColorIndex ?? 40;
 
                     // 设置其他属性
                     VariableDictionary.textbox_S_Width = cadGraphicAttribute.Width?.ToString();
@@ -1045,7 +1042,7 @@ namespace GB_NewCadPlus_III
                 {
                     // 默认值
                     VariableDictionary.entityRotateAngle = 0;
-                    VariableDictionary.btnFileName = cadGraphic.file_name;
+                    VariableDictionary.btnFileName = cadGraphic.FileName;
                     VariableDictionary.btnBlockLayer = "TJ(工艺专业GY)";
                     VariableDictionary.layerColorIndex = 40;
                 }
@@ -1061,8 +1058,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从数据库信息在AutoCAD中插入块
         /// </summary>
-        /// <param name="cadBlock">图元信息</param>
-        /// <param name="blockAttribute">图元属性</param>
+        /// <param Name="cadBlock">图元信息</param>
+        /// <param Name="blockAttribute">图元属性</param>
         private void InsertBlockToAutoCADFromDatabase(CadGraphic cad_Graphic, CadGraphicAttribute cadGraphicAttribute)
         {
             try
@@ -1073,10 +1070,10 @@ namespace GB_NewCadPlus_III
                     Editor ed = doc.Editor;
 
                     // 使用SendStringToExecute发送命令
-                    string command = $"_INSERT_BLOCK \"{cad_Graphic.file_path}\" \"{cad_Graphic.display_name}\"\n";
+                    string command = $"_INSERT_BLOCK \"{cad_Graphic.FilePath}\" \"{cad_Graphic.DisplayName}\"\n";
                     doc.SendStringToExecute(command, true, false, false);
 
-                    System.Diagnostics.Debug.WriteLine($"已发送插入命令: {cad_Graphic.display_name}");
+                    System.Diagnostics.Debug.WriteLine($"已发送插入命令: {cad_Graphic.DisplayName}");
                 }
                 else
                 {
@@ -1099,10 +1096,10 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 按钮点击事件处理
         /// </summary>
-        /// <param name="sender">事件发送者</param>
-        /// <param name="e">路由事件参数</param>
-        /// <param name="buttonName">按钮名称</param>
-        /// <param name="filePath">文件完整路径</param>
+        /// <param Name="sender">事件发送者</param>
+        /// <param Name="e">路由事件参数</param>
+        /// <param Name="buttonName">按钮名称</param>
+        /// <param Name="filePath">文件完整路径</param>
         private void Button_Click(object sender, RoutedEventArgs e, string buttonName, string filePath)
         {
             try
@@ -1122,8 +1119,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 显示预览图片
         /// </summary>
-        /// <param name="dwgFilePath">dwg文件路径</param>
-        /// <param name="buttonName">按钮名称</param>
+        /// <param Name="dwgFilePath">dwg文件路径</param>
+        /// <param Name="buttonName">按钮名称</param>
         private void ShowPreviewImage(string dwgFilePath, string buttonName)
         {
             try
@@ -1188,9 +1185,9 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 查找可视化树中的子元素
         /// </summary>
-        /// <typeparam name="T">要查找的元素类型</typeparam>
-        /// <param name="parent">父元素</param>
-        /// <param name="childName">子元素名称</param>
+        /// <typeparam Name="T">要查找的元素类型</typeparam>
+        /// <param Name="parent">父元素</param>
+        /// <param Name="childName">子元素名称</param>
         /// <returns>找到的子元素或null</returns>
         private T FindVisualChild<T>(DependencyObject parent, string childName) where T : DependencyObject
         {
@@ -1316,50 +1313,50 @@ namespace GB_NewCadPlus_III
 
         private void 上_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("上");
+            var command = UnifiedCommandManager.GetCommand("上");
             command?.Invoke();
         }
 
         private void 右上_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右上");
+            var command = UnifiedCommandManager.GetCommand("右上");
             command?.Invoke();
         }
 
         private void 右_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右");
+            var command = UnifiedCommandManager.GetCommand("右");
             command?.Invoke();
         }
 
         private void 右下_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("右下");
+            var command = UnifiedCommandManager.GetCommand("右下");
             command?.Invoke();
 
         }
 
         private void 下_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("下");
+            var command = UnifiedCommandManager.GetCommand("下");
             command?.Invoke();
         }
 
         private void 左下_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左下");
+            var command = UnifiedCommandManager.GetCommand("左下");
             command?.Invoke();
         }
 
         private void 左_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左");
+            var command = UnifiedCommandManager.GetCommand("左");
             command?.Invoke();
         }
 
         private void 左上_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("左上");
+            var command = UnifiedCommandManager.GetCommand("左上");
             command?.Invoke();
         }
         #endregion
@@ -1392,11 +1389,11 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 公共调用DBTextLabel方法
         /// </summary>
-        /// <param name="commandName">命令名称</param>
-        /// <param name="btnFileName">按键名</param>
-        /// <param name="btnBlockLayer">图层名称</param>
-        /// <param name="layerColorIndex">图层颜色</param>
-        /// <param name="rotateAngle">图元角度</param>
+        /// <param Name="commandName">命令名称</param>
+        /// <param Name="btnFileName">按键名</param>
+        /// <param Name="btnBlockLayer">图层名称</param>
+        /// <param Name="layerColorIndex">图层颜色</param>
+        /// <param Name="rotateAngle">图元角度</param>
         private void ExecuteProcessCommand(string commandName, string btnFileName, string btnBlockLayer, int layerColorIndex, double rotateAngle)
         {
             try
@@ -1568,23 +1565,23 @@ namespace GB_NewCadPlus_III
                 treeView.Items.Clear(); // 清空现有项目
                 foreach (var category in categories)
                 {
-                    System.Diagnostics.Debug.WriteLine($"处理分类: {category.display_name} (ID: {category.id})");
+                    System.Diagnostics.Debug.WriteLine($"处理分类: {category.DisplayName} (ID: {category.Id})");
 
                     // 创建分类节点
                     TreeViewItem categoryItem = new TreeViewItem
                     {
-                        Header = category.display_name,// 显示分类名称
-                        Tag = new { Type = "Category", Id = category.id, Object = category }// 设置Tag属性
+                        Header = category.DisplayName,// 显示分类名称
+                        Tag = new { Type = "Category", Id = category.Id, Object = category }// 设置Tag属性
                     };
-                    System.Diagnostics.Debug.WriteLine($"创建分类节点: {category.display_name}");
+                    System.Diagnostics.Debug.WriteLine($"创建分类节点: {category.DisplayName}");
 
                     // 加载子分类
-                    await LoadCadSubcategoriesAsync(category.id, categoryItem, 0);
+                    await LoadCadSubcategoriesAsync(category.Id, categoryItem, 0);
 
                     //_sort_order += _sort_order + 1;
 
                     treeView.Items.Add(categoryItem);
-                    System.Diagnostics.Debug.WriteLine($"添加分类节点到TreeView: {category.display_name}");
+                    System.Diagnostics.Debug.WriteLine($"添加分类节点到TreeView: {category.DisplayName}");
                 }
                 System.Diagnostics.Debug.WriteLine($"TreeView最终项目数量: {treeView.Items.Count}");
                 System.Diagnostics.Debug.WriteLine("CAD分类加载完成");
@@ -1610,15 +1607,15 @@ namespace GB_NewCadPlus_III
                     string indent = new string(' ', level * 2); // 根据层级添加缩进
                     TreeViewItem subcategoryItem = new TreeViewItem
                     {
-                        Header = $"{indent}{subcategory.display_name}",
-                        Tag = new { Type = "Subcategory", Id = subcategory.id, Object = subcategory }
+                        Header = $"{indent}{subcategory.DisplayName}",
+                        Tag = new { Type = "Subcategory", Id = subcategory.Id, Object = subcategory }
                     };
 
                     // 加载图元
-                    await LoadCadGraphicsAsync(subcategory.id, subcategoryItem);
+                    await LoadCadGraphicsAsync(subcategory.Id, subcategoryItem);
 
                     // 递归加载子子分类
-                    await LoadCadSubcategoriesAsync(subcategory.id, subcategoryItem, level + 1);
+                    await LoadCadSubcategoriesAsync(subcategory.Id, subcategoryItem, level + 1);
 
                     parentItem.Items.Add(subcategoryItem);
                 }
@@ -1641,7 +1638,7 @@ namespace GB_NewCadPlus_III
                 {
                     TreeViewItem graphicItem = new TreeViewItem
                     {
-                        Header = $"    {graphic.file_name}",
+                        Header = $"    {graphic.LayerName}",
                         Tag = new { Type = "Graphic", Id = graphic.Id, Object = graphic }
                     };
                     parentItem.Items.Add(graphicItem);
@@ -1666,12 +1663,12 @@ namespace GB_NewCadPlus_III
                     // 创建分类节点
                     TreeViewItem categoryItem = new TreeViewItem
                     {
-                        Header = category.display_name,
-                        Tag = new { Type = "Category", Id = category.id, Object = category }
+                        Header = category.DisplayName,
+                        Tag = new { Type = "Category", Id = category.Id, Object = category }
                     };
 
                     // 加载子分类
-                    await LoadSwSubcategoriesAsync(category.id, categoryItem, 0);
+                    await LoadSwSubcategoriesAsync(category.Id, categoryItem, 0);
 
                     treeView.Items.Add(categoryItem);
                 }
@@ -1696,15 +1693,15 @@ namespace GB_NewCadPlus_III
                     string indent = new string(' ', level * 2); // 根据层级添加缩进
                     TreeViewItem subcategoryItem = new TreeViewItem
                     {
-                        Header = $"{indent}{subcategory.display_name}",
-                        Tag = new { Type = "Subcategory", Id = subcategory.id, Object = subcategory }
+                        Header = $"{indent}{subcategory.DisplayName}",
+                        Tag = new { Type = "Subcategory", Id = subcategory.Id, Object = subcategory }
                     };
 
                     // 加载图元
-                    await LoadSwGraphicsAsync(subcategory.id, subcategoryItem);
+                    await LoadSwGraphicsAsync(subcategory.Id, subcategoryItem);
 
                     // 递归加载子子分类
-                    await LoadSwSubcategoriesAsync(subcategory.id, subcategoryItem, level + 1);
+                    await LoadSwSubcategoriesAsync(subcategory.Id, subcategoryItem, level + 1);
 
                     parentItem.Items.Add(subcategoryItem);
                 }
@@ -1727,7 +1724,7 @@ namespace GB_NewCadPlus_III
                 {
                     TreeViewItem graphicItem = new TreeViewItem
                     {
-                        Header = $"    {graphic.file_name}",
+                        Header = $"    {graphic.FileName}",
                         Tag = new { Type = "Graphic", Id = graphic.Id, Object = graphic }
                     };
                     parentItem.Items.Add(graphicItem);
@@ -1884,8 +1881,8 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 预定义按钮点击事件处理
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param Name="sender"></param>
+        /// <param Name="e"></param>
         private void PredefinedButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1895,7 +1892,7 @@ namespace GB_NewCadPlus_III
                     System.Diagnostics.Debug.WriteLine($"点击预定义按钮: {tagInfo.ButtonName}");
 
                     // 通过统一管理器获取并执行对应的命令
-                    var command = UnifiedButtonCommandManager.GetCommandForButton(tagInfo.ButtonName);
+                    var command = UnifiedCommandManager.GetCommand(tagInfo.ButtonName);
                     if (command != null)
                     {
                         try
@@ -1947,83 +1944,83 @@ namespace GB_NewCadPlus_III
         private void 纯化水_Btn_Clic(object sender, RoutedEventArgs e)
         {
             /// 获取按钮的命令
-            var command = UnifiedButtonCommandManager.GetCommandForButton("纯化水");
+            var command = UnifiedCommandManager.GetCommand("纯化水");
             command?.Invoke();//执行命令
         }
 
         private void 纯蒸汽_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("纯蒸汽");
+            var command = UnifiedCommandManager.GetCommand("纯蒸汽");
             command?.Invoke();
         }
 
         private void 注射用水_Btn_Click(object sender, RoutedEventArgs e)
         {
            
-            var command = UnifiedButtonCommandManager.GetCommandForButton("注射用水");
+            var command = UnifiedCommandManager.GetCommand("注射用水");
             command?.Invoke();
         }
 
         private void 凝结回水_Btn_Click(object sender, RoutedEventArgs e)
         {
            
-            var command = UnifiedButtonCommandManager.GetCommandForButton("凝结回水");
+            var command = UnifiedCommandManager.GetCommand("凝结回水");
             command?.Invoke();
         }
 
         private void 氧气_Btn_Click(object sender, RoutedEventArgs e)
         {
            
-            var command = UnifiedButtonCommandManager.GetCommandForButton("氧气");
+            var command = UnifiedCommandManager.GetCommand("氧气");
             command?.Invoke();
         }
 
         private void 氮气_Btn_Click(object sender, RoutedEventArgs e)
         {
           
-            var command = UnifiedButtonCommandManager.GetCommandForButton("氮气");
+            var command = UnifiedCommandManager.GetCommand("氮气");
             command?.Invoke();
         }
 
         private void 二氧化碳_Btn_Click(object sender, RoutedEventArgs e)
         {
           
-            var command = UnifiedButtonCommandManager.GetCommandForButton("二氧化碳");
+            var command = UnifiedCommandManager.GetCommand("二氧化碳");
             command?.Invoke();
         }
 
         private void 无菌压缩空气_Btn_Click(object sender, RoutedEventArgs e)
         {
            
-            var command = UnifiedButtonCommandManager.GetCommandForButton("无菌压缩空气");
+            var command = UnifiedCommandManager.GetCommand("无菌压缩空气");
             command?.Invoke();
         }
 
         private void 仪表压缩空气_Btn_Click(object sender, RoutedEventArgs e)
         {
           
-            var command = UnifiedButtonCommandManager.GetCommandForButton("仪表压缩空气");
+            var command = UnifiedCommandManager.GetCommand("仪表压缩空气");
             command?.Invoke();
         }
 
         private void 低压蒸汽_Btn_Click(object sender, RoutedEventArgs e)
         {
           
-            var command = UnifiedButtonCommandManager.GetCommandForButton("低压蒸汽");
+            var command = UnifiedCommandManager.GetCommand("低压蒸汽");
             command?.Invoke();
         }
 
         private void 低温循环上水_Btn_Click(object sender, RoutedEventArgs e)
         {
            
-            var command = UnifiedButtonCommandManager.GetCommandForButton("低温循环上水");
+            var command = UnifiedCommandManager.GetCommand("低温循环上水");
             command?.Invoke();
         }
 
         private void 常温循环上水_Btn_Click(object sender, RoutedEventArgs e)
         {
           
-            var command = UnifiedButtonCommandManager.GetCommandForButton("常温循环上水");
+            var command = UnifiedCommandManager.GetCommand("常温循环上水");
             command?.Invoke();
         }
 
@@ -2054,18 +2051,15 @@ namespace GB_NewCadPlus_III
         {
             try
             {
+                // 设置当前数据库类型
+                _currentDatabaseType = "CAD";
+                System.Diagnostics.Debug.WriteLine("设置数据库类型为: " + _currentDatabaseType);
                 System.Diagnostics.Debug.WriteLine("=== 开始加载CAD数据库 ===");
                 if (!_useDatabaseMode || _databaseManager == null || !_databaseManager.IsDatabaseAvailable)
                 {
                     System.Windows.MessageBox.Show("数据库不可用，请检查数据库连接配置");
                     return;
                 }
-
-
-                // 设置当前数据库类型
-                _currentDatabaseType = "CAD";
-                System.Diagnostics.Debug.WriteLine("设置数据库类型为: " + _currentDatabaseType);
-
 
                 // 获取CAD存储路径
                 _cadStoragePath = await _databaseManager.GetConfigValueAsync("cad_storage_path");
@@ -2152,10 +2146,10 @@ namespace GB_NewCadPlus_III
                     // 创建新的CAD分类
                     var newCategory = new CadCategory
                     {
-                        name = categoryName,
-                        display_name = categoryName,
-                        sort_order = _sort_order,
-                        created_at = DateTime.Now,
+                        Name = categoryName,
+                        DisplayName = categoryName,
+                        SortOrder = _sort_order,
+                        CreatedAt = DateTime.Now,
                     };
                     await _databaseManager.AddCadCategoryAsync(newCategory);
                 }
@@ -2164,10 +2158,10 @@ namespace GB_NewCadPlus_III
                     // 创建新的SW分类
                     var newCategory = new SwCategory
                     {
-                        name = categoryName,
-                        display_name = categoryName,
-                        sort_order = _sort_order,
-                        created_at = DateTime.Now,
+                        Name = categoryName,
+                        DisplayName = categoryName,
+                        SortOrder = _sort_order,
+                        CreatedAt = DateTime.Now,
 
                     };
                     await _databaseManager.AddSwCategoryAsync(newCategory);
@@ -2215,7 +2209,7 @@ namespace GB_NewCadPlus_III
                     int categoryId = 0;
                     int parentId = 0;
 
-                    // 根据当前选中节点类型确定category_id和parent_id
+                    // 根据当前选中节点类型确定category_id和ParentId
                     if (_currentNodeType == "Category")
                     {
                         categoryId = _currentNodeId;
@@ -2225,7 +2219,7 @@ namespace GB_NewCadPlus_III
                     else if (_currentNodeType == "Subcategory")
                     {
                         var subcategory = _currentSelectedNode as CadSubcategory;
-                        categoryId = subcategory.id;
+                        categoryId = subcategory.Id;
                         parentId = _currentNodeId; // 当前子分类作为父级
                         System.Diagnostics.Debug.WriteLine($"创建子子分类: CategoryId={categoryId}, ParentId={parentId}");
                     }
@@ -2233,14 +2227,14 @@ namespace GB_NewCadPlus_III
                     // 创建新的CAD子分类
                     var newSubcategory = new CadSubcategory
                     {
-                        id = categoryId,
-                        name = subcategoryName,
-                        display_name = subcategoryName,
-                        parent_id = parentId,
-                        sort_order = 0
+                        Id = categoryId,
+                        Name = subcategoryName,
+                        DisplayName = subcategoryName,
+                        ParentId = parentId,
+                        SortOrder = 0
                     };
 
-                    System.Diagnostics.Debug.WriteLine($"准备添加子分类: CategoryId={newSubcategory.id}, Name={newSubcategory.name}, ParentId={newSubcategory.parent_id}");
+                    System.Diagnostics.Debug.WriteLine($"准备添加子分类: CategoryId={newSubcategory.Id}, Name={newSubcategory.Name}, ParentId={newSubcategory.ParentId}");
                     await _databaseManager.AddCadSubcategoryAsync(newSubcategory);
                 }
                 else if (_currentDatabaseType == "SW")
@@ -2248,7 +2242,7 @@ namespace GB_NewCadPlus_III
                     int categoryId = 0;
                     int parentId = 0;
 
-                    // 根据当前选中节点类型确定category_id和parent_id
+                    // 根据当前选中节点类型确定category_id和ParentId
                     if (_currentNodeType == "Category")
                     {
                         categoryId = _currentNodeId;
@@ -2258,7 +2252,7 @@ namespace GB_NewCadPlus_III
                     else if (_currentNodeType == "Subcategory")
                     {
                         var subcategory = _currentSelectedNode as SwSubcategory;
-                        categoryId = subcategory.id;
+                        categoryId = subcategory.Id;
                         parentId = _currentNodeId; // 当前子分类作为父级
                         System.Diagnostics.Debug.WriteLine($"创建SW子子分类: CategoryId={categoryId}, ParentId={parentId}");
                     }
@@ -2266,13 +2260,13 @@ namespace GB_NewCadPlus_III
                     // 创建新的SW子分类
                     var newSubcategory = new SwSubcategory
                     {
-                        id = categoryId,
-                        name = subcategoryName,
-                        display_name = subcategoryName,
-                        parent_id = parentId,
-                        sort_order = 0
+                        Id = categoryId,
+                        Name = subcategoryName,
+                        DisplayName = subcategoryName,
+                        ParentId = parentId,
+                        SortOrder = 0
                     };
-                    System.Diagnostics.Debug.WriteLine($"准备添加SW子分类: CategoryId={newSubcategory.id}, Name={newSubcategory.name}, ParentId={newSubcategory.parent_id}");
+                    System.Diagnostics.Debug.WriteLine($"准备添加SW子分类: CategoryId={newSubcategory.Id}, Name={newSubcategory.Name}, ParentId={newSubcategory.ParentId}");
                     await _databaseManager.AddSwSubcategoryAsync(newSubcategory);
                 }
 
@@ -2314,12 +2308,12 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("属性");
                             dataTable.Columns.Add("值");
 
-                            dataTable.Rows.Add("ID", category.id);
-                            dataTable.Rows.Add("名称", category.name);
-                            dataTable.Rows.Add("显示名称", category.display_name);
-                            dataTable.Rows.Add("排序", category.sort_order);
-                            dataTable.Rows.Add("创建时间", category.created_at);
-                            dataTable.Rows.Add("更新时间", category.updated_at);
+                            dataTable.Rows.Add("ID", category.Id);
+                            dataTable.Rows.Add("名称", category.Name);
+                            dataTable.Rows.Add("显示名称", category.DisplayName);
+                            dataTable.Rows.Add("排序", category.SortOrder);
+                            dataTable.Rows.Add("创建时间", category.CreatedAt);
+                            dataTable.Rows.Add("更新时间", category.UpdatedAt);
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2330,12 +2324,12 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("属性");
                             dataTable.Columns.Add("值");
 
-                            dataTable.Rows.Add("ID", category.id);
-                            dataTable.Rows.Add("名称", category.name);
-                            dataTable.Rows.Add("显示名称", category.display_name);
-                            dataTable.Rows.Add("排序", category.sort_order);
-                            dataTable.Rows.Add("创建时间", category.created_at);
-                            dataTable.Rows.Add("更新时间", category.updated_at);
+                            dataTable.Rows.Add("ID", category.Id);
+                            dataTable.Rows.Add("名称", category.Name);
+                            dataTable.Rows.Add("显示名称", category.DisplayName);
+                            dataTable.Rows.Add("排序", category.SortOrder);
+                            dataTable.Rows.Add("创建时间", category.CreatedAt);
+                            dataTable.Rows.Add("更新时间", category.UpdatedAt);
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2350,14 +2344,14 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("属性");
                             dataTable.Columns.Add("值");
 
-                            dataTable.Rows.Add("ID", subcategory.id);
-                            dataTable.Rows.Add("分类ID", subcategory.id);
-                            dataTable.Rows.Add("名称", subcategory.name);
-                            dataTable.Rows.Add("显示名称", subcategory.display_name);
-                            dataTable.Rows.Add("父级ID", subcategory.parent_id);
-                            dataTable.Rows.Add("排序", subcategory.sort_order);
-                            dataTable.Rows.Add("创建时间", subcategory.created_at);
-                            dataTable.Rows.Add("更新时间", subcategory.updated_at);
+                            dataTable.Rows.Add("ID", subcategory.Id);
+                            dataTable.Rows.Add("分类ID", subcategory.Id);
+                            dataTable.Rows.Add("名称", subcategory.Name);
+                            dataTable.Rows.Add("显示名称", subcategory.DisplayName);
+                            dataTable.Rows.Add("父级ID", subcategory.ParentId);
+                            dataTable.Rows.Add("排序", subcategory.SortOrder);
+                            dataTable.Rows.Add("创建时间", subcategory.CreatedAt);
+                            dataTable.Rows.Add("更新时间", subcategory.UpdatedAt);
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2368,14 +2362,14 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("属性");
                             dataTable.Columns.Add("值");
 
-                            dataTable.Rows.Add("ID", subcategory.id);
-                            dataTable.Rows.Add("分类ID", subcategory.id);
-                            dataTable.Rows.Add("名称", subcategory.name);
-                            dataTable.Rows.Add("显示名称", subcategory.display_name);
-                            dataTable.Rows.Add("父级ID", subcategory.parent_id);
-                            dataTable.Rows.Add("排序", subcategory.sort_order);
-                            dataTable.Rows.Add("创建时间", subcategory.created_at);
-                            dataTable.Rows.Add("更新时间", subcategory.updated_at);
+                            dataTable.Rows.Add("ID", subcategory.Id);
+                            dataTable.Rows.Add("分类ID", subcategory.Id);
+                            dataTable.Rows.Add("名称", subcategory.Name);
+                            dataTable.Rows.Add("显示名称", subcategory.DisplayName);
+                            dataTable.Rows.Add("父级ID", subcategory.ParentId);
+                            dataTable.Rows.Add("排序", subcategory.SortOrder);
+                            dataTable.Rows.Add("创建时间", subcategory.CreatedAt);
+                            dataTable.Rows.Add("更新时间", subcategory.UpdatedAt);
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2390,15 +2384,16 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("属性");
                             dataTable.Columns.Add("值");
 
-                            dataTable.Rows.Add("ID", graphic.Id);
-                            dataTable.Rows.Add("子分类ID", graphic.subcategory_id);
-                            dataTable.Rows.Add("文件名", graphic.file_name);
-                            dataTable.Rows.Add("显示名称", graphic.display_name);
-                            dataTable.Rows.Add("文件路径", graphic.file_path);
-                            dataTable.Rows.Add("预览图路径", graphic.preview_image_path);
-                            dataTable.Rows.Add("文件大小", graphic.file_size);
-                            dataTable.Rows.Add("创建时间", graphic.created_at);
-                            dataTable.Rows.Add("更新时间", graphic.updated_at);
+                            dataTable.Rows.Add("ID", graphic.Id);//Id
+                            dataTable.Rows.Add("子分类ID", graphic.Id); //子分类Id
+                            dataTable.Rows.Add("文件名", graphic.FileName);//文件名
+                            dataTable.Rows.Add("显示名称", graphic.DisplayName);//显示名称
+                            dataTable.Rows.Add("文件路径", graphic.FilePath);//文件路径
+                            dataTable.Rows.Add("预览图名", graphic.PreviewImageName);//预览图名
+                            dataTable.Rows.Add("预览图路径", graphic.PreviewImagePath);//预览图路径
+                            dataTable.Rows.Add("文件大小", graphic.FileSize);//文件大小
+                            dataTable.Rows.Add("创建时间", graphic.CreatedAt);//创建时间
+                            dataTable.Rows.Add("更新时间", graphic.UpdatedAt);//更新时间
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2410,14 +2405,16 @@ namespace GB_NewCadPlus_III
                             dataTable.Columns.Add("值");
 
                             dataTable.Rows.Add("ID", graphic.Id);
-                            dataTable.Rows.Add("子分类ID", graphic.subcategory_id);
-                            dataTable.Rows.Add("文件名", graphic.file_name);
-                            dataTable.Rows.Add("显示名称", graphic.display_name);
-                            dataTable.Rows.Add("文件路径", graphic.file_path);
-                            dataTable.Rows.Add("预览图路径", graphic.preview_image_path);
-                            dataTable.Rows.Add("文件大小", graphic.file_size);
-                            dataTable.Rows.Add("创建时间", graphic.created_at);
-                            dataTable.Rows.Add("更新时间", graphic.updated_at);
+                            dataTable.Rows.Add("子分类ID", graphic.Id);
+                            dataTable.Rows.Add("文件名", graphic.FileName);
+                            dataTable.Rows.Add("显示名称", graphic.DisplayName);
+                            dataTable.Rows.Add("文件路径", graphic.FilePath);
+                            dataTable.Rows.Add("预览图名", graphic.PreviewImageName);//预览图名
+                            dataTable.Rows.Add("预览图路径", graphic.PreviewImagePath);
+                            dataTable.Rows.Add("文件大小", graphic.FileSize);
+                            dataTable.Rows.Add("创建时间", graphic.CreatedAt);
+                            dataTable.Rows.Add("更新时间", graphic.UpdatedAt);
+                       
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2541,11 +2538,11 @@ namespace GB_NewCadPlus_III
                         // 添加CAD图元
                         var newGraphic = new CadGraphic
                         {
-                            subcategory_id = _currentNodeId,
-                            file_name = fileName,
-                            display_name = fileNameWithoutExt,
-                            file_path = fileStoragePath,
-                            file_size = new System.IO.FileInfo(fileStoragePath).Length
+                            Id = _currentNodeId,
+                            FileName = fileName,
+                            DisplayName = fileNameWithoutExt,
+                            FilePath = fileStoragePath,
+                            FileSize = new System.IO.FileInfo(fileStoragePath).Length
                         };
                         await _databaseManager.AddCadGraphicAsync(newGraphic);
                     }
@@ -2554,11 +2551,11 @@ namespace GB_NewCadPlus_III
                         // 添加SW图元
                         var newGraphic = new SwGraphic
                         {
-                            subcategory_id = _currentNodeId,
-                            file_name = fileName,
-                            display_name = fileNameWithoutExt,
-                            file_path = fileStoragePath,
-                            file_size = new System.IO.FileInfo(fileStoragePath).Length
+                            Id = _currentNodeId,
+                            FileName = fileName,
+                            DisplayName = fileNameWithoutExt,
+                            FilePath = fileStoragePath,
+                            FileSize = new System.IO.FileInfo(fileStoragePath).Length
                         };
                         await _databaseManager.AddSwGraphicAsync(newGraphic);
                     }
@@ -2619,7 +2616,7 @@ namespace GB_NewCadPlus_III
                             var graphic = await _databaseManager.GetCadGraphicByIdAsync(_currentNodeId);
                             if (graphic != null)
                             {
-                                graphic.preview_image_path = previewStoragePath;
+                                graphic.PreviewImagePath = previewStoragePath;
                                 await _databaseManager.UpdateCadGraphicAsync(graphic);
                             }
                         }
@@ -2629,7 +2626,7 @@ namespace GB_NewCadPlus_III
                             var graphic = await _databaseManager.GetSwGraphicByIdAsync(_currentNodeId);
                             if (graphic != null)
                             {
-                                graphic.preview_image_path = previewStoragePath;
+                                graphic.PreviewImagePath = previewStoragePath;
                                 await _databaseManager.UpdateSwGraphicAsync(graphic);
                             }
                         }
@@ -2724,7 +2721,7 @@ namespace GB_NewCadPlus_III
         #region 电气按键
         private void 横墙电开建筑洞_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("横墙电开建洞");
+            var command = UnifiedCommandManager.GetCommand("横墙电开建洞");
             command?.Invoke();
         }
 
@@ -2803,65 +2800,65 @@ namespace GB_NewCadPlus_III
         #region 建筑按键
         private void 吊顶_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("吊顶");
+            var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }
 
         private void 不吊顶_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("不吊顶");
+            var command = UnifiedCommandManager.GetCommand("不吊顶");
             command?.Invoke();
         }
 
         private void 防撞护板_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("防撞护板");
+            var command = UnifiedCommandManager.GetCommand("防撞护板");
             command?.Invoke();
         }
 
         private void 房间编号_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("房间编号");
+            var command = UnifiedCommandManager.GetCommand("房间编号");
             command?.Invoke();
         }
 
         private void 编号检查_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("编号检查");
+            var command = UnifiedCommandManager.GetCommand("编号检查");
             command?.Invoke();
         }
 
         private void 冷藏库降板_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("冷藏库降板");
+            var command = UnifiedCommandManager.GetCommand("冷藏库降板");
             command?.Invoke();
         }
         private void 冷冻库降板_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("冷冻库降板");
+            var command = UnifiedCommandManager.GetCommand("冷冻库降板");
             command?.Invoke();
         }
 
         private void 特殊地面做法要求_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("特殊地面做法要求");
+            var command = UnifiedCommandManager.GetCommand("特殊地面做法要求");
             command?.Invoke();
         }
 
         private void 排水沟_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("排水沟");
+            var command = UnifiedCommandManager.GetCommand("排水沟");
             command?.Invoke();
         }
         private void 横墙建筑开洞_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("横墙建筑开洞");
+            var command = UnifiedCommandManager.GetCommand("横墙建筑开洞");
             command?.Invoke();
         }
 
         private void 纵墙建筑开洞_Btn_Click(object sender, RoutedEventArgs e)
         {
-            var command = UnifiedButtonCommandManager.GetCommandForButton("纵墙建筑开洞");
+            var command = UnifiedCommandManager.GetCommand("纵墙建筑开洞");
             command?.Invoke();
         }
         #endregion

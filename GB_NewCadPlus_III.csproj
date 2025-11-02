@@ -52,8 +52,8 @@
 		<PackageReference Include="Dapper.Database" Version="5.0.0.258" />
 		<PackageReference Include="EPPlusFree" Version="4.5.3.8" />
 		<PackageReference Include="IFox.CAD.ACAD" Version="0.9.8.1" />
-		<PackageReference Include="MySql.Data" Version="9.4.0" />
-		<PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.9" />
+		<PackageReference Include="MySql.Data" Version="9.5.0" />
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.10" />
 
 	</ItemGroup>
 
