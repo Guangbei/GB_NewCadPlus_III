@@ -9,9 +9,74 @@ namespace GB_NewCadPlus_III
     internal class VariableDictionary
     {
         #region 变量
-
         /// <summary>
-        /// 圆形按键文字  btnBlockLayer  layerColorIndex DDimLinear
+        /// 洁净区层颜色索引
+        /// </summary>
+        public static List<int> jjqLayerColorIndex = new List<int>
+     {
+          10,
+        31,
+        50,
+        80,
+        130,
+        140,
+        160,
+        200,
+        220,
+        211,
+        161,
+        121,
+        190,
+        205,
+        235,
+        250,
+         11,
+        21,
+        132,
+        142,
+        163,
+        203,
+        223,
+        223,
+        232,
+        241,
+        243
+
+     };
+        /// <summary>
+        /// 系统分区颜色索引
+        /// </summary>
+        public static List<int> xtqLayerColorIndex = new List<int>
+     {
+          21,
+         200,
+         220,
+          83,
+         211,
+         132,
+         161,
+         142,
+          10,
+         121,
+         243,
+          31,
+         241,
+          50,
+         232,
+          80,
+         223,
+         130,
+         203,
+         140,
+          11,
+         160
+     };
+
+        public static int jjqInt = 1;
+        public static int xtqInt = 1;
+        public static bool winForm_Status = false;
+        /// <summary>
+        /// 圆形按键文字 
         /// </summary>
         public static string? buttonCirText;
         /// <summary>
@@ -105,7 +170,11 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 吊顶高
         /// </summary>
-        public static string? diaoDingHeight = null;
+        public static string? wpfDiaoDingHeight = null;
+        /// <summary>
+        /// 吊顶高
+        /// </summary>
+        public static string? winFormDiaoDingHeight = null;
         /// <summary>
         /// 图层颜色
         /// </summary>

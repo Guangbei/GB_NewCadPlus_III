@@ -108,6 +108,7 @@ namespace GB_NewCadPlus_III
             InitializeComponent();//初始化界面
             InitializeDatabase();//初始化数据库
             UnifiedUIManager.SetWpfInstance(this); // 注册到统一管理器
+            System.Diagnostics.Debug.WriteLine("WPF实例已注册到UnifiedUIManager"); // 调试输出，确认注册成功
             NewTjLayer();//初始化图层
             Loaded += WpfMainWindow_Loaded;//加载按钮
         }
@@ -2740,7 +2741,7 @@ namespace GB_NewCadPlus_III
         #region 建筑按键
         private void 吊顶_Btn_Clic(object sender, RoutedEventArgs e)
         {
-            //VariableDictionary.diaoDingHeight= 吊顶高度.Text;
+            VariableDictionary.winForm_Status = false;
             var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }
@@ -2759,6 +2760,8 @@ namespace GB_NewCadPlus_III
 
         private void 房间编号_Btn_Clic(object sender, RoutedEventArgs e)
         {
+            VariableDictionary.winForm_Status = false;
+
             var command = UnifiedCommandManager.GetCommand("房间编号");
             command?.Invoke();
         }

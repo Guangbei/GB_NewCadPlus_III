@@ -5015,10 +5015,14 @@ namespace GB_NewCadPlus_III
                     }
                     else
                     {
+                        string diaoDingHeight=VariableDictionary.wpfDiaoDingHeight==""
+                        ?VariableDictionary.winFormDiaoDingHeight
+                        :VariableDictionary.wpfDiaoDingHeight;
+
                         DBText text = new DBText()
                         {
                             TextStyleId = tr.TextStyleTable["tJText"],
-                            TextString = "吊顶高度:" + VariableDictionary.diaoDingHeight + "米",
+                            TextString = "吊顶高度:" + diaoDingHeight + "米",
                             Height = 350,
                             WidthFactor = 0.7,
                             ColorIndex = VariableDictionary.layerColorIndex,

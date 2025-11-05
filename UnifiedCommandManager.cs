@@ -53,9 +53,9 @@ namespace GB_NewCadPlus_III
         #endregion
 
         #region 建筑专业
-        { "吊顶", () => ExecuteBuildingCommand("吊顶", "JZTJ_吊顶", "TJ(建筑吊顶)", 30) },
+        { "吊顶", () => ExecuteBuildingCommand("TextBox_吊顶高度", "JZTJ_吊顶", "TJ(建筑吊顶)", 30) },
         { "不吊顶", () => ExecuteBuildingCommand("不吊顶", "JZTJ_不吊顶", "TJ(建筑吊顶)", 30) },
-        { "防撞护板", () => ExecuteBuildingCommand("防撞护板", "JZTJ_防撞护板", "TJ(建筑专业J)", 30) },
+        { "防撞护板", () => ExecuteBuildingCommand("TextBox_防撞护板", "JZTJ_防撞护板", "TJ(建筑专业J)", 30) },
         { "房间编号", () => ExecuteRoomNumberCommand() },
         { "编号检查", () => ExecuteBuildingCommand("编号检查", "JZTJ_编号检查", "TJ(建筑专业J)", 30) },
         { "冷藏库降板", () => ExecuteBuildingCommand("冷藏库降板", "冷藏库降板（270）", "TJ(建筑专业J)", 30) },
@@ -297,7 +297,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 执行建筑命令
+        /// 执行建筑吊顶命令
         /// </summary>
         private static void ExecuteBuildingCommand(string commandName, string fileName, string layerName, int colorIndex)
         {
@@ -307,11 +307,15 @@ namespace GB_NewCadPlus_III
                 VariableDictionary.btnFileName = fileName;
                 VariableDictionary.btnBlockLayer = layerName;
                 VariableDictionary.layerColorIndex = colorIndex;
-                VariableDictionary.diaoDingHeight = TextBoxValueHelper.GetUnifiedValue("TextBox_吊顶高度");
-
-                if (commandName == "吊顶" || commandName == "不吊顶")
+                if (commandName == "TextBox_吊顶高度" || commandName == "不吊顶")
                 {
+                    VariableDictionary.wpfDiaoDingHeight = UnifiedUIManager.GetTextBoxValue(commandName);
                     Env.Document.SendStringToExecute("Line2Polyline ", false, false, false);
+                }
+                else if (commandName == "TextBox_防撞护板")
+                {
+                    VariableDictionary.textbox_Gap = Convert.ToDouble(UnifiedUIManager.GetTextBoxValue(commandName));
+                    Env.Document.SendStringToExecute("ParallelLines ", false, false, false);
                 }
                 else
                 {
@@ -331,22 +335,43 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                VariableDictionary.entityRotateAngle = 0;
+                if (!VariableDictionary.winForm_Status)
+                {
+                    VariableDictionary.entityRotateAngle = 0;
+                    VariableDictionary.btnFileName = null;
+                    // 从统一界面管理器获取房间编号信息
+                    string floorNo = UnifiedUIManager.GetTextBoxValue("TextBox_楼层");
+                    string cleanArea = UnifiedUIManager.GetTextBoxValue("TextBox_洁净区");
+                    string systemArea = UnifiedUIManager.GetTextBoxValue("TextBox_系统区");
+                    string roomSubNo = UnifiedUIManager.GetTextBoxValue("TextBox_房间号");
+                    VariableDictionary.btnFileName = $"{floorNo}-{cleanArea}{systemArea}{roomSubNo}";
+                    VariableDictionary.btnBlockLayer = "TJ(房间编号)";
 
-                // 从统一界面管理器获取房间编号信息
-                string floorNo = TextBoxValueHelper.GetUnifiedValue("楼层", "1");
-                string cleanArea = TextBoxValueHelper.GetUnifiedValue("洁净区", "1");
-                string systemArea = TextBoxValueHelper.GetUnifiedValue("系统区", "1");
-                string roomSubNo = TextBoxValueHelper.GetUnifiedValue("房间号", "01");
+                    if (floorNo == "1" && cleanArea == "1" && systemArea == "1")
+                    {
+                        VariableDictionary.layerColorIndex = 64;
+                        VariableDictionary.jjqInt = 1;
+                        VariableDictionary.xtqInt = 1;
+                    }
+                    else if (Convert.ToInt32(cleanArea) != VariableDictionary.jjqInt)
+                    {
+                        var layerColorTest = VariableDictionary.jjqLayerColorIndex[Convert.ToInt32(cleanArea)];
+                        VariableDictionary.layerColorIndex = Convert.ToInt16(layerColorTest);//设置为被插入的图层颜色
+                        VariableDictionary.jjqInt = Convert.ToInt32(cleanArea);
+                    }
+                    else if (Convert.ToInt32(systemArea) != VariableDictionary.xtqInt)
+                    {
+                        var layerColorTest = VariableDictionary.xtqLayerColorIndex[Convert.ToInt32(systemArea)];
+                        VariableDictionary.layerColorIndex = Convert.ToInt16(layerColorTest);//设置为被插入的图层颜色
+                        VariableDictionary.xtqInt = Convert.ToInt32(systemArea);
+                    }
+                    Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
 
-                VariableDictionary.btnFileName = $"{floorNo}-{cleanArea}{systemArea}{roomSubNo}";
-                VariableDictionary.btnBlockLayer = "TJ(房间编号)";
-                VariableDictionary.layerColorIndex = 64;
-
+                    // 更新房间号
+                    UpdateRoomNumber(roomSubNo);
+                }
                 Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
-
-                // 更新房间号
-                UpdateRoomNumber(roomSubNo);
+                VariableDictionary.winForm_Status = false;
             }
             catch (Exception ex)
             {
@@ -373,7 +398,8 @@ namespace GB_NewCadPlus_III
                     }
 
                     // 通过统一界面管理器更新房间号TextBox的值
-                    UnifiedUIManager.SetTextBoxValue("房间号", newRoomNumber);
+                    UnifiedUIManager.SetWpfTextBoxValue("TextBox_房间号", newRoomNumber);
+
                 }
             }
             catch
@@ -394,8 +420,8 @@ namespace GB_NewCadPlus_III
                 VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";
                 VariableDictionary.layerColorIndex = 30;
                 // 从统一界面管理器获取排水沟尺寸
-                VariableDictionary.dimString_JZ_宽 = TextBoxValueHelper.GetUnifiedValue("排水沟宽", "300");
-                VariableDictionary.dimString_JZ_深 = TextBoxValueHelper.GetUnifiedValue("排水沟深", "150");
+                VariableDictionary.dimString_JZ_宽 = UnifiedUIManager.GetTextBoxValue("TextBox_排水沟宽");
+                VariableDictionary.dimString_JZ_深 = UnifiedUIManager.GetTextBoxValue("TextBox_排水沟深");
 
 
                 Env.Document.SendStringToExecute("Rec2PolyLine_3 ", false, false, false);
@@ -414,10 +440,18 @@ namespace GB_NewCadPlus_III
             try
             {
                 VariableDictionary.buttonText = $"JZTJ_{wallType}开洞";
-                // 从统一界面管理器获取加宽值
-                VariableDictionary.textbox_RecPlus_Text = TextBoxValueHelper.GetUnifiedValue("左右加宽", "50");
-                VariableDictionary.layerColorIndex = 30;
+                if (wallType == "横墙")
+                {
+                    // 从统一界面管理器获取加宽值
+                    VariableDictionary.textbox_RecPlus_Text = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞左右宽");
+                }
+                else if (wallType == "纵墙")
+                {
+                    VariableDictionary.textbox_RecPlus_Text = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞上下高");
+                }
 
+                VariableDictionary.layerColorIndex = 30;
+                VariableDictionary.btnFileName = "建筑洞口：";
                 Env.Document.SendStringToExecute("Rec2PolyLine ", false, false, false);
             }
             catch (Exception ex)

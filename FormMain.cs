@@ -1235,7 +1235,8 @@ namespace GB_NewCadPlus_III
         #region 建筑
         public void button_JZ_吊顶_Click(object sender, EventArgs e)
         {
-            VariableDictionary.diaoDingHeight = textBox_吊顶高文字.Text;
+            VariableDictionary.winForm_Status =true;
+            VariableDictionary.winFormDiaoDingHeight = textBox_吊顶高文字.Text;
             var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }
@@ -1244,6 +1245,18 @@ namespace GB_NewCadPlus_III
         {
             var command = UnifiedCommandManager.GetCommand("不吊顶");
             command?.Invoke();
+        }
+
+        public void button_JZ_防撞护板_Click(object sender, EventArgs e)
+        {
+            VariableDictionary.entityRotateAngle = 0;
+            VariableDictionary.btnFileName = "防撞护板";
+            //VariableDictionary.btnBlockLayer = VariableDictionary.btnFileName;
+            VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";//设置为被插入的图层名
+            VariableDictionary.layerColorIndex = 30;//设置为被插入的图层颜色
+            VariableDictionary.textbox_Gap = Convert.ToDouble(textBox_距离墙值.Text);
+            Env.Document.SendStringToExecute("ParallelLines ", false, false, false);
+
         }
         public void button_冷藏库降板_Click(object sender, EventArgs e)
         {
@@ -1284,67 +1297,10 @@ namespace GB_NewCadPlus_III
             var command = UnifiedCommandManager.GetCommand("排水沟");
             command?.Invoke();
         }
-        private List<int> jjqLayerColorIndex = new List<int>
-        {
-             10,
-           31,
-           50,
-           80,
-           130,
-           140,
-           160,
-           200,
-           220,
-           211,
-           161,
-           121,
-           190,
-           205,
-           235,
-           250,
-            11,
-           21,
-           132,
-           142,
-           163,
-           203,
-           223,
-           223,
-           232,
-           241,
-           243
-
-        };
-        private List<int> xtqLayerColorIndex = new List<int>
-        {
-             21,
-            200,
-            220,
-             83,
-            211,
-            132,
-            161,
-            142,
-             10,
-            121,
-            243,
-             31,
-            241,
-             50,
-            232,
-             80,
-            223,
-            130,
-            203,
-            140,
-             11,
-            160
-        };
-        //private int lhInt = 1;
-        private int jjqInt = 1;
-        private int xtqInt = 1;
+ 
         public void button_JZ_房间号_Click(object sender, EventArgs e)
         {
+            VariableDictionary.winForm_Status = true;
             VariableDictionary.entityRotateAngle = 0;
             VariableDictionary.btnFileName = textBox_楼层号.Text + "-" + textBox_洁净区1_2.Text + textBox_系统分区.Text + textBox_房间号副号.Text;
             VariableDictionary.btnBlockLayer = "TJ(房间编号)";//设置为被插入的图层名
@@ -1352,29 +1308,21 @@ namespace GB_NewCadPlus_III
             if (textBox_楼层号.Text == "1" && textBox_洁净区1_2.Text == "1" && textBox_系统分区.Text == "1")
             {
                 VariableDictionary.layerColorIndex = 64;
-                //lhInt = 1;
-                jjqInt = 1;
-                xtqInt = 1;
+                VariableDictionary.jjqInt = 1;
+                VariableDictionary.xtqInt = 1;
             }
-            //else if (Convert.ToInt32(textBox_楼层号.Text) != lhInt)
-            //{
-            //    var layerColorTest = lhLayerColorIndex[Convert.ToInt32(textBox_楼层号.Text)];
-            //    VariableDictionary.layerColorIndex = layerColorTest.ToString();//设置为被插入的图层颜色
-            //    lhInt = Convert.ToInt32(textBox_楼层号.Text);
-            //}
-            else if (Convert.ToInt32(textBox_洁净区1_2.Text) != jjqInt)
+            else if (Convert.ToInt32(textBox_洁净区1_2.Text) != VariableDictionary.jjqInt)
             {
-                var layerColorTest = jjqLayerColorIndex[Convert.ToInt32(textBox_洁净区1_2.Text)];
+                var layerColorTest = VariableDictionary.jjqLayerColorIndex[Convert.ToInt32(textBox_洁净区1_2.Text)];
                 VariableDictionary.layerColorIndex = Convert.ToInt16(layerColorTest);//设置为被插入的图层颜色
-                jjqInt = Convert.ToInt32(textBox_洁净区1_2.Text);
+                VariableDictionary.jjqInt = Convert.ToInt32(textBox_洁净区1_2.Text);
             }
-            else if (Convert.ToInt32(textBox_系统分区.Text) != xtqInt)
+            else if (Convert.ToInt32(textBox_系统分区.Text) != VariableDictionary.xtqInt)
             {
-                var layerColorTest = xtqLayerColorIndex[Convert.ToInt32(textBox_系统分区.Text)];
+                var layerColorTest = VariableDictionary.xtqLayerColorIndex[Convert.ToInt32(textBox_系统分区.Text)];
                 VariableDictionary.layerColorIndex = Convert.ToInt16(layerColorTest);//设置为被插入的图层颜色
-                xtqInt = Convert.ToInt32(textBox_系统分区.Text);
+                VariableDictionary.xtqInt = Convert.ToInt32(textBox_系统分区.Text);
             }
-
             Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
             if (Convert.ToInt32(textBox_房间号副号.Text) < 9)
             {
@@ -1384,6 +1332,7 @@ namespace GB_NewCadPlus_III
             {
                 textBox_房间号副号.Text = (Convert.ToInt32(textBox_房间号副号.Text) + 1).ToString();
             }
+            
             var command = UnifiedCommandManager.GetCommand("房间编号");
             command?.Invoke();
         }
@@ -3082,17 +3031,7 @@ namespace GB_NewCadPlus_III
                 isMax = false;
             }
         }
-        public void button_JZ_防撞护板_Click(object sender, EventArgs e)
-        {
-            VariableDictionary.entityRotateAngle = 0;
-            VariableDictionary.btnFileName = "防撞护板";
-            //VariableDictionary.btnBlockLayer = VariableDictionary.btnFileName;
-            VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";//设置为被插入的图层名
-            VariableDictionary.layerColorIndex = 30;//设置为被插入的图层颜色
-            VariableDictionary.textbox_Gap = Convert.ToDouble(textBox_距离墙值.Text);
-            Env.Document.SendStringToExecute("ParallelLines ", false, false, false);
-
-        }
+   
         public void button_清理_Click(object sender, EventArgs e)
         {
             Env.Document.SendStringToExecute("pu ", false, false, false);

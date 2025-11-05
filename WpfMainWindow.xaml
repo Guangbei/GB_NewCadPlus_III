@@ -680,7 +680,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="偏移距离" />
                                                         <TextBox
-                                                            x:Name="TextBox_偏移距离"
+                                                            x:Name="TextBox_防撞护板"
                                                             Width="80"
                                                             Height="20"
                                                             Margin="63,29,0,0"
@@ -712,14 +712,6 @@
                                                             RenderTransformOrigin="0.5,0.5"
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
                                                             Tag="1">
-                                                            <TextBox.RenderTransform>
-                                                                <TransformGroup>
-                                                                    <ScaleTransform />
-                                                                    <SkewTransform />
-                                                                    <RotateTransform Angle="0" />
-                                                                    <TranslateTransform />
-                                                                </TransformGroup>
-                                                            </TextBox.RenderTransform>
                                                         </TextBox>
                                                         <Label
                                                             Width="10"
@@ -845,7 +837,7 @@
                                                             VerticalContentAlignment="Center"
                                                             Foreground="#FF7D7D7D"
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
-                                                            Tag="输入宽度" />
+                                                            Tag="1" />
 
                                                         <Label
                                                             Width="24"
@@ -855,7 +847,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="高" />
                                                         <TextBox
-                                                            x:Name="TextBox_排水沟高"
+                                                            x:Name="TextBox_排水沟深"
                                                             Width="70"
                                                             Height="20"
                                                             Margin="206,107,0,0"
@@ -865,7 +857,7 @@
                                                             VerticalContentAlignment="Center"
                                                             Foreground="#FF7D7D7D"
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
-                                                            Tag="输入高度" />
+                                                            Tag="0.5" />
 
 
                                                     </Grid>
