@@ -19,12 +19,6 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class CadCategory
     {
-    //    public int id { get; set; }
-    //    public string name { get; set; }
-    //    public string display_name { get; set; }
-    //    public int sort_order { get; set; }
-    //    public DateTime created_at { get; set; }
-    //    public DateTime updated_at { get; set; }
         public int Id { get; set; }
         public string Name { get; set; }
         public string DisplayName { get; set; }
@@ -38,13 +32,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class CadSubcategory
     {
-        //    public int id { get; set; }
-        //    public string name { get; set; }
-        //    public string display_name { get; set; }
-        //    public int parent_id { get; set; } // 父级子分类ID，用于支持多级分类
-        //    public int sort_order { get; set; }
-        //    public DateTime created_at { get; set; }
-        //    public DateTime updated_at { get; set; }
+   
         public int Id { get; set; }
         public int ParentId { get; set; }
         public string Name { get; set; }
@@ -59,15 +47,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class CadGraphic
     {
-        //public int Id { get; set; }
-        //public int subcategory_id { get; set; }
-        //public string file_name { get; set; }
-        //public string display_name { get; set; }
-        //public string file_path { get; set; }
-        //public string preview_image_path { get; set; }
-        //public long? file_size { get; set; }
-        //public DateTime created_at { get; set; }
-        //public DateTime updated_at { get; set; }
+       
         public int Id { get; set; }//id
         public int SubcategoryId { get; set; }//所在子类id
         public string FileName { get; set; }//文件名
@@ -144,12 +124,6 @@ namespace GB_NewCadPlus_III
     public class SwCategory
     {
 
-        //    public int id { get; set; }
-        //    public string name { get; set; }
-        //    public string display_name { get; set; }
-        //    public int sort_order { get; set; }
-        //    public DateTime created_at { get; set; }
-        //    public DateTime updated_at { get; set; }
         public int Id { get; set; }
         public string Name { get; set; }
         public string DisplayName { get; set; }
@@ -163,13 +137,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class SwSubcategory
     {
-        //    public int id { get; set; }
-        //    public string name { get; set; }
-        //    public string display_name { get; set; }
-        //    public int parent_id { get; set; } // 父级子分类ID，用于支持多级分类
-        //    public int sort_order { get; set; }
-        //    public DateTime created_at { get; set; }
-        //    public DateTime updated_at { get; set; }
+    
         public int Id { get; set; }
         public int CategoryId { get; set; }
         public string Name { get; set; }
@@ -185,15 +153,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class SwGraphic
     {
-        //public int Id { get; set; }
-        //public int subcategory_id { get; set; }
-        //public string file_name { get; set; }
-        //public string display_name { get; set; }
-        //public string file_path { get; set; }
-        //public string preview_image_path { get; set; }
-        //public long? file_size { get; set; }
-        //public DateTime created_at { get; set; }
-        //public DateTime updated_at { get; set; }
+       
         public int Id { get; set; }//id
         public int SubcategoryId { get; set; }//所在子类id
         public string FileName { get; set; }//文件名
@@ -214,21 +174,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class SwGraphicAttribute
     {
-        //public int Id { get; set; }
-        //public int cad_graphice_id { get; set; }
-        //public string graphice_name { get; set; }
-        //public decimal? Length { get; set; }
-        //public decimal? Width { get; set; }
-        //public decimal? Height { get; set; }
-        //public decimal? Angle { get; set; }
-        //public decimal? base_point_x { get; set; }
-        //public decimal? base_point_y { get; set; }
-        //public decimal? base_point_z { get; set; }
-        //public string layer_name { get; set; }
-        //public int? color_index { get; set; }
-        //public string description { get; set; }
-        //public DateTime created_at { get; set; }
-        //public DateTime updated_at { get; set; }
+     
         public int Id { get; set; }//Id
         public int CadGraphiceId { get; set; }//cad图元id
         public string GraphiceName { get; set; }//图元名称

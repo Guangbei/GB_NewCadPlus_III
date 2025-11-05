@@ -651,7 +651,7 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.button不吊顶 = new System.Windows.Forms.Button();
             this.button吊顶 = new System.Windows.Forms.Button();
-            this.textBox2 = new System.Windows.Forms.TextBox();
+            this.textBox_吊顶高文字 = new System.Windows.Forms.TextBox();
             this.listView_建筑 = new System.Windows.Forms.ListView();
             this.tabPage_结构 = new System.Windows.Forms.TabPage();
             this.groupBox_TJ结构过建筑楼板洞 = new System.Windows.Forms.GroupBox();
@@ -8718,7 +8718,7 @@
             this.groupBox2.BackColor = System.Drawing.Color.FloralWhite;
             this.groupBox2.Controls.Add(this.button不吊顶);
             this.groupBox2.Controls.Add(this.button吊顶);
-            this.groupBox2.Controls.Add(this.textBox2);
+            this.groupBox2.Controls.Add(this.textBox_吊顶高文字);
             this.groupBox2.Dock = System.Windows.Forms.DockStyle.Top;
             this.groupBox2.Location = new System.Drawing.Point(3, 3);
             this.groupBox2.Name = "groupBox2";
@@ -8747,13 +8747,13 @@
             this.button吊顶.UseVisualStyleBackColor = true;
             this.button吊顶.Click += new System.EventHandler(this.button_JZ_吊顶_Click);
             // 
-            // textBox2
+            // textBox_吊顶高文字
             // 
-            this.textBox2.Location = new System.Drawing.Point(3, 26);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(80, 25);
-            this.textBox2.TabIndex = 0;
-            this.textBox2.Text = "2.8";
+            this.textBox_吊顶高文字.Location = new System.Drawing.Point(3, 26);
+            this.textBox_吊顶高文字.Name = "textBox_吊顶高文字";
+            this.textBox_吊顶高文字.Size = new System.Drawing.Size(80, 25);
+            this.textBox_吊顶高文字.TabIndex = 0;
+            this.textBox_吊顶高文字.Text = "2.8";
             // 
             // listView_建筑
             // 
@@ -13817,7 +13817,7 @@
         private GroupBox groupBox2;
         private Button button不吊顶;
         private Button button吊顶;
-        private TextBox textBox2;
+        private TextBox textBox_吊顶高文字;
         private ListView listView_建筑;
         private TabPage tabPage_结构;
         private GroupBox groupBox_TJ结构过建筑楼板洞;

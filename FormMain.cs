@@ -1,9 +1,4 @@
-﻿using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
-using Autodesk.AutoCAD.Windows;
-using GB_NewCadPlus_III;
-using IFoxCAD.Cad;
-using static System.Windows.Forms.LinkLabel;
+﻿using Autodesk.AutoCAD.Windows;
 
 namespace GB_NewCadPlus_III
 {
@@ -22,6 +17,8 @@ namespace GB_NewCadPlus_III
             //记录运行时间
             textBox_cmdShow.Text = DateTime.Now.ToString();
             Command.sendSum = textShow;
+            // 注册到统一管理器
+            UnifiedUIManager.SetWinFormInstance(this);
             //初始化图层
             NewTjLayer();
         }
@@ -51,12 +48,12 @@ namespace GB_NewCadPlus_III
                     if (!VariableDictionary.allTjtLayer.Contains(item))
                         VariableDictionary.allTjtLayer.Add(item);
                 }
-                foreach (var item in VariableDictionary. PtjtBtn)
+                foreach (var item in VariableDictionary.PtjtBtn)
                 {
                     if (!VariableDictionary.allTjtLayer.Contains(item))
                         VariableDictionary.allTjtLayer.Add(item);
                 }
-                foreach (var item in VariableDictionary. NtjtBtn)
+                foreach (var item in VariableDictionary.NtjtBtn)
                 {
                     if (!VariableDictionary.allTjtLayer.Contains(item))
                         VariableDictionary.allTjtLayer.Add(item);
@@ -79,7 +76,7 @@ namespace GB_NewCadPlus_III
                 break;
             }
         }
-       
+
         /// <summary>
         /// 单选按键选中键名
         /// </summary>
@@ -102,7 +99,7 @@ namespace GB_NewCadPlus_III
             /// 初始化一个容器GB_ToolPanel
             /// </summary>
             public static GB_CadToolsForm GB_ToolsForm = new GB_CadToolsForm(); //初始化一个容器GB_ToolPanel
-           
+
             /// <summary>
             /// 一个GB_CadToolPanel容器
             /// </summary>
@@ -141,7 +138,7 @@ namespace GB_NewCadPlus_III
             /// </summary>
             private GB_CadToolsForm()
             {
-                 GetPath.ListDwgFile = new List<string>();
+                GetPath.ListDwgFile = new List<string>();
                 Load();
             }
 
@@ -355,7 +352,7 @@ namespace GB_NewCadPlus_III
 
         #endregion
 
-       
+
         #endregion
 
         #region 方向按键
@@ -451,7 +448,7 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_SB_onOff_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
 
             if (button_SB_onOff.ForeColor.Name == "Black" || button_SB_onOff.ForeColor.Name == "ControlText")
             {
@@ -478,7 +475,7 @@ namespace GB_NewCadPlus_III
         public void button_GY_检查工艺_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
 
             if (button_检查工艺.ForeColor.Name == "Black" || button_检查工艺.ForeColor.Name == "ControlText")
             {
@@ -506,8 +503,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_GY_关闭工艺_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtn;
             if (button_关闭工艺.ForeColor.Name == "Black" || button_关闭工艺.ForeColor.Name == "ControlText")
             {
                 button_关闭工艺.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -533,7 +530,7 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_GY_保留工艺_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
             if (button_保留工艺.ForeColor.Name == "Black" || button_保留工艺.ForeColor.Name == "ControlText")
             {
                 button_保留工艺.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -560,8 +557,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_JZ_保留建筑_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.AtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.AtjtBtn;
             if (button_保留建筑.ForeColor.Name == "Black" || button_保留建筑.ForeColor.Name == "ControlText")
             {
                 button_保留建筑.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -590,8 +587,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_JZ_关闭建筑_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.AtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.AtjtBtn;
             if (button_关闭建筑.ForeColor.Name == "Black" || button_关闭建筑.ForeColor.Name == "ControlText")
             {
                 button_关闭建筑.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -617,8 +614,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_JZ_检查建筑_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.AtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.AtjtBtn;
             if (button_检查建筑条件.ForeColor.Name == "Black" || button_检查建筑条件.ForeColor.Name == "ControlText")
             {
                 button_检查建筑条件.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -645,8 +642,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_S_检查结构_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  =VariableDictionary. StjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.StjtBtn;
             if (button_检查结构.ForeColor.Name == "Black" || button_检查结构.ForeColor.Name == "ControlText")
             {
                 button_检查结构.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -659,7 +656,7 @@ namespace GB_NewCadPlus_III
             }
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. StjtBtn)
+            foreach (var item in VariableDictionary.StjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -672,8 +669,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_S_关闭结构_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  =VariableDictionary. StjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.StjtBtn;
             if (button_关闭结构.ForeColor.Name == "Black" || button_关闭结构.ForeColor.Name == "ControlText")
             {
                 button_关闭结构.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -685,7 +682,7 @@ namespace GB_NewCadPlus_III
 
             VariableDictionary.selectTjtLayer.Clear();
             VariableDictionary.allTjtLayer.Clear();
-            foreach (var item in VariableDictionary. StjtBtn)
+            foreach (var item in VariableDictionary.StjtBtn)
             {
                 VariableDictionary.allTjtLayer.Add(item);
             }
@@ -698,8 +695,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_S_保留结构_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  =VariableDictionary. StjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.StjtBtn;
             if (button_保留结构.ForeColor.Name == "Black" || button_保留结构.ForeColor.Name == "ControlText")
             {
                 button_保留结构.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -713,7 +710,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.allTjtLayer.Clear();
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. StjtBtn)
+            foreach (var item in VariableDictionary.StjtBtn)
             {
                 VariableDictionary.allTjtLayer.Remove(item);
             }
@@ -728,8 +725,8 @@ namespace GB_NewCadPlus_III
         public void button_P_检查给排水_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. PtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.PtjtBtn;
 
             if (button_检查给排水.ForeColor.Name == "Black" || button_检查给排水.ForeColor.Name == "ControlText")
             {
@@ -743,7 +740,7 @@ namespace GB_NewCadPlus_III
             }
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. PtjtBtn)
+            foreach (var item in VariableDictionary.PtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -751,8 +748,8 @@ namespace GB_NewCadPlus_III
         }
         public void button_P_关闭给排水_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. PtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.PtjtBtn;
             if (button_关闭给排水.ForeColor.Name == "Black" || button_关闭给排水.ForeColor.Name == "ControlText")
             {
                 button_关闭给排水.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -764,7 +761,7 @@ namespace GB_NewCadPlus_III
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
             VariableDictionary.allTjtLayer.Clear();
-            foreach (var item in VariableDictionary. PtjtBtn)
+            foreach (var item in VariableDictionary.PtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Add(item);
             }
@@ -773,8 +770,8 @@ namespace GB_NewCadPlus_III
         public void button_P_保留给排水_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. PtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.PtjtBtn;
 
             if (button_保留给排水.ForeColor.Name == "Black" || button_保留给排水.ForeColor.Name == "ControlText")
             {
@@ -789,7 +786,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.allTjtLayer.Clear();
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. PtjtBtn)
+            foreach (var item in VariableDictionary.PtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Remove(item);
             }
@@ -799,8 +796,8 @@ namespace GB_NewCadPlus_III
         public void button_NT_检查暖通_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. NtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.NtjtBtn;
 
             if (button_检查暖通.ForeColor.Name == "Black" || button_检查暖通.ForeColor.Name == "ControlText")
             {
@@ -814,7 +811,7 @@ namespace GB_NewCadPlus_III
             }
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. NtjtBtn)
+            foreach (var item in VariableDictionary.NtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -823,8 +820,8 @@ namespace GB_NewCadPlus_III
         }
         public void button_NT_关闭暖通_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. NtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.NtjtBtn;
             if (button_关闭暖通.ForeColor.Name == "Black" || button_关闭暖通.ForeColor.Name == "ControlText")
             {
                 button_关闭暖通.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -836,7 +833,7 @@ namespace GB_NewCadPlus_III
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
             VariableDictionary.allTjtLayer.Clear();
-            foreach (var item in VariableDictionary. NtjtBtn)
+            foreach (var item in VariableDictionary.NtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Add(item);
             }
@@ -844,8 +841,8 @@ namespace GB_NewCadPlus_III
         }
         public void button_NT_保留暖通_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. NtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.NtjtBtn;
             if (button_保留暖通.ForeColor.Name == "Black" || button_保留暖通.ForeColor.Name == "ControlText")
             {
                 button_保留暖通.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -859,7 +856,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.allTjtLayer.Clear();
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. NtjtBtn)
+            foreach (var item in VariableDictionary.NtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Remove(item);
             }
@@ -899,8 +896,8 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_E_关闭电气_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.EtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.EtjtBtn;
             if (button_关闭电气.ForeColor.Name == "Black" || button_关闭电气.ForeColor.Name == "ControlText")
             {
                 button_关闭电气.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -925,9 +922,9 @@ namespace GB_NewCadPlus_III
         /// <param name="e"></param>
         public void button_E_保留电气_Click(object sender, EventArgs e)
         {
-            if (!VariableDictionary.btnState && VariableDictionary.tjtBtn  != VariableDictionary.tjtBtnNull)
-                VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary.EtjtBtn;
+            if (!VariableDictionary.btnState && VariableDictionary.tjtBtn != VariableDictionary.tjtBtnNull)
+                VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.EtjtBtn;
             if (button_保留电气.ForeColor.Name == "Black" || button_保留电气.ForeColor.Name == "ControlText")
             {
                 button_保留电气.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -950,8 +947,8 @@ namespace GB_NewCadPlus_III
         public void button_ZK_检查自控_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. ZKtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.ZKtjtBtn;
 
             if (button_检查自控.ForeColor.Name == "Black" || button_检查自控.ForeColor.Name == "ControlText")
             {
@@ -965,7 +962,7 @@ namespace GB_NewCadPlus_III
             }
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -974,8 +971,8 @@ namespace GB_NewCadPlus_III
         }
         public void button_ZK_关闭自控_Click(object sender, EventArgs e)
         {
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. ZKtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.ZKtjtBtn;
             if (button_关闭自控.ForeColor.Name == "Black" || button_关闭自控.ForeColor.Name == "ControlText")
             {
                 button_关闭自控.ForeColor = System.Drawing.SystemColors.ActiveCaption; VariableDictionary.btnState = true;
@@ -987,7 +984,7 @@ namespace GB_NewCadPlus_III
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
             VariableDictionary.allTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Add(item);
             }
@@ -996,8 +993,8 @@ namespace GB_NewCadPlus_III
         public void button_ZK_保留自控_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
-            VariableDictionary.tjtBtn  = VariableDictionary. ZKtjtBtn;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.ZKtjtBtn;
 
             if (button_保留自控.ForeColor.Name == "Black" || button_保留自控.ForeColor.Name == "ControlText")
             {
@@ -1013,7 +1010,7 @@ namespace GB_NewCadPlus_III
             VariableDictionary.allTjtLayer.Clear();
             NewTjLayer();
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.allTjtLayer.Remove(item);
             }
@@ -1171,42 +1168,42 @@ namespace GB_NewCadPlus_III
 
         public void button_NT_排潮_Click(object sender, EventArgs e)
         {
-           
+
             ExecuteProcessCommand("排潮", "(排潮)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_排尘_Click(object sender, EventArgs e)
         {
-           
+
             ExecuteProcessCommand("排尘", "(排尘)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_排热_Click(object sender, EventArgs e)
         {
-          
+
             ExecuteProcessCommand("排热", "(排热)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_直排_Click(object sender, EventArgs e)
         {
-           
+
             ExecuteProcessCommand("直排", "(直排)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_除味_Click(object sender, EventArgs e)
         {
-            
+
             ExecuteProcessCommand("除味", "(除味)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_A级高度_Click(object sender, EventArgs e)
         {
-          
+
             ExecuteProcessCommand("A级高度", "(A级高度？米)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_设备取风量_Click(object sender, EventArgs e)
         {
-           
+
             ExecuteProcessCommand("设备取风量", "(设备取风量 ？m³/h)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_设备排风量_Click(object sender, EventArgs e)
         {
-         
+
             ExecuteProcessCommand("设备排风量", "(设备排风量 ？m³/h)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_排风百分比_Click(object sender, EventArgs e)
@@ -1219,14 +1216,14 @@ namespace GB_NewCadPlus_III
             {
                 VariableDictionary.btnFileName = "(排风 " + textBox_排风百分比.Text + " %)";
             }
-           
+
             Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
             ExecuteProcessCommand("排风百分比", $"{VariableDictionary.btnFileName}", "TJ(暖通专业N)", 6, 0);
 
         }
         public void button_NT_温度_Click(object sender, EventArgs e)
         {
-  
+
             ExecuteProcessCommand("温度", "(温度 ？℃±？℃)", "TJ(暖通专业N)", 6, 0);
         }
         public void button_NT_湿度_Click(object sender, EventArgs e)
@@ -1238,6 +1235,7 @@ namespace GB_NewCadPlus_III
         #region 建筑
         public void button_JZ_吊顶_Click(object sender, EventArgs e)
         {
+            VariableDictionary.diaoDingHeight = textBox_吊顶高文字.Text;
             var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }
@@ -1286,37 +1284,6 @@ namespace GB_NewCadPlus_III
             var command = UnifiedCommandManager.GetCommand("排水沟");
             command?.Invoke();
         }
-       
-        private List<int> lhLayerColorIndex = new List<int>
-        {
-           10,
-           31,
-           50,
-           80,
-           130,
-           140,
-           160,
-           200,
-           220,
-           211,
-           161,
-           121,
-           190,
-           205,
-           235,
-           250,
-            11,
-           21,
-           132,
-           142,
-           163,
-           203,
-           223,
-           223,
-           232,
-           241,
-           243
-        };
         private List<int> jjqLayerColorIndex = new List<int>
         {
              10,
@@ -3250,7 +3217,7 @@ namespace GB_NewCadPlus_III
         public void button_checkNo_Click(object sender, EventArgs e)
         {
             if (VariableDictionary.btnState == false) { VariableDictionary.btnState = true; } else { VariableDictionary.btnState = false; }
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
             //VariableDictionary.tjtBtn  = VariableDictionary.AtjtBtn;
             VariableDictionary.allTjtLayer = new List<string>
         {
@@ -3279,7 +3246,7 @@ namespace GB_NewCadPlus_III
         public void button_closeAllTJ_Click(object sender, EventArgs e)
         {
 
-            VariableDictionary.tjtBtn  = VariableDictionary.tjtBtnNull;
+            VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
             if (button_closeAllTJ.ForeColor.Name == "Black" || button_closeAllTJ.ForeColor.Name == "ControlText")
             {
                 button_closeAllTJ.ForeColor = System.Drawing.SystemColors.ActiveCaption;
@@ -3485,7 +3452,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. StjtBtn)
+            foreach (var item in VariableDictionary.StjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3505,7 +3472,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. StjtBtn)
+            foreach (var item in VariableDictionary.StjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3525,7 +3492,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. NtjtBtn)
+            foreach (var item in VariableDictionary.NtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3545,7 +3512,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. NtjtBtn)
+            foreach (var item in VariableDictionary.NtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3565,7 +3532,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. PtjtBtn)
+            foreach (var item in VariableDictionary.PtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3585,7 +3552,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. PtjtBtn)
+            foreach (var item in VariableDictionary.PtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3645,7 +3612,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3665,7 +3632,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }
@@ -3917,7 +3884,7 @@ namespace GB_NewCadPlus_III
         #region 电气
         public void button电气开关工艺条件_Click(object sender, EventArgs e)
         {
-            
+
             VariableDictionary.tjtBtn = VariableDictionary.tjtBtnNull;
 
             if (button电气开关工艺条件.ForeColor.Name == "Black" || button电气开关工艺条件.ForeColor.Name == "ControlText")
@@ -4916,7 +4883,7 @@ namespace GB_NewCadPlus_III
 
             NewTjLayer();//初始化allTjLayer
             VariableDictionary.selectTjtLayer.Clear();
-            foreach (var item in VariableDictionary. ZKtjtBtn)
+            foreach (var item in VariableDictionary.ZKtjtBtn)
             {
                 VariableDictionary.selectTjtLayer.Add(item);
             }

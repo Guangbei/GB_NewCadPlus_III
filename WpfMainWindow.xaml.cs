@@ -74,7 +74,7 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private System.Windows.Controls.TreeView _categoryTreeView;
 
-      
+
         /// <summary>
         /// 添加预览图片显示的Viewbox引用
         /// </summary>
@@ -107,6 +107,7 @@ namespace GB_NewCadPlus_III
         {
             InitializeComponent();//初始化界面
             InitializeDatabase();//初始化数据库
+            UnifiedUIManager.SetWpfInstance(this); // 注册到统一管理器
             NewTjLayer();//初始化图层
             Loaded += WpfMainWindow_Loaded;//加载按钮
         }
@@ -705,7 +706,7 @@ namespace GB_NewCadPlus_III
                         // 获取该二级文件夹下的所有dwg文件
                         string[] files = System.IO.Directory.GetFiles(subDir, "*.dwg");
                         System.Diagnostics.Debug.WriteLine($"在 {subDirName} 中找到 {files.Length} 个dwg文件");//显示文件数量
-                                                                                                       
+
                         if (files.Length > 0) //创建行面板
                         {
                             // 过滤并处理文件名
@@ -1384,33 +1385,6 @@ namespace GB_NewCadPlus_III
         }
         #endregion
 
-
-
-        /// <summary>
-        /// 公共调用DBTextLabel方法
-        /// </summary>
-        /// <param Name="commandName">命令名称</param>
-        /// <param Name="btnFileName">按键名</param>
-        /// <param Name="btnBlockLayer">图层名称</param>
-        /// <param Name="layerColorIndex">图层颜色</param>
-        /// <param Name="rotateAngle">图元角度</param>
-        private void ExecuteProcessCommand(string commandName, string btnFileName, string btnBlockLayer, int layerColorIndex, double rotateAngle)
-        {
-            try
-            {
-                VariableDictionary.entityRotateAngle = rotateAngle;
-                VariableDictionary.btnFileName = btnFileName;
-                VariableDictionary.btnBlockLayer = btnBlockLayer;//设置为被插入的图层名
-                VariableDictionary.layerColorIndex = layerColorIndex;//设置为被插入的图层颜色
-
-                Env.Document.SendStringToExecute("DBTextLabel ", false, false, false);
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"执行命令时出错: {ex.Message}");
-            }
-        }
-
         #region CAD\SW 管理员数据库操作
 
         #region CAD\SW 分类树
@@ -1482,40 +1456,6 @@ namespace GB_NewCadPlus_III
                 System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                 System.Windows.MessageBox.Show($"加载分类树时出错: {ex.Message}");
             }
-        }
-
-        /// <summary>
-        /// 通过Row索引查找Grid
-        /// </summary>
-        private Grid FindGridByRowIndex(DependencyObject parent, int targetRow)
-        {
-            System.Diagnostics.Debug.WriteLine($"开始查找Row={targetRow}的Grid");
-
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-            {
-                var child = VisualTreeHelper.GetChild(parent, i);
-
-                // 检查是否是Grid且有Grid.Row属性
-                if (child is Grid grid)
-                {
-                    var row = Grid.GetRow(grid);
-                    System.Diagnostics.Debug.WriteLine($"找到Grid，Name: {grid.Name}, Row={row}");
-                    if (row == targetRow)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"找到目标Grid，Row={targetRow}");
-                        return grid;
-                    }
-                }
-
-                // 递归查找子元素
-                var result = FindGridByRowIndex(child, targetRow);
-                if (result != null)
-                {
-                    return result;
-                }
-            }
-
-            return null;
         }
 
         /// <summary>
@@ -1833,7 +1773,7 @@ namespace GB_NewCadPlus_III
 
             public double RotateAngle { get; set; }
 
-            public int LayerColorIndex {  get; set; }
+            public int LayerColorIndex { get; set; }
             /// <summary>
             /// 文件名（不包含路径和扩展名）
             /// </summary>
@@ -1956,70 +1896,70 @@ namespace GB_NewCadPlus_III
 
         private void 注射用水_Btn_Click(object sender, RoutedEventArgs e)
         {
-           
+
             var command = UnifiedCommandManager.GetCommand("注射用水");
             command?.Invoke();
         }
 
         private void 凝结回水_Btn_Click(object sender, RoutedEventArgs e)
         {
-           
+
             var command = UnifiedCommandManager.GetCommand("凝结回水");
             command?.Invoke();
         }
 
         private void 氧气_Btn_Click(object sender, RoutedEventArgs e)
         {
-           
+
             var command = UnifiedCommandManager.GetCommand("氧气");
             command?.Invoke();
         }
 
         private void 氮气_Btn_Click(object sender, RoutedEventArgs e)
         {
-          
+
             var command = UnifiedCommandManager.GetCommand("氮气");
             command?.Invoke();
         }
 
         private void 二氧化碳_Btn_Click(object sender, RoutedEventArgs e)
         {
-          
+
             var command = UnifiedCommandManager.GetCommand("二氧化碳");
             command?.Invoke();
         }
 
         private void 无菌压缩空气_Btn_Click(object sender, RoutedEventArgs e)
         {
-           
+
             var command = UnifiedCommandManager.GetCommand("无菌压缩空气");
             command?.Invoke();
         }
 
         private void 仪表压缩空气_Btn_Click(object sender, RoutedEventArgs e)
         {
-          
+
             var command = UnifiedCommandManager.GetCommand("仪表压缩空气");
             command?.Invoke();
         }
 
         private void 低压蒸汽_Btn_Click(object sender, RoutedEventArgs e)
         {
-          
+
             var command = UnifiedCommandManager.GetCommand("低压蒸汽");
             command?.Invoke();
         }
 
         private void 低温循环上水_Btn_Click(object sender, RoutedEventArgs e)
         {
-           
+
             var command = UnifiedCommandManager.GetCommand("低温循环上水");
             command?.Invoke();
         }
 
         private void 常温循环上水_Btn_Click(object sender, RoutedEventArgs e)
         {
-          
+
             var command = UnifiedCommandManager.GetCommand("常温循环上水");
             command?.Invoke();
         }
@@ -2414,7 +2354,7 @@ namespace GB_NewCadPlus_III
                             dataTable.Rows.Add("文件大小", graphic.FileSize);
                             dataTable.Rows.Add("创建时间", graphic.CreatedAt);
                             dataTable.Rows.Add("更新时间", graphic.UpdatedAt);
-                       
+
 
                             dataGrid.ItemsSource = dataTable.DefaultView;
                         }
@@ -2800,6 +2740,7 @@ namespace GB_NewCadPlus_III
         #region 建筑按键
         private void 吊顶_Btn_Clic(object sender, RoutedEventArgs e)
         {
+            //VariableDictionary.diaoDingHeight= 吊顶高度.Text;
             var command = UnifiedCommandManager.GetCommand("吊顶");
             command?.Invoke();
         }

@@ -121,11 +121,12 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
         <!--  修改TextBox的样式，实现水印功能  -->
         <Style x:Key="WatermarkTextBoxStyle" TargetType="{x:Type TextBox}">
             <Setter Property="Padding" Value="3,0,0,0" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <!-- 添加默认值属性 -->
+            <Setter Property="Tag" Value="" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TextBox}">
@@ -165,6 +166,7 @@
                                 IsHitTestVisible="False"
                                 Text="{TemplateBinding Tag}"
                                 Visibility="Collapsed" />
+
                         </Grid>
                         <!--  定义触发器  -->
                         <ControlTemplate.Triggers>
@@ -615,7 +617,7 @@
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
-                                    <TabItem x:Name="建筑图层" Header=" 图层管理 ">
+                                    <TabItem x:Name="建筑图层" Header=" 图层管理 " Height="21" VerticalAlignment="Top">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="300" />
@@ -640,7 +642,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="吊顶高度" />
                                                         <TextBox
-                                                            Name="吊顶高度"
+                                                            x:Name="TextBox_吊顶高度"
                                                             Width="80"
                                                             Height="20"
                                                             Margin="63,5,0,0"
@@ -678,6 +680,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="偏移距离" />
                                                         <TextBox
+                                                            x:Name="TextBox_偏移距离"
                                                             Width="80"
                                                             Height="20"
                                                             Margin="63,29,0,0"
@@ -698,6 +701,7 @@
                                                             Content="防撞护板"
                                                             FontWeight="Bold" />
                                                         <TextBox
+                                                            x:Name="TextBox_楼层"
                                                             Width="30"
                                                             Height="20"
                                                             Margin="10,55,247,21"
@@ -728,6 +732,7 @@
                                                             VerticalContentAlignment="Center"
                                                             Content="-" />
                                                         <TextBox
+                                                            x:Name="TextBox_洁净区"
                                                             Width="25"
                                                             Height="20"
                                                             Margin="59,55,204,21"
@@ -738,6 +743,7 @@
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
                                                             Tag="1" />
                                                         <TextBox
+                                                            x:Name="TextBox_系统区"
                                                             Width="25"
                                                             Height="20"
                                                             Margin="89,55,174,21"
@@ -748,6 +754,7 @@
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
                                                             Tag="1" />
                                                         <TextBox
+                                                            x:Name="TextBox_房间号"
                                                             Width="25"
                                                             Height="20"
                                                             Margin="119,55,0,0"
@@ -828,6 +835,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="宽" />
                                                         <TextBox
+                                                            x:Name="TextBox_排水沟宽"
                                                             Width="70"
                                                             Height="20"
                                                             Margin="105,106,0,0"
@@ -847,6 +855,7 @@
                                                             VerticalAlignment="Top"
                                                             Content="高" />
                                                         <TextBox
+                                                            x:Name="TextBox_排水沟高"
                                                             Width="70"
                                                             Height="20"
                                                             Margin="206,107,0,0"
@@ -884,6 +893,7 @@
                                                             Content="左右加宽" />
 
                                                         <TextBox
+                                                            x:Name="TextBox_TJ建筑孔洞左右宽"
                                                             Width="100"
                                                             Height="25"
                                                             Margin="73,3,115,28"
@@ -892,6 +902,7 @@
                                                             Style="{StaticResource WatermarkTextBoxStyle}"
                                                             Tag="50" />
                                                         <TextBox
+                                                            x:Name="TextBox_TJ建筑孔洞上下高"
                                                             Width="100"
                                                             Height="25"
                                                             Margin="73,28,115,3"

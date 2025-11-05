@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace GB_NewCadPlus_III
 {
@@ -185,16 +182,16 @@ namespace GB_NewCadPlus_III
             /// 方向与旋转角度的映射
             /// </summary>
             public static readonly Dictionary<string, double> DirectionAngles = new Dictionary<string, double>
-    {
-        { "上", Math.PI * 1.5 },      // 逆时针90度
-        { "右上", Math.PI * 1.25 },   // 顺时针135度
-        { "右", Math.PI * 1 },        // 180度
-        { "右下", Math.PI * 0.75 },   // 逆时针135度
-        { "下", Math.PI * 0.5 },      // 逆时针90度
-        { "左下", Math.PI * 0.25 },   // 逆时针45度
-        { "左", 0 },                  // 原位置
-        { "左上", Math.PI * 1.75 }    // 顺时针45度
-    };
+            {
+                { "上", Math.PI * 1.5 },      // 逆时针90度
+                { "右上", Math.PI * 1.25 },   // 顺时针135度
+                { "右", Math.PI * 1 },        // 180度
+                { "右下", Math.PI * 0.75 },   // 逆时针135度
+                { "下", Math.PI * 0.5 },      // 逆时针90度
+                { "左下", Math.PI * 0.25 },   // 逆时针45度
+                { "左", 0 },                  // 原位置
+                { "左上", Math.PI * 1.75 }    // 顺时针45度
+            };
 
             /// <summary>
             /// 获取指定方向的旋转角度
@@ -310,6 +307,7 @@ namespace GB_NewCadPlus_III
                 VariableDictionary.btnFileName = fileName;
                 VariableDictionary.btnBlockLayer = layerName;
                 VariableDictionary.layerColorIndex = colorIndex;
+                VariableDictionary.diaoDingHeight = TextBoxValueHelper.GetUnifiedValue("TextBox_吊顶高度");
 
                 if (commandName == "吊顶" || commandName == "不吊顶")
                 {
@@ -334,11 +332,12 @@ namespace GB_NewCadPlus_III
             try
             {
                 VariableDictionary.entityRotateAngle = 0;
-                // 从TextBox值管理器获取房间编号信息
-                string floorNo = TextBoxValueManager.GetTextBoxValue("楼层");
-                string cleanArea = TextBoxValueManager.GetTextBoxValue("洁净区");
-                string systemArea = TextBoxValueManager.GetTextBoxValue("系统区");
-                string roomSubNo = TextBoxValueManager.GetTextBoxValue("房间号");
+
+                // 从统一界面管理器获取房间编号信息
+                string floorNo = TextBoxValueHelper.GetUnifiedValue("楼层", "1");
+                string cleanArea = TextBoxValueHelper.GetUnifiedValue("洁净区", "1");
+                string systemArea = TextBoxValueHelper.GetUnifiedValue("系统区", "1");
+                string roomSubNo = TextBoxValueHelper.GetUnifiedValue("房间号", "01");
 
                 VariableDictionary.btnFileName = $"{floorNo}-{cleanArea}{systemArea}{roomSubNo}";
                 VariableDictionary.btnBlockLayer = "TJ(房间编号)";
@@ -354,7 +353,34 @@ namespace GB_NewCadPlus_III
                 System.Windows.MessageBox.Show($"执行房间编号命令时出错: {ex.Message}");
             }
         }
+        /// <summary>
+        /// 更新房间号
+        /// </summary>
+        private static void UpdateRoomNumber(string currentNumber)
+        {
+            try
+            {
+                if (int.TryParse(currentNumber, out int number))
+                {
+                    string newRoomNumber;
+                    if (number < 9)
+                    {
+                        newRoomNumber = $"0{number + 1}";
+                    }
+                    else
+                    {
+                        newRoomNumber = (number + 1).ToString();
+                    }
 
+                    // 通过统一界面管理器更新房间号TextBox的值
+                    UnifiedUIManager.SetTextBoxValue("房间号", newRoomNumber);
+                }
+            }
+            catch
+            {
+                // 忽略转换错误
+            }
+        }
         /// <summary>
         /// 执行排水沟命令
         /// </summary>
@@ -367,9 +393,10 @@ namespace GB_NewCadPlus_III
                 VariableDictionary.buttonText = "JZTJ_排水沟";
                 VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";
                 VariableDictionary.layerColorIndex = 30;
+                // 从统一界面管理器获取排水沟尺寸
+                VariableDictionary.dimString_JZ_宽 = TextBoxValueHelper.GetUnifiedValue("排水沟宽", "300");
+                VariableDictionary.dimString_JZ_深 = TextBoxValueHelper.GetUnifiedValue("排水沟深", "150");
 
-                VariableDictionary.dimString_JZ_宽 = TextBoxValueManager.GetTextBoxValue("排水沟宽");
-                VariableDictionary.dimString_JZ_深 = TextBoxValueManager.GetTextBoxValue("排水沟深");
 
                 Env.Document.SendStringToExecute("Rec2PolyLine_3 ", false, false, false);
             }
@@ -387,7 +414,8 @@ namespace GB_NewCadPlus_III
             try
             {
                 VariableDictionary.buttonText = $"JZTJ_{wallType}开洞";
-                VariableDictionary.textbox_RecPlus_Text = TextBoxValueManager.GetTextBoxValue($"{wallType}加宽");
+                // 从统一界面管理器获取加宽值
+                VariableDictionary.textbox_RecPlus_Text = TextBoxValueHelper.GetUnifiedValue("左右加宽", "50");
                 VariableDictionary.layerColorIndex = 30;
 
                 Env.Document.SendStringToExecute("Rec2PolyLine ", false, false, false);
@@ -491,27 +519,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 更新房间号
         /// </summary>
-        private static void UpdateRoomNumber(string currentNumber)
-        {
-            try
-            {
-                if (int.TryParse(currentNumber, out int number))
-                {
-                    if (number < 9)
-                    {
-                        TextBoxValueManager.SetTextBoxValue("房间号", $"0{number + 1}");
-                    }
-                    else
-                    {
-                        TextBoxValueManager.SetTextBoxValue("房间号", (number + 1).ToString());
-                    }
-                }
-            }
-            catch
-            {
-                // 忽略转换错误
-            }
-        }
+
 
         #endregion
 
@@ -541,39 +549,7 @@ namespace GB_NewCadPlus_III
                 _commandMap[commandName] = command;
             }
         }
-        /// <summary>
-        /// TextBox值管理器
-        /// </summary>
-        public static class TextBoxValueManager
-        {
-            /// <summary>
-            /// 存储TextBox值的字典
-            /// </summary>
-            private static readonly Dictionary<string, string> _values = new Dictionary<string, string>();
 
-            /// <summary>
-            /// 设置TextBox的值
-            /// </summary>
-            public static void SetTextBoxValue(string name, string value)
-            {
-                _values[name] = value;
-            }
 
-            /// <summary>
-            /// 获取TextBox的值
-            /// </summary>
-            public static string GetTextBoxValue(string name)
-            {
-                return _values.ContainsKey(name) ? _values[name] : "";
-            }
-
-            /// <summary>
-            /// 清除所有值
-            /// </summary>
-            public static void ClearAllValues()
-            {
-                _values.Clear();
-            }
-        }
     }
 }
