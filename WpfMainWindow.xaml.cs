@@ -763,7 +763,7 @@ namespace GB_NewCadPlus_III
                                         Width = 88,//按钮宽度
                                         Height = 20,//按钮高度
                                         FontSize = 12,
-                                        FontFamily=new System.Windows.Media.FontFamily("宋休"),
+                                        FontFamily=new System.Windows.Media.FontFamily("微软雅黑"),
                                         Margin = new Thickness(0, 0, 3, 0), // 按钮右侧间隔5
                                         HorizontalAlignment = System.Windows.HorizontalAlignment.Left,//水平居左
                                         VerticalAlignment = System.Windows.VerticalAlignment.Top,//垂直居上

@@ -121,7 +121,18 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private static List<Point3d> pointS = new List<Point3d>();
 
-        //DBTextLabel
+       /// <summary>
+        /// 块统计
+        /// </summary>
+        public void BlockCountStatistics()
+        {
+            using var tr = new DBTrans();
+            var i = tr.CurrentSpace
+                    .GetEntities<BlockReference>()
+                    .Where(brf => brf.GetBlockName() == "自定义块")
+                    .Count();
+            Env.Print(i);
+        }
 
         #region 选择外参并从中选图元复制到当前空间内
 
@@ -821,18 +832,7 @@ namespace GB_NewCadPlus_III
         #endregion 
 
         #region 插入图元
-        /// <summary>
-        /// 块统计
-        /// </summary>
-        public void BlockCountStatistics()
-        {
-            using var tr = new DBTrans();
-            var i = tr.CurrentSpace
-                    .GetEntities<BlockReference>()
-                    .Where(brf => brf.GetBlockName() == "自定义块")
-                    .Count();
-            Env.Print(i);
-        }
+       
 
         /// <summary>
         /// 当前图纸空间的ObjectId
@@ -1011,7 +1011,6 @@ namespace GB_NewCadPlus_III
                                             blockReferenceInfo.LinetypeScale = blockRef.LinetypeScale;
                                             blockReferenceInfo.Normal = blockRef.Normal;
                                             blockNames.Add(blockReferenceInfo);
-
                                         }
                                         break;
                                     }
