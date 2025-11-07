@@ -74,7 +74,6 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private System.Windows.Controls.TreeView _categoryTreeView;
 
-
         /// <summary>
         /// 添加预览图片显示的Viewbox引用
         /// </summary>
@@ -193,7 +192,7 @@ namespace GB_NewCadPlus_III
         private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("TabControl选择改变事件触发");
-
+            // 获取当前选中的TabItem
             if (e.AddedItems.Count > 0 && e.AddedItems[0] is TabItem selectedTab)
             {
                 string header = selectedTab.Header.ToString().Trim();//获取TabItem的标题
@@ -506,7 +505,7 @@ namespace GB_NewCadPlus_III
                         BorderBrush = new SolidColorBrush(Colors.Gray),
                         BorderThickness = new Thickness(1),
                         CornerRadius = new CornerRadius(5),
-                        Margin = new Thickness(0, 5, 0, 10),
+                        Margin = new Thickness(0, 2, 0, 2),
                         Width = 300,
                         Background = new SolidColorBrush(backgroundColors[colorIndex % backgroundColors.Count]),
                         HorizontalAlignment = System.Windows.HorizontalAlignment.Left
@@ -515,7 +514,7 @@ namespace GB_NewCadPlus_III
                     // 创建区域内容的StackPanel
                     StackPanel sectionPanel = new StackPanel
                     {
-                        Margin = new Thickness(5)
+                        Margin = new Thickness(3)
                     };
 
                     // 添加区域标题
@@ -524,7 +523,7 @@ namespace GB_NewCadPlus_III
                         Text = subcategory.DisplayName,
                         FontSize = 14,
                         FontWeight = FontWeights.Bold,
-                        Margin = new Thickness(0, 5, 0, 10),
+                        Margin = new Thickness(0, 0, 0, 2),
                         Foreground = new SolidColorBrush(Colors.DarkBlue)
                     };
                     sectionPanel.Children.Add(sectionHeader);
@@ -546,7 +545,7 @@ namespace GB_NewCadPlus_III
                             StackPanel rowPanel = new StackPanel
                             {
                                 Orientation = System.Windows.Controls.Orientation.Horizontal,
-                                Margin = new Thickness(0, 0, 0, 5)
+                                Margin = new Thickness(0, 0, 0, 2)
                             };
 
                             // 添加该行的按钮（最多3个）
@@ -562,7 +561,7 @@ namespace GB_NewCadPlus_III
                                 {
                                     Content = graphic.DisplayName,
                                     Width = 88,
-                                    Height = 30,
+                                    Height = 22,
                                     Margin = new Thickness(0, 0, 5, 0),
                                     HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
                                     VerticalAlignment = System.Windows.VerticalAlignment.Top,
@@ -607,7 +606,7 @@ namespace GB_NewCadPlus_III
                         {
                             Text = "暂无文件",
                             FontSize = 12,
-                            Margin = new Thickness(5, 0, 0, 5),
+                            Margin = new Thickness(5, 0, 0, 3),
                             Foreground = new SolidColorBrush(Colors.Gray)
                         };
                         sectionPanel.Children.Add(noFilesText);
@@ -681,8 +680,8 @@ namespace GB_NewCadPlus_III
                             BorderBrush = new SolidColorBrush(Colors.Gray),//边框颜色
                             BorderThickness = new Thickness(1),//边框宽度
                             CornerRadius = new CornerRadius(5),//圆角
-                            Margin = new Thickness(0, 5, 0, 10),//间隔
-                            Width = 300,
+                            Margin = new Thickness(0, 2, 0, 3),//间隔
+                            Width = 282,
                             Background = new SolidColorBrush(backgroundColors[colorIndex % backgroundColors.Count]),//背景色
                             HorizontalAlignment = System.Windows.HorizontalAlignment.Left  // 左对齐
                         };
@@ -697,9 +696,9 @@ namespace GB_NewCadPlus_III
                         TextBlock sectionHeader = new TextBlock
                         {
                             Text = subDirName,
-                            FontSize = 14,
+                            FontSize = 12,
                             FontWeight = FontWeights.Bold,
-                            Margin = new Thickness(0, 5, 0, 10),
+                            Margin = new Thickness(0, 5, 0, 5),
                             Foreground = new SolidColorBrush(Colors.DarkBlue)
                         };
                         sectionPanel.Children.Add(sectionHeader);//区域标题
@@ -762,13 +761,15 @@ namespace GB_NewCadPlus_III
                                     {
                                         Content = buttonName,//按钮内容
                                         Width = 88,//按钮宽度
-                                        Height = 30,//按钮高度
-                                        Margin = new Thickness(0, 0, 5, 0), // 按钮右侧间隔5
+                                        Height = 20,//按钮高度
+                                        FontSize = 12,
+                                        FontFamily=new System.Windows.Media.FontFamily("宋休"),
+                                        Margin = new Thickness(0, 0, 3, 0), // 按钮右侧间隔5
                                         HorizontalAlignment = System.Windows.HorizontalAlignment.Left,//水平居左
                                         VerticalAlignment = System.Windows.VerticalAlignment.Top,//垂直居上
                                         Tag = fullPath // 将完整路径存储在Tag属性中
                                     };
-
+                                    btn.FontWeight=FontWeights.Normal;
                                     // 检查是否是预定义的按钮
                                     if (UnifiedCommandManager.IsPredefinedCommand(buttonName))
                                     {

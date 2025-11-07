@@ -86,7 +86,7 @@ namespace GB_NewCadPlus_III
             DateTime setDate = new DateTime(2026, 12, 30);
             if (DateTime.Now < setDate)
             {
-                FormMain.GB_CadToolsForm.ShowToolsPanel();
+                //FormMain.GB_CadToolsForm.ShowToolsPanel();
 
                 if (Wpf_Cad_PaletteSet is null)
                 {
@@ -113,8 +113,7 @@ namespace GB_NewCadPlus_III
             {
                 System.Windows.Forms.MessageBox.Show("试用时间过期！");
                 return;
-            }
-            ;
+            };
         }
 
         /// <summary>

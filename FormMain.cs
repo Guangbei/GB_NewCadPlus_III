@@ -2886,7 +2886,7 @@ namespace GB_NewCadPlus_III
         }
         #endregion
 
-        #region 方向键
+        #region 开洞
 
         public void button_JZ_左右开洞_Click(object sender, EventArgs e)
         {

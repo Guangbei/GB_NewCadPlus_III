@@ -439,20 +439,28 @@ namespace GB_NewCadPlus_III
         {
             try
             {
+
+                VariableDictionary.btnBlockLayer = "TJ(建筑专业J)";
+               
+                //Env.Document.SendStringToExecute("Rec2PolyLine_N ", false, false, false);
+
                 VariableDictionary.buttonText = $"JZTJ_{wallType}开洞";
                 if (wallType == "横墙")
                 {
                     // 从统一界面管理器获取加宽值
-                    VariableDictionary.textbox_RecPlus_Text = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞左右宽");
+                    VariableDictionary.textbox_Width = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞左右宽");
+                    VariableDictionary.textbox_Height = "15";
                 }
                 else if (wallType == "纵墙")
                 {
-                    VariableDictionary.textbox_RecPlus_Text = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞上下高");
+                    VariableDictionary.textbox_Width = "15";
+                    VariableDictionary.textbox_Height = UnifiedUIManager.GetTextBoxValue("TextBox_TJ建筑孔洞上下高");
                 }
 
-                VariableDictionary.layerColorIndex = 30;
+                VariableDictionary.layerColorIndex = 64;
                 VariableDictionary.btnFileName = "建筑洞口：";
-                Env.Document.SendStringToExecute("Rec2PolyLine ", false, false, false);
+                Env.Document.SendStringToExecute("Rec2PolyLine_N ", false, false, false);
+                //Env.Document.SendStringToExecute("Rec2PolyLine ", false, false, false);
             }
             catch (Exception ex)
             {

@@ -8,46 +8,115 @@
     d:MaxWidth="350"
     d:MinHeight="800"
     d:MinWidth="350"
+    d:Name="MainWindows"
+    d:Margin="0"
     mc:Ignorable="d">
     <UserControl.Resources>
+        <!--  统一字体样式  -->
+        <Style x:Key="UnifiedTextStyle" TargetType="{x:Type Control}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+
+        <!--  统一按钮字体样式  -->
+        <Style x:Key="UnifiedButtonTextStyle" TargetType="{x:Type Button}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+
+        <!--  统一文本块字体样式  -->
+        <Style x:Key="UnifiedTextBlockStyle" TargetType="{x:Type TextBlock}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
+
+        <!--  标题字体样式  -->
+        <Style x:Key="HeaderTextStyle" TargetType="{x:Type Control}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="DarkBlue" />
+        </Style>
+
+        <!--  小字体样式  -->
+        <Style x:Key="SmallTextStyle" TargetType="{x:Type Control}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="Gray" />
+        </Style>
+
+        <!--  大字体样式  -->
+        <Style x:Key="LargeTextStyle" TargetType="{x:Type Control}">
+            <Setter Property="FontFamily" Value="微软雅黑" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="Foreground" Value="Black" />
+        </Style>
         <!--  自定义控件的资源样式  -->
         <!--  按钮样式  -->
-        <Style TargetType="Button">
-            <Setter Property="Width" Value="65" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Margin" Value="1" />
-            <Setter Property="Background" Value="LightGray" />
-            <Setter Property="BorderBrush" Value="Gray" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="FontWeight" Value="Bold" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
+        <Style TargetType ="Button">
+            <Setter Property ="Width" Value="65" />
+            <!--  宽度  -->
+            <Setter Property ="Height" Value="30" />
+            <!--  高度  -->
+            <Setter Property ="Margin" Value="1" />
+            <!--  间隔  -->
+            <Setter Property ="Background" Value="LightGray" />
+            <!--  背景颜色  -->
+            <Setter Property ="BorderBrush" Value="Gray" />
+            <!--  边框颜色  -->
+            <Setter Property ="BorderThickness" Value="1" />
+            <!--  边框宽度  -->
+            <Setter Property ="FontSize" Value="12" />
+            <!--  字体大小  -->
+            <Setter Property ="FontWeight" Value="Normal" />
+            <!--  字体加粗  -->
+            <Setter Property ="Cursor" Value="Hand" />
+            <!--  鼠标样式  -->
+            <Setter Property ="Template">
+                <!--  模板内容  -->
                 <Setter.Value>
+                    <!--  模板内容  -->
                     <ControlTemplate TargetType="Button">
+                        <!--  控件模板  -->
                         <Border
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="5">
+                            <!--  边框  -->
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <!--  内容  -->
                         </Border>
+                        <!--  边框  -->
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="DarkGray" />
                             </Trigger>
+                            <!--  鼠标移入时  -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="DimGray" />
                             </Trigger>
+                            <!--  按下时  -->
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Background" Value="LightGray" />
                                 <Setter Property="Foreground" Value="Gray" />
                             </Trigger>
+                            <!--  禁用时  -->
                         </ControlTemplate.Triggers>
+                        <!--  触发器  -->
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+        <!--  TabControlStyle样式  -->
         <Style x:Key="TabControlStyle" TargetType="{x:Type TabControl}">
             <Setter Property="Background" Value="White" />
             <!--  背景颜色  -->
@@ -61,6 +130,8 @@
             <!--  字体大小  -->
             <Setter Property="FontWeight" Value="Bold" />
             <!--  字体加粗  -->
+            <Setter Property="Margin" Value="0"/>
+            <!--  间隔  -->
 
 
         </Style>
@@ -77,7 +148,7 @@
             <!--  内间距  -->
             <Setter Property="FontSize" Value="13" />
             <!--  字体大小  -->
-            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontWeight" Value="Normal" />
             <!--  字体加粗  -->
             <Setter Property="Template">
                 <!--  模板  -->
@@ -92,7 +163,8 @@
                                 Margin="0,0,-1,0"
                                 Background="LightBlue"
                                 BorderBrush="Gray"
-                                BorderThickness="1,1,0,1">
+                                BorderThickness="1,1,0,1"
+                                CornerRadius="5">
                                 <ContentPresenter
                                     x:Name="ContentSite"
                                     Margin="-10,0,-10,0"
@@ -203,6 +275,96 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!--  滚动条样式  -->
+        <Style x:Key="ScrollBarTrackThumb" TargetType="{x:Type Thumb}">
+            <!--  定义滚动条样式  -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Thumb}">
+                        <Grid x:Name="Grid">
+                            <Rectangle HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="Auto" Height="Auto" Fill="Transparent" />
+                            <Border x:Name="CornerScrollBar" CornerRadius="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="Auto" Height="Auto" Background="{TemplateBinding Background}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <!--  定义滚动条样式触发器  -->
+                            <Trigger Property="Tag" Value="Horizontal">
+                                <!--  水平滚动条  -->
+                                <Setter TargetName="CornerScrollBar" Property="Width" Value="Auto" />
+                                <!--  设置滚动条宽度  -->
+                                <Setter TargetName="CornerScrollBar" Property="Height" Value="6" />
+                                <!--  设置滚动条高度  -->
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!--  滚动条样式  -->
+        <Style TargetType="{x:Type ScrollBar}">
+            <Setter Property="Stylus.IsFlicksEnabled" Value="false" />
+            <!--  禁用滚动条翻页  -->
+            <Setter Property="Foreground" Value="#8C8C8C" />
+            <!--  滚动条颜色  -->
+            <Setter Property="Background" Value="Transparent" />
+            <!--  滚动条背景颜色  -->
+            <Setter Property="Width" Value="6" />
+            <!--  滚动条宽度  -->
+            <Setter Property="Template">
+                <!--  定义滚动条模板  -->
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ScrollBar}">
+                        <!--  定义滚动条模板  -->
+                        <Grid x:Name="GridRoot" Width="{TemplateBinding Width}" Background="{TemplateBinding Background}">
+                            <!--  定义滚动条模板  -->
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="0.00001*" />
+                                <!--  定义滚动条模板  -->
+                            </Grid.RowDefinitions>
+                            <Track x:Name="PART_Track" Grid.Row="0" IsDirectionReversed="true" Focusable="false">
+                                <!--  定义滚动条模板  -->
+                                <Track.Thumb>
+                                    <Thumb x:Name="Thumb" Background="{TemplateBinding Foreground}" Style="{DynamicResource ScrollBarTrackThumb}" />
+                                    <!--  定义滚动条模板  -->
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton x:Name="PageUp" Command="ScrollBar.PageDownCommand" Opacity="0" Focusable="false" />
+                                    <!--  定义滚动条模板  -->
+                                </Track.IncreaseRepeatButton>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton x:Name="PageDown" Command="ScrollBar.PageUpCommand" Opacity="0" Focusable="false" />
+                                </Track.DecreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter TargetName="Thumb" Property="Visibility" Value="Collapsed" />
+                                <!--  定义滚动条模板  -->
+                            </Trigger>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter TargetName="GridRoot" Property="LayoutTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="-90" />
+                                        <!--  定义滚动条模板  -->
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="PART_Track" Property="LayoutTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="-90" />
+                                        <!--  定义滚动条模板  -->
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="Width" Value="Auto" />
+                                <!--  定义滚动条模板  -->
+                                <Setter Property="Height" Value="6" />
+                                <Setter TargetName="Thumb" Property="Tag" Value="Horizontal" />
+                                <Setter TargetName="PageDown" Property="Command" Value="ScrollBar.PageLeftCommand" />
+                                <Setter TargetName="PageUp" Property="Command" Value="ScrollBar.PageRightCommand" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <!--  Grid白色背景，最小、大的宽度350，最小高度900  -->
     <Grid
@@ -220,18 +382,18 @@
             MaxWidth="330"
             Style="{StaticResource TabControlStyle}">
             <!--  第一TabControlItem(图元)  -->
-            <TabItem Header="CAD图元">
+            <TabItem Header="CAD图元" >
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="125" />
                         <RowDefinition Height="2" />
-                        <RowDefinition Height="40" />
+                        <RowDefinition Height="35" />
                         <RowDefinition Height="2" />
                         <RowDefinition Height="1*" />
                         <RowDefinition Height="2" />
+                        <RowDefinition Height="28" />
                         <RowDefinition Height="2" />
-                        <RowDefinition Height="35" />
-                        <RowDefinition Height="148" />
+                        <RowDefinition Height="108" />
                     </Grid.RowDefinitions>
                     <Grid
                         Grid.Row="0"
@@ -336,31 +498,33 @@
                         </Button>
                         <TextBlock
                             Margin="5,0,300,100"
-                            FontSize="15"
-                            FontWeight="Bold"
+                            FontSize="10"
+                            FontWeight="Normal"
                             Text="预览：" />
-                        <Viewbox Margin="5,0,120,0" />
+                        <Viewbox Margin="5,0,120,0" >
+                            <Image x:Name="预览" />
+                        </Viewbox>
 
                     </Grid>
                     <Grid Grid.Row="1" />
-                    <Grid Grid.Row="2" Background="FloralWhite">
+                    <Grid Grid.Row="2" Background="FloralWhite" Height="26">
                         <Button
                             x:Name="查找"
                             Width="60"
-                            Height="30"
-                            Margin="5,5,275,5"
+                            Height="22"
+                            Margin="6,4,276,0"
                             Click="查找_Btn_Click"
                             Content="查找"
-                            FontSize="14" />
+                            FontSize="11" VerticalAlignment="Top" />
                         <TextBox
                             Width="120"
-                            Height="32"
+                            Height="22"
                             Margin="70,0,0,0"
                             HorizontalAlignment="Left"
-                            VerticalAlignment="Center"
+                            VerticalAlignment="Bottom"
                             AcceptsTab="True"
                             BorderThickness="1,2,1,1"
-                            FontSize="15"
+                            FontSize="12"
                             SelectionOpacity="0.5"
                             Style="{StaticResource WatermarkTextBoxStyle}"
                             Tag="请输入关键字"
@@ -368,27 +532,27 @@
                         <Button
                             x:Name="PU"
                             Width="45"
-                            Height="NaN"
-                            Margin="195,5,100,5"
+                            Height="22"
+                            Margin="195,4,102,0"
                             Click="功能1_Btn_Click"
                             Content="PU"
-                            FontSize="14" />
+                            FontSize="11" VerticalAlignment="Top" />
                         <Button
                             x:Name="Audit"
                             Width="45"
-                            Height="30"
-                            Margin="245,5,52,5"
+                            Height="22"
+                            Margin="245,4,52,0"
                             Click="功能2_Btn_Click"
                             Content="Audit"
-                            FontSize="14" />
+                            FontSize="11" VerticalAlignment="Top" />
                         <Button
                             x:Name="Recover"
                             Width="45"
-                            Height="30"
-                            Margin="294,5,3,5"
+                            Height="22"
+                            Margin="294,4,3,0"
                             Click="功能3_Btn_Click"
                             Content="恢复"
-                            FontSize="14" />
+                            FontSize="11" VerticalAlignment="Top" />
                     </Grid>
                     <Grid Grid.Row="3" />
                     <Grid Grid.Row="4" Background="Azure">
@@ -397,7 +561,7 @@
                             Margin="0,0,0,0"
                             Background="Azure"
                             ItemContainerStyle="{StaticResource VerticalTabStyle}"
-                            TabStripPlacement="Left">
+                            TabStripPlacement="Left" Padding="1,2,1,2">
                             <TabItem x:Name="公用图" Header="公共图">
                                 <Grid>
                                     <Grid.RowDefinitions>
@@ -408,154 +572,154 @@
                                         <Button
                                             x:Name="共用条件"
                                             Width="88"
-                                            Height="30"
+                                            Height="20"
                                             Margin="5,5,0,0"
                                             Click="共用条件_Btn_Click"
-                                            Content="共用条件"
-                                            FontSize="14" />
+                                            Content="共用条件" FontFamily="Microsoft YaHei UI Light" />
                                         <Button
                                             x:Name="所有条件开关"
                                             Width="88"
-                                            Height="30"
+                                            Height="20"
                                             Margin="5,5,0,0"
                                             Click="所有条件开关_Btn_Click"
-                                            Content="所有条件开关"
-                                            FontSize="14" />
+                                            Content="所有条件开关" FontFamily="Microsoft YaHei UI Light" />
 
                                         <Button
                                             x:Name="设备开关"
                                             Width="88"
-                                            Height="30"
+                                            Height="20"
                                             Margin="5,5,0,0"
                                             Click="设备开关_Btn_Click"
-                                            Content="设备开关"
-                                            FontSize="14" />
+                                            Content="设备开关" FontFamily="Microsoft YaHei UI Light" />
                                     </WrapPanel>
                                     <ScrollViewer
                                         Grid.Row="1"
-                                        Margin="3"
+                                        Margin="0"
                                         VerticalScrollBarVisibility="Auto">
                                         <WrapPanel x:Name="PublicButtonsPanel" Orientation="Vertical" />
                                     </ScrollViewer>
                                 </Grid>
                             </TabItem>
-
                             <TabItem x:Name="工艺" Header="工艺">
-
-                                <TabControl>
-                                    <TabItem x:Name="工艺图元" Header=" 图元集 ">
+                                <TabControl FontSize="12" Padding="1,2,1,2">
+                                    <TabItem x:Name="工艺图元" Header=" 工艺图元 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="2*" />
-                                                <RowDefinition Height="150" />
                                             </Grid.RowDefinitions>
-                                            <ScrollViewer x:Name="ScrollViewer1" Grid.Row="1">
-                                                <Grid Grid.Row="1">
-                                                    <Button
-                                                        x:Name="纯化水"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="5,47,190,83"
-                                                        Click="纯化水_Btn_Clic"
-                                                        Content="纯化水"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="纯蒸汽"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="98,47,97,83"
-                                                        Click="纯蒸汽_Btn_Click"
-                                                        Content="纯蒸汽"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="注射用水"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="190,47,5,83"
-                                                        Click="注射用水_Btn_Click"
-                                                        Content="注射用水"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="氧气"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="5,71,190,59"
-                                                        Click="氧气_Btn_Click"
-                                                        Content="氧气"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="氮气"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="97,71,98,59"
-                                                        Click="氮气_Btn_Click"
-                                                        Content="氮气"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="二氧化碳"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="190,71,5,59"
-                                                        Click="二氧化碳_Btn_Click"
-                                                        Content="二氧化碳"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="无菌压缩空气"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="5,95,190,35"
-                                                        Click="无菌压缩空气_Btn_Click"
-                                                        Content="无菌压缩空气"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="仪表压缩空气"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="98,95,97,35"
-                                                        Click="仪表压缩空气_Btn_Click"
-                                                        Content="仪表压缩空气"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="低压蒸汽"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="190,95,5,35"
-                                                        Click="低压蒸汽_Btn_Click"
-                                                        Content="低压蒸汽"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="低温循环上水"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="5,119,190,11"
-                                                        Click="低温循环上水_Btn_Click"
-                                                        Content="低温循环上水"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="常温循环上水"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="97,119,98,11"
-                                                        Click="常温循环上水_Btn_Click"
-                                                        Content="常温循环上水"
-                                                        FontSize="14" />
-                                                    <Button
-                                                        x:Name="凝结回水"
-                                                        Width="88"
-                                                        Height="20"
-                                                        Margin="190,119,5,11"
-                                                        Click="凝结回水_Btn_Click"
-                                                        Content="凝结回水"
-                                                        FontSize="14" />
-
-                                                </Grid>
-                                            </ScrollViewer>
 
                                             <ScrollViewer
                                                 Grid.Row="0"
-                                                Margin="3,3,3,3"
-                                                VerticalScrollBarVisibility="Auto">
-                                                <WrapPanel x:Name="CraftButtonsPanel" Orientation="Vertical" />
+                                                Margin="0"
+                                                VerticalScrollBarVisibility="Auto" FontSize="12" FontFamily="Microsoft YaHei Light">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="4*" />
+                                                        <RowDefinition Height="85" />
+                                                    </Grid.RowDefinitions>
+                                                    <WrapPanel Grid.Row="0" x:Name="CraftButtonsPanel" Orientation="Vertical" />
+                                                    <Grid Grid.Row="1">
+                                                        <Button
+                                                               x:Name="纯化水"
+                                                               Width="88"
+                                                               Height="18"
+                                                               Margin="10,5,196,62"
+                                                               Click="纯化水_Btn_Clic"
+                                                               Content="纯化水"  FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                               x:Name="纯蒸汽"
+                                                               Width="88"
+                                                               Height="18"
+                                                               Margin="103,5,103,62"
+                                                               Click="纯蒸汽_Btn_Click"
+                                                               Content="纯蒸汽" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                               x:Name="注射用水"
+                                                               Width="88"
+                                                               Height="18"
+                                                               Margin="196,5,10,62"
+                                                               Click="注射用水_Btn_Click"
+                                                               Content="注射用水"  FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                               x:Name="氧气"
+                                                               Width="88"
+                                                               Height="18"
+                                                               Margin="10,24,196,43"
+                                                               Click="氧气_Btn_Click"
+                                                               Content="氧气" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="氮气"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="103,24,103,43"
+                                                                Click="氮气_Btn_Click"
+                                                                Content="氮气" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="二氧化碳"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="196,24,10,43"
+                                                                Click="二氧化碳_Btn_Click"
+                                                                Content="二氧化碳" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="无菌压缩空气"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="10,43,196,24"
+                                                                Click="无菌压缩空气_Btn_Click"
+                                                                Content="无菌压缩空气" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="仪表压缩空气"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="103,43,103,24"
+                                                                Click="仪表压缩空气_Btn_Click"
+                                                                Content="仪表压缩空气"  FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="低压蒸汽"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="196,43,10,24"
+                                                                Click="低压蒸汽_Btn_Click"
+                                                                Content="低压蒸汽" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="低温循环上水"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="10,62,196,5"
+                                                                Click="低温循环上水_Btn_Click"
+                                                                Content="低温循环上水" FontFamily="Microsoft YaHei Light"  FontWeight="Bold"/>
+                                                        <Button
+                                                                x:Name="常温循环上水"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="103,62,103,5"
+                                                                Click="常温循环上水_Btn_Click"
+                                                                Content="常温循环上水" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                        <Button
+                                                                x:Name="凝结回水"
+                                                                Width="88"
+                                                                Height="18"
+                                                                Margin="196,62,10,5"
+                                                                Click="凝结回水_Btn_Click"
+                                                                Content="凝结回水" FontFamily="Microsoft YaHei Light" FontWeight="Bold" />
+                                                    </Grid>
+                                                </Grid>
+                                            </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="各专业条件" Header=" 条件图元 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="2*" />
+                                                <RowDefinition Height="50" />
+                                            </Grid.RowDefinitions>
+                                            <ScrollViewer
+                                                Grid.Row="0"
+                                                Margin="0"
+                                                VerticalScrollBarVisibility="Auto" FontSize="10">
+
+                                                <WrapPanel x:Name="CraftConditionsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
@@ -566,27 +730,24 @@
                                                 <Button
                                                     x:Name="设备表导入"
                                                     Width="88"
-                                                    Height="30"
+                                                    Height="20"
                                                     Margin="5,5,0,0"
                                                     Click="设备表导入_Btn_Click"
-                                                    Content="设备表导入"
-                                                    FontSize="14" />
+                                                    Content="设备表导入" FontFamily="Microsoft YaHei UI Light" />
                                                 <Button
                                                     x:Name="设备表导出"
                                                     Width="88"
-                                                    Height="30"
+                                                    Height="20"
                                                     Margin="5,5,0,0"
                                                     Click="设备表导出_Btn_Click"
-                                                    Content="设备表导出"
-                                                    FontSize="14" />
+                                                    Content="设备表导出" FontFamily="Microsoft YaHei UI Light" />
                                                 <Button
                                                     x:Name="区域开关"
                                                     Width="88"
-                                                    Height="30"
+                                                    Height="20"
                                                     Margin="5,5,0,0"
                                                     Click="区域开关_Btn_Click"
-                                                    Content="区域开关"
-                                                    FontSize="14" />
+                                                    Content="区域开关" FontFamily="Microsoft YaHei UI Light" />
                                             </WrapPanel>
                                         </Grid>
                                     </TabItem>
@@ -595,12 +756,13 @@
                             </TabItem>
 
                             <TabItem x:Name="建筑" Header="建筑">
-                                <TabControl>
-                                    <TabItem x:Name="建筑图元" Header=" 图元集 ">
+                                <TabControl >
+                                    <TabItem x:Name="建筑图元" Header=" 图元集 " >
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="30" />
                                                 <RowDefinition Height="2*" />
+
                                             </Grid.RowDefinitions>
                                             <TextBlock
                                                 Grid.Row="0"
@@ -611,9 +773,10 @@
                                                 Text="建筑列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="ArchitectureButtonsPanel" Orientation="Vertical" />
+
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
@@ -625,8 +788,8 @@
                                             </Grid.RowDefinitions>
                                             <Grid Grid.Row="0">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="33*"/>
-                                                    <RowDefinition Height="67*"/>
+                                                    <RowDefinition/>
+                                                    <RowDefinition Height="2*"/>
                                                 </Grid.RowDefinitions>
                                                 <GroupBox
                                                     x:Name="TJ工具制图"
@@ -640,7 +803,7 @@
                                                             Margin="0,3,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="吊顶高度" />
+                                                            Content="吊顶高度" FontSize="12" />
                                                         <TextBox
                                                             x:Name="TextBox_吊顶高度"
                                                             Width="80"
@@ -661,7 +824,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="吊顶_Btn_Clic"
                                                             Content="吊顶"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal"/>
                                                         <Button
                                                             x:Name="不吊顶"
                                                             Width="65"
@@ -671,14 +834,14 @@
                                                             VerticalAlignment="Top"
                                                             Click="不吊顶_Btn_Click"
                                                             Content="不吊顶"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Label
                                                             Width="62"
                                                             Height="25"
                                                             Margin="0,25,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="偏移距离" />
+                                                            Content="偏移距离" FontSize="12" />
                                                         <TextBox
                                                             x:Name="TextBox_防撞护板"
                                                             Width="80"
@@ -699,7 +862,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="防撞护板_Btn_Clic"
                                                             Content="防撞护板"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <TextBox
                                                             x:Name="TextBox_楼层"
                                                             Width="30"
@@ -765,7 +928,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="房间编号_Btn_Clic"
                                                             Content="房间编号"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Button
                                                             x:Name="编号检查"
                                                             Width="65"
@@ -775,7 +938,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="编号检查_Btn_Click"
                                                             Content="编号检查"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Button
                                                             x:Name="冷藏库降板"
                                                             Width="65"
@@ -785,7 +948,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="冷藏库降板_Btn_Click"
                                                             Content="冷藏库降板"
-                                                            FontWeight="Bold"
+                                                            FontWeight="Normal"
                                                             RenderTransformOrigin="0.077,0.91" />
 
                                                         <Button
@@ -797,7 +960,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="冷冻库降板_Btn_Click"
                                                             Content="冷冻库降板"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
 
                                                         <Button
                                                             x:Name="特殊地面做法要求"
@@ -808,7 +971,7 @@
                                                             VerticalAlignment="Top"
                                                             Click="特殊地面做法要求_Btn_Click"
                                                             Content="特殊地面做法要求"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Button
                                                             x:Name="排水沟"
                                                             Width="65"
@@ -818,14 +981,14 @@
                                                             VerticalAlignment="Top"
                                                             Click="排水沟_Btn_Click"
                                                             Content="排水沟"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Label
                                                             Width="24"
                                                             Height="24"
                                                             Margin="79,103,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="宽" />
+                                                            Content="宽" FontSize="12" />
                                                         <TextBox
                                                             x:Name="TextBox_排水沟宽"
                                                             Width="70"
@@ -845,7 +1008,7 @@
                                                             Margin="180,104,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="高" />
+                                                            Content="高" FontSize="12" />
                                                         <TextBox
                                                             x:Name="TextBox_排水沟深"
                                                             Width="70"
@@ -875,14 +1038,14 @@
                                                             Margin="3,26,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="左右加宽" />
+                                                            Content="左右加宽" FontSize="12" />
                                                         <Label
                                                             Width="70"
                                                             Height="25"
                                                             Margin="3,3,0,0"
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
-                                                            Content="左右加宽" />
+                                                            Content="左右加宽" FontSize="12" />
 
                                                         <TextBox
                                                             x:Name="TextBox_TJ建筑孔洞左右宽"
@@ -909,7 +1072,7 @@
                                                             Margin="183,6,5,30"
                                                             Click="横墙建筑开洞_Btn_Clic"
                                                             Content="横墙建筑开洞"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
                                                         <Button
                                                             x:Name="纵墙建筑开洞"
                                                             Width="100"
@@ -917,14 +1080,11 @@
                                                             Margin="183,31,5,5"
                                                             Click="纵墙建筑开洞_Btn_Click"
                                                             Content="纵墙建筑开洞"
-                                                            FontWeight="Bold" />
+                                                            FontWeight="Normal" />
 
                                                     </Grid>
 
                                                 </GroupBox>
-
-
-
                                             </Grid>
                                         </Grid>
                                     </TabItem>
@@ -948,7 +1108,7 @@
                                                 Text="结构列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="StructureButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -1189,7 +1349,7 @@
                                                 Text="给排水列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="PlumbingButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -1433,7 +1593,7 @@
                                                 Text="暖通列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="HVACButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -1645,8 +1805,6 @@
                                                                     FontSize="13"
                                                                     Style="{StaticResource WatermarkTextBoxStyle}"
                                                                     Tag="0" />
-
-
                                                             </Grid>
                                                         </GroupBox>
 
@@ -1669,13 +1827,12 @@
                                     <TabItem x:Name="电气图元" Header=" 图元集 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
-                                                <RowDefinition Height="200" />
-                                                <RowDefinition Height="2*" />
+                                                <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
                                             <Grid Grid.Row="0" />
                                             <ScrollViewer
-                                                Grid.Row="1"
-                                                Margin="3,3,5,3"
+                                                Grid.Row="0"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="ElectricalButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -1708,8 +1865,6 @@
                                                             HorizontalAlignment="Left"
                                                             VerticalAlignment="Top"
                                                             Content="左右加宽" />
-
-
                                                         <TextBox
                                                             Width="100"
                                                             Height="25"
@@ -1907,7 +2062,7 @@
                                                 Text="自控列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="ControlButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -2142,7 +2297,7 @@
                                                 Text="总图列表" />
                                             <ScrollViewer
                                                 Grid.Row="1"
-                                                Margin="3"
+                                                Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="GeneralButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
@@ -2162,48 +2317,47 @@
                     </Grid>
                     <Grid Grid.Row="5" />
 
-                    <Grid Grid.Row="7" Background="FloralWhite">
+                    <Grid Grid.Row="6" Background="FloralWhite" >
                         <Button
                             Width="130"
-                            Height="25"
+                            Height="20"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="151,4,11,6"
-                            FontSize="14">
+                            Margin="176,4,36,4">
                             <TextBlock Text="应用图元" />
                         </Button>
                         <Button
                             Width="130"
-                            Height="25"
+                            Height="20"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="11,4,151,6"
-                            FontSize="14">
+                            Margin="36,4,176,4">
                             <TextBlock Text="还原初始值" />
                         </Button>
                     </Grid>
                     <Grid Grid.Row="8" Background="Azure">
-                        <ScrollViewer Margin="0,5,0,0" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer Margin="0,5,0,0" VerticalScrollBarVisibility="Auto" FontSize="11" FontFamily="微软雅黑" FontWeight="Normal">
                             <WrapPanel x:Name="属性">
-                                <TextBlock Margin="5,3,110,3" Text="属性1" />
-                                <TextBlock Margin="5,3,110,3" Text="属性2" />
-                                <TextBlock Margin="5,3,110,3" Text="属性3" />
-                                <TextBlock Margin="5,3,110,3" Text="属性4" />
-                                <TextBlock Margin="5,3,110,3" Text="属性5" />
-                                <TextBlock Margin="5,3,110,3" Text="属性6" />
-                                <TextBlock Margin="5,3,110,3" Text="属性7" />
-                                <TextBlock Margin="5,3,110,3" Text="属性8" />
-                                <TextBlock Margin="5,3,110,3" Text="属性9" />
-                                <TextBlock Margin="5,3,100,3" Text="属性10" />
-                                <TextBlock Margin="5,3,100,3" Text="属性11" />
-                                <TextBlock Margin="5,3,100,3" Text="属性12" />
-                                <TextBlock Margin="5,3,100,3" Text="属性13" />
-                                <TextBlock Margin="5,3,100,3" Text="属性14" />
-                                <TextBlock Margin="5,3,100,3" Text="属性15" />
-                                <TextBlock Margin="5,3,100,3" Text="属性16" />
-                                <TextBlock Margin="5,3,100,3" Text="属性17" />
-                                <TextBlock Margin="5,3,100,3" Text="属性18" />
-                                <TextBlock Margin="5,3,100,3" Text="属性19" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 1" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 2" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 3" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 4" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 5" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 6" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 7" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 8" />
+                                <TextBlock Margin="5,3,110,3" Text="属性 9" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 10" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 11" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 12" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 13" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 14" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 15" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 16" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 17" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 18" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 19" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 20" />
                             </WrapPanel>
                         </ScrollViewer>
                     </Grid>
@@ -2246,7 +2400,7 @@
                             Margin="11,4,151,6"
                             Click="LoadCadDatabase_Btn_Click"
                             FontSize="14">
-                            <TextBlock Text="加载CAD数据库" />
+                            <TextBlock Text="加载CAD数据库" FontSize="12" />
                         </Button>
                         <Button
                             Width="130"
@@ -2256,7 +2410,7 @@
                             Margin="151,4,11,6"
                             Click="LoadSwDatabase_Btn_Click"
                             FontSize="14">
-                            <TextBlock Text="加载SW数据库" />
+                            <TextBlock Text="加载SW数据库" FontSize="12" />
                         </Button>
                     </Grid>
                     <!--  第二行  -->
@@ -2270,7 +2424,7 @@
                             Margin="5,12,257,13"
                             Click="NewCategory_MenuItem_Click"
                             FontSize="14">
-                            <TextBlock Text="新建分类" />
+                            <TextBlock Text="新建分类" FontSize="12" />
                         </Button>
                         <Button
                             Width="80"
@@ -2280,7 +2434,7 @@
                             Margin="88,12,174,13"
                             Click="AddSubcategory_MenuItem_Click"
                             FontSize="14">
-                            <TextBlock Text="添加子分类" />
+                            <TextBlock Text="添加子分类" FontSize="12" />
                         </Button>
                         <Button
                             Width="80"
@@ -2290,7 +2444,7 @@
                             Margin="171,12,91,13"
                             Click="Edit_MenuItem_Click"
                             FontSize="14">
-                            <TextBlock Text="修改" />
+                            <TextBlock Text="修改" FontSize="12" />
                         </Button>
                         <Button
                             Width="80"
@@ -2299,7 +2453,7 @@
                             MaxHeight="50"
                             Margin="254,12,8,13"
                             Click="Delete_MenuItem_Click"
-                            FontSize="14">
+                            FontSize="14" TextBlock.FontSize="12">
                             <TextBlock Text="删除" />
                         </Button>
 
@@ -2314,7 +2468,7 @@
                         <TreeView
                             x:Name="CategoryTreeView"
                             Margin="0,5,5,5"
-                            Background="White">
+                            Background="White" FontSize="12">
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="TreeViewItem">
                                     <Setter Property="IsExpanded" Value="True" />
@@ -2334,7 +2488,7 @@
                             Margin="10,5,262,115"
                             Click="AddGraphic_Btn_Click"
                             FontSize="14">
-                            <TextBlock x:Name="add_Graphice" Text="添加图元" />
+                            <TextBlock x:Name="add_Graphice" Text="添加图元" FontSize="12" />
                         </Button>
                         <Button
                             Width="NaN"
@@ -2344,7 +2498,7 @@
                             Margin="10,32,262,88"
                             Click="AddPreviewImage_Btn_Click"
                             FontSize="14">
-                            <TextBlock x:Name="del_Graphice" Text="添加预览图" />
+                            <TextBlock x:Name="del_Graphice" Text="添加预览图" FontSize="12" />
                         </Button>
                         <Button
                             Width="NaN"
@@ -2354,7 +2508,7 @@
                             Margin="10,60,262,60"
                             Click="DeleteGraphic_Btn_Click"
                             FontSize="14">
-                            <TextBlock Text="删除图元" />
+                            <TextBlock Text="删除图元" FontSize="12" />
                         </Button>
                         <Button
                             Width="NaN"
@@ -2364,7 +2518,7 @@
                             Margin="10,88,262,32"
                             Click="ResetToInitial_Btn_Click"
                             FontSize="14">
-                            <TextBlock Text="还原初始值" />
+                            <TextBlock Text="还原初始值" FontSize="12" />
                         </Button>
                         <Button
                             Width="NaN"
@@ -2374,7 +2528,7 @@
                             Margin="10,115,262,5"
                             Click="ApplyProperties_Btn_Click"
                             FontSize="14">
-                            <TextBlock Text="应用属性" />
+                            <TextBlock Text="应用属性" FontSize="12" />
                         </Button>
                         <Viewbox
                             x:Name="ViewImage"
@@ -2393,7 +2547,7 @@
                     </Grid>
                     <Grid Grid.Row="5">
                         <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
-                            <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" />
+                            <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" FontSize="11" />
 
 
 
