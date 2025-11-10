@@ -5,6 +5,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:GB_NewCadPlus_III"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
+    xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
     d:Margin="0"
     d:MaxWidth="350"
     d:MinHeight="800"
@@ -1122,14 +1124,71 @@
                                     <TabItem x:Name="各专业条件" Header=" 条件图元 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
-                                                <RowDefinition Height="2*" />
-                                                <RowDefinition Height="50" />
+                                                <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
                                             <ScrollViewer
                                                 Grid.Row="0"
                                                 Margin="0"
                                                 FontSize="10"
                                                 VerticalScrollBarVisibility="Auto" />
+                                            <Grid Width="285" HorizontalAlignment="Left">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+                                                <StackPanel x:Name="ConditionsPanel" Orientation="Vertical">
+                                                    <!--  电气专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="电气条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="电气专业条件">
+                                                        <WrapPanel x:Name="电气条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+                                                    <!--  给排水专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="给排水条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="给排水专业条件">
+                                                        <WrapPanel x:Name="给排水条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+                                                    <!--  自控专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="自控条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="自控专业条件">
+                                                        <WrapPanel x:Name="自控条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+                                                    <!--  建筑专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="建筑条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="建筑专业条件">
+                                                        <WrapPanel x:Name="建筑条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+                                                    <!--  结构专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="结构条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="结构专业条件">
+                                                        <WrapPanel x:Name="结构条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+                                                    <!--  暖通专业条件  -->
+                                                    <GroupBox
+                                                        x:Name="暖通条件GroupBox"
+                                                        Margin="5"
+                                                        Padding="3"
+                                                        Header="暖通专业条件">
+                                                        <WrapPanel x:Name="暖通条件按钮面板" Orientation="Vertical" />
+                                                    </GroupBox>
+
+
+                                                </StackPanel>
+                                            </Grid>
+
                                         </Grid>
                                     </TabItem>
                                     <TabItem x:Name="工艺图层" Header=" 图层管理 ">
@@ -2554,7 +2613,7 @@
                             FontSize="11"
                             FontWeight="Normal"
                             VerticalScrollBarVisibility="Auto">
-                            <WrapPanel x:Name="属性">
+                            <!--<WrapPanel x:Name="属性">
                                 <TextBlock Margin="5,3,110,3" Text="属性 1" />
                                 <TextBlock Margin="5,3,110,3" Text="属性 2" />
                                 <TextBlock Margin="5,3,110,3" Text="属性 3" />
@@ -2575,7 +2634,66 @@
                                 <TextBlock Margin="5,3,100,3" Text="属性 18" />
                                 <TextBlock Margin="5,3,100,3" Text="属性 19" />
                                 <TextBlock Margin="5,3,100,3" Text="属性 20" />
-                            </WrapPanel>
+                                <TextBlock Margin="5,3,100,3" Text="属性 21" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 22" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 23" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 24" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 25" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 26" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 27" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 28" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 29" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 30" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 31" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 32" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 33" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 34" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 35" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 36" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 37" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 38" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 39" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 40" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 41" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 42" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 43" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 44" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 45" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 46" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 47" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 48" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 49" />
+                                <TextBlock Margin="5,3,100,3" Text="属性 50" />
+                            </WrapPanel>-->
+                            <DataGrid
+                                x:Name="PropertiesDataGrid"
+                                Margin="5"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                FontSize="12"
+                                GridLinesVisibility="All"
+                                HeadersVisibility="Column"
+                                IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        Binding="{Binding PropertyName1}"
+                                        Header="属性名称" />
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        Binding="{Binding PropertyValue1}"
+                                        Header="值" />
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        Binding="{Binding PropertyName2}"
+                                        Header="属性名称" />
+                                    <DataGridTextColumn
+                                        Width="*"
+                                        Binding="{Binding PropertyValue2}"
+                                        Header="值" />
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
@@ -2586,7 +2704,7 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="50" />
-                        <RowDefinition Height="50" />
+                        <RowDefinition Height="55" />
                         <RowDefinition Height="5*" />
                         <RowDefinition Height="50" />
                         <RowDefinition Height="5*" />
@@ -2596,11 +2714,11 @@
 
             </TabItem>
             <!--  第一TabControlItem(管理员模块)  -->
-            <TabItem Header="管理员模块">
+            <TabItem Header="管理员模块" HorizontalAlignment="Right" Width="82">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="50" />
-                        <RowDefinition Height="50" />
+                        <RowDefinition Height="40" />
+                        <RowDefinition Height="55" />
                         <RowDefinition Height="5*" />
                         <RowDefinition Height="145" />
                         <RowDefinition Height="30" />
@@ -2634,46 +2752,71 @@
                     <Grid Grid.Row="1" Background="Azure">
 
                         <Button
+                            x:Name="添加主分类"
                             Width="80"
                             Height="25"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="5,12,257,13"
+                            Margin="3,1,259,29"
                             Click="NewCategory_MenuItem_Click"
                             FontSize="14">
-                            <TextBlock FontSize="12" Text="新建分类" />
+                            <TextBlock FontSize="12" Text="添加主分类" />
                         </Button>
                         <Button
+                            x:Name="添加子分类"
                             Width="80"
                             Height="25"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="88,12,174,13"
+                            Margin="3,28,259,1"
                             Click="AddSubcategory_MenuItem_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="添加子分类" />
                         </Button>
                         <Button
+                            x:Name="修改分类"
                             Width="80"
                             Height="25"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="171,12,91,13"
+                            Margin="88,1,174,29"
                             Click="Edit_MenuItem_Click"
                             FontSize="14">
-                            <TextBlock FontSize="12" Text="修改" />
+                            <TextBlock FontSize="12" Text="修改分类" />
                         </Button>
                         <Button
+                            x:Name="删除分类"
                             Width="80"
                             Height="25"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="254,12,8,13"
+                            Margin="88,28,174,1"
                             Click="Delete_MenuItem_Click"
                             FontSize="14"
                             TextBlock.FontSize="12">
-                            <TextBlock Text="删除" />
+                            <TextBlock Text="删除分类" />
                         </Button>
+                        <Button
+                            x:Name="刷新架构树按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="173,2,89,27"
+                            Click="刷新架构树按钮_Click"
+                            Content="刷新架构树" />
+                        <Button
+                            x:Name="展开所有按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="258,2,4,27"
+                            Click="展开所有按钮_Click"
+                            Content="展开所有" />
+                        <Button
+                            x:Name="折叠所有按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="258,28,4,1"
+                            Click="折叠所有按钮_Click"
+                            Content="折叠所有" />
 
                     </Grid>
                     <!--  第三行，管理员模块中的Grid.Row="2"  -->
@@ -2682,8 +2825,25 @@
                         Grid.Row="2"
                         Background="FloralWhite">
 
-                        <!--  这里将显示分类树  -->
+                        <!--  修改架构树的TreeView，添加右键菜单  -->
                         <TreeView
+                            x:Name="CategoryTreeView"
+                            Grid.Column="0"
+                            Margin="5"
+                            SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="{x:Type TreeViewItem}" />
+                            </TreeView.ItemContainerStyle>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding DisplayText}" />
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+
+
+                        <!--  这里将显示分类树  -->
+                        <!--<TreeView
                             x:Name="CategoryTreeView"
                             Margin="0,5,5,5"
                             Background="White"
@@ -2693,7 +2853,8 @@
                                     <Setter Property="IsExpanded" Value="True" />
                                 </Style>
                             </TreeView.ItemContainerStyle>
-                        </TreeView>
+                        </TreeView>-->
+
 
                     </Grid>
                     <!--  第四行  -->
@@ -2772,55 +2933,182 @@
                     </Grid>
                     <Grid Grid.Row="5">
                         <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
-                            <DataGrid d:ItemsSource="{d:SampleData ItemCount=5}" FontSize="11" />
+                            <!--  属性编辑DataGrid  -->
+                            <DataGrid
+                                x:Name="CategoryPropertiesDataGrid"
+                                Grid.Row="0"
+                                Margin="0"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="True"
+                                CanUserDeleteRows="True"
+                                FontSize="12"
+                                GridLinesVisibility="All"
+                                HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Width="*" Header="属性名称1">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PropertyName1}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox
+                                                    InputMethod.IsInputMethodEnabled="True"
+                                                    Language="zh-CN"
+                                                    Text="{Binding PropertyName1, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
 
+                                    <DataGridTemplateColumn Width="*" Header="值1">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PropertyValue1}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox
+                                                    InputMethod.IsInputMethodEnabled="True"
+                                                    Language="zh-CN"
+                                                    Text="{Binding PropertyValue1, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
 
+                                    <DataGridTemplateColumn Width="*" Header="属性名称2">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PropertyName2}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox
+                                                    InputMethod.IsInputMethodEnabled="True"
+                                                    Language="zh-CN"
+                                                    Text="{Binding PropertyName2, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
 
-                            <!--<WrapPanel x:Name="属性值" >
-                                <TextBlock Text="图元id" Margin= "5,3,5,3"/><TextBox Height="22" TextWrapping="Wrap" Text="表名：id" Width="65" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="上级分类" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="表：cad_graphice_id" Width="139" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性3" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性4" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性5" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性6" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性7" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性8" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性9" Margin= "5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="115" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性10" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性11" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性12" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性13" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性14" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性15" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性16" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性17" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性18" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性19" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                                <TextBlock Text="属性20" Margin="5,3,5,3"/>
-                                <TextBox Height="22" TextWrapping="Wrap" Text="属性值" Width="105" Background="White" SelectionTextBrush="White" Foreground="#FF9E9494" FontSize="12" VerticalContentAlignment="Center"/>
-                            </WrapPanel>-->
+                                    <DataGridTemplateColumn Width="*" Header="值2">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PropertyValue2}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox
+                                                    InputMethod.IsInputMethodEnabled="True"
+                                                    Language="zh-CN"
+                                                    Text="{Binding PropertyValue2, UpdateSourceTrigger=PropertyChanged}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
 
+            </TabItem>
+
+            <!--  在管理员模块中添加架构树显示区域  -->
+            <TabItem Header="架构管理">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="200" />
+                        <!--  用于属性编辑  -->
+                    </Grid.RowDefinitions>
+
+                    <!--  左侧架构树  -->
+                    <Grid Grid.Row="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="200" />
+                        </Grid.ColumnDefinitions>
+
+                        <!--  架构树显示  -->
+                        <TreeView
+                            x:Name="CategoryTreeView1"
+                            Grid.Column="0"
+                            Margin="5"
+                            SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding DisplayText}" />
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+
+                        <!--  操作按钮  -->
+                        <StackPanel Grid.Column="1" Margin="5" />
+                    </Grid>
+
+                    <!--  属性编辑区域  -->
+                    <Grid Grid.Row="1" Background="LightBlue">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="40" />
+                        </Grid.RowDefinitions>
+
+                        <!--  属性编辑DataGrid  -->
+                        <DataGrid
+                            x:Name="CategoryPropertiesDataGrid1"
+                            Grid.Row="0"
+                            Margin="5"
+                            AutoGenerateColumns="False"
+                            CanUserAddRows="True"
+                            CanUserDeleteRows="True"
+                            FontSize="12"
+                            GridLinesVisibility="All"
+                            HeadersVisibility="Column">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding PropertyName1}"
+                                    Header="属性名称1" />
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding PropertyValue1}"
+                                    Header="值1" />
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding PropertyName2}"
+                                    Header="属性名称2" />
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding PropertyValue2}"
+                                    Header="值2" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!--  操作按钮  -->
+                        <StackPanel
+                            Grid.Row="1"
+                            HorizontalAlignment="Center"
+                            Orientation="Horizontal">
+                            <!--<Button
+                                x:Name="应用属性按钮"
+                                Width="80"
+                                Height="25"
+                                Margin="5"
+                                Click="应用属性按钮_Click"
+                                Content="应用属性" />
+                            <Button
+                                x:Name="取消按钮"
+                                Width="80"
+                                Height="25"
+                                Margin="5"
+                                Click="取消按钮_Click"
+                                Content="取消" />-->
+                        </StackPanel>
+                    </Grid>
+                </Grid>
             </TabItem>
         </TabControl>
 

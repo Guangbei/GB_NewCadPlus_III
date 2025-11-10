@@ -6,17 +6,14 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using Button = System.Windows.Controls.Button;
 using DataGrid = System.Windows.Controls.DataGrid;
-using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
 using TabControl = System.Windows.Controls.TabControl;
-using TextBox = System.Windows.Controls.TextBox;
 using TreeView = System.Windows.Controls.TreeView;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -40,9 +37,6 @@ namespace GB_NewCadPlus_III
         /// 添加数据库管理器
         /// </summary>
         private DatabaseManager _databaseManager;
-
-        // 在WpfMainWindow类中添加字段
-        private CategoryTreeNode _selectedCategoryNode; // 在分类架构树的当前选中的分类节点
 
         /// <summary>
         /// 添加枚举类型
@@ -150,42 +144,23 @@ namespace GB_NewCadPlus_III
         /// <param Name="e"></param>
         private void WpfMainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            try
+            // 获取预览Viewbox的引用
+            previewViewbox = FindVisualChild<Viewbox>(this, "预览Viewbox") ??
+                             FindVisualChild<Viewbox>(this, "Viewbox");
+            // 直接通过名称查找TabControl
+            var mainTabControl = FindVisualChild<TabControl>(this, "MainTabControl");
+            if (mainTabControl != null)
             {
-                // 获取预览Viewbox的引用
-                previewViewbox = FindVisualChild<Viewbox>(this, "预览Viewbox") ??
-                                 FindVisualChild<Viewbox>(this, "Viewbox");
-                // 直接通过名称查找TabControl
-                var mainTabControl = FindVisualChild<TabControl>(this, "MainTabControl");
-                if (mainTabControl != null)
-                {
-                    mainTabControl.SelectionChanged += TabControl_SelectionChanged; // 绑定TabControl事件
-                    System.Diagnostics.Debug.WriteLine("TabControl事件绑定成功");//测试
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("未找到名称为MainTabControl的控件");
-                }
-
-                InitializeDatabase();//初始化数据库
-
-                // 添加右键菜单到分类树
-                if (CategoryTreeView != null)
-                {
-                    AddContextMenuToTreeView(CategoryTreeView);
-                    System.Diagnostics.Debug.WriteLine("分类树右键菜单添加成功");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("未找到CategoryTreeView控件");
-                }
-
-                Load();
+                mainTabControl.SelectionChanged += TabControl_SelectionChanged; // 绑定事件
+                System.Diagnostics.Debug.WriteLine("TabControl事件绑定成功");//测试
             }
-            catch (Exception ex)
+            else
             {
-                System.Diagnostics.Debug.WriteLine($"窗口加载时出错: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("未找到名称为MainTabControl的控件");
             }
+            InitializeDatabase();//初始化数据库
+            InitializeCategoryTreeAsync(); // 初始化架构树
+            Load();
         }
 
         /// <summary>
@@ -203,7 +178,6 @@ namespace GB_NewCadPlus_III
                     System.Diagnostics.Debug.WriteLine($"数据库连接成功，找到 {categories.Count} 个分类");
                 }
                 InitializeCategoryPropertyGrid();
-
             }
             catch (Exception ex)
             {
@@ -1912,7 +1886,6 @@ namespace GB_NewCadPlus_III
 
                 // 构建树结构
                 BuildCategoryTree(categories, subcategories);
-
             }
             catch (Exception ex)
             {
@@ -1947,7 +1920,6 @@ namespace GB_NewCadPlus_III
 
             // 4. 将根节点添加到树节点列表
             _categoryTreeNodes.AddRange(mainCategoryNodes);
-
         }
 
         /// <summary>
@@ -2023,8 +1995,6 @@ namespace GB_NewCadPlus_III
                 {
                     CategoryTreeView.ItemsSource = null;
                     CategoryTreeView.ItemsSource = _categoryTreeNodes;
-                    // 添加TreeView的选择事件
-                    //CategoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
                 }
             }
             catch (Exception ex)
@@ -2034,22 +2004,31 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 获取TreeViewItem的辅助方法（增强版）
+        /// 递归展开所有子节点
+        /// </summary>
+        /// <param name="item"></param>
+        private void ExpandAllChildren(TreeViewItem item)
+        {
+            item.IsExpanded = true;
+            foreach (var child in item.Items)
+            {
+                var childItem = GetTreeViewItem(item, child);
+                if (childItem != null)
+                {
+                    ExpandAllChildren(childItem);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 获取TreeViewItem
         /// </summary>
         /// <param name="container"></param>
         /// <param name="item"></param>
         /// <returns></returns>
         private TreeViewItem GetTreeViewItem(ItemsControl container, object item)
         {
-            if (container == null) return null;
-
-            // 首先尝试直接获取
-            var directlyFound = container.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
-            if (directlyFound != null)
-                return directlyFound;
-
-            // 如果直接获取失败，遍历所有子项
-            if (container.Items != null)
+            if (container != null && container.Items != null)
             {
                 foreach (var containerItem in container.Items)
                 {
@@ -2061,7 +2040,6 @@ namespace GB_NewCadPlus_III
                             return treeViewItem;
                         }
 
-                        // 递归查找子项
                         var child = GetTreeViewItem(treeViewItem, item);
                         if (child != null)
                         {
@@ -2071,25 +2049,6 @@ namespace GB_NewCadPlus_III
                 }
             }
             return null;
-        }
-
-        /// <summary>
-        /// 递归展开所有子节点
-        /// </summary>
-        /// <param name="item"></param>
-        private void ExpandAllChildren(TreeViewItem item)
-        {
-            if (item == null) return;
-
-            item.IsExpanded = true;
-            foreach (var child in item.Items)
-            {
-                var childItem = GetTreeViewItem(item, child);
-                if (childItem != null)
-                {
-                    ExpandAllChildren(childItem);
-                }
-            }
         }
 
         /// <summary>
@@ -2103,7 +2062,6 @@ namespace GB_NewCadPlus_III
             {
                 if (e.NewValue is CategoryTreeNode selectedNode)
                 {
-                    _selectedCategoryNode = selectedNode;
                     // 根据选中的节点类型显示相应的属性编辑界面
                     DisplayNodePropertiesForEditing(selectedNode);
                 }
@@ -2242,50 +2200,50 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 初始化子分类属性编辑界面
+        /// 初始化分类属性编辑界面（分类）- 带现有数据参考
         /// </summary>
-        /// <param name="parentNode"></param>
-        private void InitializeSubcategoryPropertiesForEditing(CategoryTreeNode parentNode)
+        /// <param name="existingCategories"></param>
+        private void InitializeCategoryPropertiesForCategory(List<CadCategory> existingCategories = null)
+        {
+            var categoryProperties = new List<CategoryPropertyEditModel>// 创建一个列表，用于存储分类属性的编辑模型
+            {
+                new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = "", PropertyName2 = "显示名称", PropertyValue2 = "" },// 创建两个属性编辑模型
+                new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = "0", PropertyName2 = "", PropertyValue2 = "" }// 创建一个属性编辑模型
+            };
+            CategoryPropertiesDataGrid.ItemsSource = categoryProperties;// 将属性列表绑定到数据网格
+        }
+
+        /// <summary>
+        /// 初始化子分类属性编辑界面（子分类）- 带现有数据参考
+        /// </summary>
+        /// <param name="existingSubcategories"></param>
+        private void InitializeCategoryPropertiesForSubcategory(List<CadSubcategory> existingSubcategories = null)
         {
             var subcategoryProperties = new List<CategoryPropertyEditModel>
-            {
-                new CategoryPropertyEditModel { PropertyName1 = "父分类ID", PropertyValue1 = parentNode.Id.ToString(), PropertyName2 = "名称", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = "", PropertyName2 = "排序序号", PropertyValue2 = "自动生成" } // 留空，表示自动生成
-            };
+    {
+        new CategoryPropertyEditModel { PropertyName1 = "父分类ID", PropertyValue1 = "", PropertyName2 = "名称", PropertyValue2 = "" },
+        new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = "", PropertyName2 = "排序序号", PropertyValue2 = "0" }
+    };
 
-            // 添加参考信息
-            subcategoryProperties.Add(new CategoryPropertyEditModel
+            // 如果有现有数据，添加参考信息
+            if (existingSubcategories != null && existingSubcategories.Count > 0)
             {
-                PropertyName1 = "父级名称",
-                PropertyValue1 = parentNode.DisplayText,
-                PropertyName2 = "",
-                PropertyValue2 = ""
-            });
+                var sampleSubcategory = existingSubcategories[0]; // 使用第一个作为示例
+                subcategoryProperties.Add(new CategoryPropertyEditModel
+                {
+                    PropertyName1 = "参考示例",
+                    PropertyValue1 = $"父ID:{sampleSubcategory.ParentId}",
+                    PropertyName2 = "名称",
+                    PropertyValue2 = sampleSubcategory.Name
+                });
+            }
 
             // 添加空行用于用户输入
-            subcategoryProperties.Add(new CategoryPropertyEditModel());
             subcategoryProperties.Add(new CategoryPropertyEditModel());
 
             CategoryPropertiesDataGrid.ItemsSource = subcategoryProperties;
         }
 
-        /// <summary>
-        /// 初始化主分类属性编辑界面
-        /// </summary>
-        private void InitializeCategoryPropertiesForCategory()
-        {
-            var categoryProperties = new List<CategoryPropertyEditModel>
-            {
-                new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = "", PropertyName2 = "显示名称", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = "自动生成", PropertyName2 = "", PropertyValue2 = "" } // 留空，表示自动生成
-            };
-
-            // 添加空行用于用户输入
-            categoryProperties.Add(new CategoryPropertyEditModel());
-            categoryProperties.Add(new CategoryPropertyEditModel());
-
-            CategoryPropertiesDataGrid.ItemsSource = categoryProperties;
-        }
         /// <summary>
         /// 应用分类属性（返回bool值）
         /// </summary>
@@ -2294,31 +2252,18 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
+                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;// 获取属性数据
                 if (properties == null || properties.Count == 0)
                 {
-                    throw new Exception("没有可应用的属性");
+                    throw new Exception("没有可应用的属性");// 没有可应用的属性
                 }
-
-                // 解析属性数据
-                var (name, displayName, sortOrder) = ParseCategoryProperties(properties);
-
-                if (string.IsNullOrEmpty(name))
+                var (name, displayName, sortOrder) = ParseCategoryProperties(properties); // 解析属性数据
+                if (string.IsNullOrEmpty(name))// 名称为空
                 {
-                    throw new Exception("分类名称不能为空");
+                    throw new Exception("分类名称不能为空");// 名称不能为空
                 }
-
-                // 自动生成排序序号（如果未提供或为0）
-                if (sortOrder <= 0)
-                {
-                    sortOrder = await _databaseManager.GetMaxCadCategorySortOrderAsync() + 1;
-                }
-
-                // 生成主分类ID
-                int categoryId = await CategoryIdGenerator.GenerateMainCategoryIdAsync(_databaseManager);
-
-                // 创建分类对象
-                var category = new CadCategory
+                int categoryId = await CategoryIdGenerator.GenerateMainCategoryIdAsync(_databaseManager);   // 生成主分类ID
+                var category = new CadCategory // 创建分类对象
                 {
                     Id = categoryId,
                     Name = name,
@@ -2328,12 +2273,8 @@ namespace GB_NewCadPlus_III
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
-
-                // 添加到数据库
-                int result = await _databaseManager.AddCadCategoryAsync(category);
-
-                // 验证数据库操作是否成功
-                return result > 0;
+                int result = await _databaseManager.AddCadCategoryAsync(category); // 添加到数据库
+                return result > 0; // 验证数据库操作是否成功
             }
             catch (Exception ex)
             {
@@ -2350,14 +2291,12 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
+                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;// 获取属性数据
                 if (properties == null || properties.Count == 0)
                 {
                     throw new Exception("没有可应用的属性");
                 }
-
-                // 解析属性数据
-                var (parentId, name, displayName, sortOrder) = ParseSubcategoryProperties(properties);
+                var (parentId, name, displayName, sortOrder) = ParseSubcategoryProperties(properties);// 解析属性数据
 
                 if (parentId <= 0)
                 {
@@ -2368,21 +2307,9 @@ namespace GB_NewCadPlus_III
                 {
                     throw new Exception("子分类名称不能为空");
                 }
-
-                // 自动生成排序序号（如果未提供或为0）
-                if (sortOrder <= 0)
-                {
-                    sortOrder = await _databaseManager.GetMaxCadSubcategorySortOrderAsync(parentId) + 1;
-                }
-
-                // 生成子分类ID
-                int subcategoryId = await CategoryIdGenerator.GenerateSubcategoryIdAsync(_databaseManager, parentId);
-
-                // 确定层级
-                int level = await DetermineCategoryLevelAsync(parentId);
-
-                // 创建子分类对象
-                var subcategory = new CadSubcategory
+                int subcategoryId = await CategoryIdGenerator.GenerateSubcategoryIdAsync(_databaseManager, parentId);  // 生成子分类ID
+                int level = await DetermineCategoryLevelAsync(parentId); // 确定层级
+                var subcategory = new CadSubcategory // 创建子分类对象
                 {
                     Id = subcategoryId,
                     ParentId = parentId,
@@ -2394,17 +2321,12 @@ namespace GB_NewCadPlus_III
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
-
-                // 添加到数据库
-                int result = await _databaseManager.AddCadSubcategoryAsync(subcategory);
-
+                int result = await _databaseManager.AddCadSubcategoryAsync(subcategory);  // 添加到数据库
                 if (result > 0)
                 {
-                    // 更新父级的子分类列表
-                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, subcategoryId);
+                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, subcategoryId); // 更新父级的子分类列表
                     return true;
                 }
-
                 return false;
             }
             catch (Exception ex)
@@ -2451,7 +2373,7 @@ namespace GB_NewCadPlus_III
         {
             string name = "";
             string displayName = "";
-            int sortOrder = 0; // 默认排序序号
+            int sortOrder = 0;
 
             foreach (var property in properties)
             {
@@ -2461,7 +2383,6 @@ namespace GB_NewCadPlus_III
                 // 处理第二列
                 ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
             }
-
             return (name, displayName, sortOrder);
         }
 
@@ -2491,7 +2412,6 @@ namespace GB_NewCadPlus_III
                     break;
                 case "排序序号":
                 case "sortorder":
-                    // 排序序号现在是可选的，如果提供了就使用，否则自动生成
                     if (int.TryParse(propertyValue.Trim(), out int sort))
                         sortOrder = sort;
                     break;
@@ -2508,17 +2428,14 @@ namespace GB_NewCadPlus_III
             int parentId = 0;
             string name = "";
             string displayName = "";
-            int sortOrder = 0; // 默认排序序号
-
+            int sortOrder = 0;
             foreach (var property in properties)
             {
                 // 处理第一列
                 ProcessSubcategoryProperty(property.PropertyName1, property.PropertyValue1, ref parentId, ref name, ref displayName, ref sortOrder);
-
                 // 处理第二列
                 ProcessSubcategoryProperty(property.PropertyName2, property.PropertyValue2, ref parentId, ref name, ref displayName, ref sortOrder);
             }
-
             return (parentId, name, displayName, sortOrder);
         }
 
@@ -2541,6 +2458,7 @@ namespace GB_NewCadPlus_III
                 case "父分类id":
                 case "parentid":
                 case "父id":
+                case "parent_id":
                     if (int.TryParse(propertyValue.Trim(), out int pid))
                         parentId = pid;
                     break;
@@ -2551,16 +2469,104 @@ namespace GB_NewCadPlus_III
                 case "显示名称":
                 case "displayname":
                 case "显示名":
+                case "display_name":
                     displayName = propertyValue.Trim();
                     break;
                 case "排序序号":
                 case "sortorder":
-                    // 排序序号现在是可选的
+                case "sort_order":
                     if (int.TryParse(propertyValue.Trim(), out int sort))
                         sortOrder = sort;
                     break;
             }
+        }        /// <summary>
+
+                 /// <summary>
+                 /// 刷新架构树
+                 /// </summary>
+                 /// <returns></returns>
+        //private async Task RefreshCategoryTreeAsync()
+        //{
+        //    try
+        //    {
+        //        // 重新加载分类和子分类数据
+        //        await LoadAllCategoriesAsync();
+
+        //        // 如果有架构树控件，也需要刷新
+        //        // 例如：await LoadCategoryTreeAsync();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine($"刷新架构树时出错: {ex.Message}");
+        //    }
+        //}
+
+        /// <summary>
+        /// 重新加载所有分类（示例方法，您需要根据实际的架构树实现调整）
+        /// </summary>
+        /// <returns></returns>
+        private async Task LoadAllCategoriesAsync()
+        {
+            try
+            {
+                // 重新从数据库加载分类数据
+                var categories = await _databaseManager.GetAllCadCategoriesAsync();
+                var subcategories = await _databaseManager.GetAllCadSubcategoriesAsync();
+
+                // 更新UI显示
+                // 这里需要根据您的实际架构树实现来更新显示
+                UpdateCategoryDisplay(categories, subcategories);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载分类数据时出错: {ex.Message}");
+            }
         }
+
+        /// <summary>
+        /// 更新分类显示（根据您的实际架构树控件实现）
+        /// </summary>
+        /// <param name="categories"></param>
+        /// <param name="subcategories"></param>
+        private void UpdateCategoryDisplay(List<CadCategory> categories, List<CadSubcategory> subcategories)
+        {
+            // 这里需要根据您的实际架构树实现来更新显示
+            // 例如更新TreeView、ListBox或其他控件的显示
+
+            // 示例：如果您的架构树是TreeView
+
+            if (CategoryTreeView != null)
+            {
+                CategoryTreeView.Items.Clear();
+                foreach (var category in categories.OrderBy(c => c.SortOrder))
+                {
+                    var categoryItem = new TreeViewItem { Header = category.DisplayName, Tag = category };
+
+                    // 添加子分类
+                    var categorySubcategories = subcategories.Where(s => s.ParentId == category.Id).OrderBy(s => s.SortOrder);
+                    foreach (var subcategory in categorySubcategories)
+                    {
+                        categoryItem.Items.Add(new TreeViewItem { Header = subcategory.DisplayName, Tag = subcategory });
+                    }
+
+                    CategoryTreeView.Items.Add(categoryItem);
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine($"更新显示：{categories.Count}个分类，{subcategories.Count}个子分类");
+        }
+
+        /// <summary>
+        /// 添加DataGrid行编辑完成事件处理
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CategoryPropertiesDataGrid_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
+        {
+            // 可以在这里添加行编辑完成后的处理逻辑
+            System.Diagnostics.Debug.WriteLine("行编辑完成");
+        }
+
 
         #endregion
 
@@ -2593,70 +2599,70 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 加载并显示分类树
         /// </summary>
-        //private async Task LoadAndDisplayCategoryTreeAsync()
-        //{
-        //    try
-        //    {
-        //        System.Diagnostics.Debug.WriteLine($"=== 开始加载分类树，数据库类型: {_currentDatabaseType} ===");
-        //        // 查找显示区域的Grid（Grid.Row="2"）
-        //        // 首先尝试通过可视化树查找
-        //        Grid displayGrid = null;
+        private async Task LoadAndDisplayCategoryTreeAsync()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"=== 开始加载分类树，数据库类型: {_currentDatabaseType} ===");
+                // 查找显示区域的Grid（Grid.Row="2"）
+                // 首先尝试通过可视化树查找
+                Grid displayGrid = null;
 
-        //        // 方法3: 手动遍历查找Grid.Row="2"的Grid
-        //        if (displayGrid == null)
-        //        {
-        //            displayGrid = FindGridByRow(this, 2);
-        //            System.Diagnostics.Debug.WriteLine("方法3查找结果: " + (displayGrid != null ? "找到" : "未找到"));
-        //        }
-        //        if (displayGrid != null)
-        //        {
-        //            System.Diagnostics.Debug.WriteLine("成功找到显示区域Grid");
-        //            // 清空显示区域
-        //            displayGrid.Children.Clear();
-        //            System.Diagnostics.Debug.WriteLine("已清空显示区域");
+                // 方法3: 手动遍历查找Grid.Row="2"的Grid
+                if (displayGrid == null)
+                {
+                    displayGrid = FindGridByRow(this, 2);
+                    System.Diagnostics.Debug.WriteLine("方法3查找结果: " + (displayGrid != null ? "找到" : "未找到"));
+                }
+                if (displayGrid != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("成功找到显示区域Grid");
+                    // 清空显示区域
+                    displayGrid.Children.Clear();
+                    System.Diagnostics.Debug.WriteLine("已清空显示区域");
 
-        //            // 创建TreeView来显示分类树
-        //            _categoryTreeView = new TreeView
-        //            {
-        //                Margin = new Thickness(0, 5, 0, 5),
-        //                Background = new SolidColorBrush(Colors.LightBlue),
-        //                FontSize = 14,
-        //                Foreground = new SolidColorBrush(Colors.Black),
-        //            };
+                    // 创建TreeView来显示分类树
+                    _categoryTreeView = new TreeView
+                    {
+                        Margin = new Thickness(0, 5, 0, 5),
+                        Background = new SolidColorBrush(Colors.LightBlue),
+                        FontSize = 14,
+                        Foreground = new SolidColorBrush(Colors.Black),
+                    };
 
-        //            System.Diagnostics.Debug.WriteLine("创建TreeView完成");
-        //            if (_currentDatabaseType == "CAD")
-        //            {
-        //                // 加载CAD分类
-        //                await LoadCadCategoriesAsync(_categoryTreeView);
-        //                // 添加TreeView的选择事件
-        //                _categoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
+                    System.Diagnostics.Debug.WriteLine("创建TreeView完成");
+                    if (_currentDatabaseType == "CAD")
+                    {
+                        // 加载CAD分类
+                        await LoadCadCategoriesAsync(_categoryTreeView);
+                        // 添加TreeView的选择事件
+                        _categoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
 
-        //            }
-        //            else if (_currentDatabaseType == "SW")
-        //            {
-        //                // 加载SW分类
-        //                await LoadSwCategoriesAsync(_categoryTreeView);
-        //                // 添加TreeView的选择事件
-        //                _categoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
-        //            }
-        //            // 检查TreeView是否已正确填充
-        //            System.Diagnostics.Debug.WriteLine($"TreeView项目数量: {_categoryTreeView.Items.Count}");
+                    }
+                    else if (_currentDatabaseType == "SW")
+                    {
+                        // 加载SW分类
+                        await LoadSwCategoriesAsync(_categoryTreeView);
+                        // 添加TreeView的选择事件
+                        _categoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
+                    }
+                    // 检查TreeView是否已正确填充
+                    System.Diagnostics.Debug.WriteLine($"TreeView项目数量: {_categoryTreeView.Items.Count}");
 
-        //            // 添加TreeView到显示区域
-        //            displayGrid.Children.Clear();
-        //            displayGrid.Children.Add(_categoryTreeView);
-        //            // 添加右键菜单
-        //            AddContextMenuToTreeView(_categoryTreeView);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        System.Diagnostics.Debug.WriteLine($"加载分类树时出错: {ex.Message}");
-        //        System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {ex.StackTrace}");
-        //        System.Windows.MessageBox.Show($"加载分类树时出错: {ex.Message}");
-        //    }
-        //}
+                    // 添加TreeView到显示区域
+                    displayGrid.Children.Clear();
+                    displayGrid.Children.Add(_categoryTreeView);
+                    // 添加右键菜单
+                    AddContextMenuToTreeView(_categoryTreeView);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载分类树时出错: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+                System.Windows.MessageBox.Show($"加载分类树时出错: {ex.Message}");
+            }
+        }
 
         /// <summary>
         /// 通过Row索引查找Grid
@@ -2869,10 +2875,8 @@ namespace GB_NewCadPlus_III
             }
         }
 
-
         #endregion
 
-        #region 树节点选中与右键操作
         /// <summary>
         /// TreeView选中项改变事件
         /// </summary>
@@ -2926,240 +2930,13 @@ namespace GB_NewCadPlus_III
                 contextMenu.Items.Add(deleteItem);
 
                 treeView.ContextMenu = contextMenu;
-
-                System.Diagnostics.Debug.WriteLine("右键菜单添加成功");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"添加右键菜单时出错: {ex.Message}");
-                MessageBox.Show($"添加右键菜单失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
-
-        /// <summary>
-        /// 删除分类节点
-        /// </summary>
-        /// <param name="nodeToDelete"></param>
-        private async void DeleteCategoryNode(CategoryTreeNode nodeToDelete)
-        {
-            try
-            {
-                if (nodeToDelete == null) return;
-
-                // 根据节点层级执行不同的删除操作
-                if (nodeToDelete.Level == 0)
-                {
-                    // 删除主分类
-                    await DeleteMainCategoryAsync(nodeToDelete);
-                }
-                else
-                {
-                    // 删除子分类
-                    await DeleteSubcategoryAsync(nodeToDelete);
-                }
-
-                // 刷新架构树
-                await RefreshCategoryTreeAsync();
-                MessageBox.Show("分类删除成功", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"删除分类失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 删除主分类
-        /// </summary>
-        /// <param name="categoryNode"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private async Task<bool> DeleteMainCategoryAsync(CategoryTreeNode categoryNode)
-        {
-            try
-            {
-                // 检查是否有子分类
-                if (categoryNode.Children.Count > 0)
-                {
-                    if (MessageBox.Show("该主分类下还有子分类，确定要全部删除吗？",
-                                      "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                    {
-                        return false;
-                    }
-                }
-
-                // 从数据库删除主分类
-                int result = await _databaseManager.DeleteCadCategoryAsync(categoryNode.Id);
-                return result > 0;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除主分类失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 删除子分类
-        /// </summary>
-        /// <param name="subcategoryNode"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private async Task<bool> DeleteSubcategoryAsync(CategoryTreeNode subcategoryNode)
-        {
-            try
-            {
-                // 检查是否有子分类
-                if (subcategoryNode.Children.Count > 0)
-                {
-                    if (MessageBox.Show("该子分类下还有子分类，确定要全部删除吗？",
-                                      "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                    {
-                        return false;
-                    }
-                }
-
-                // 从数据库删除子分类
-                int result = await _databaseManager.DeleteCadSubcategoryAsync(subcategoryNode.Id);
-                if (result > 0)
-                {
-                    // 更新父级的子分类列表
-                    await UpdateParentSubcategoryListAfterDeleteAsync(subcategoryNode.ParentId, subcategoryNode.Id);
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除子分类失败: {ex.Message}");
-            }
-        }
-
-
-        /// <summary>
-        /// 删除后更新父级子分类列表
-        /// </summary>
-        /// <param name="parentId"></param>
-        /// <param name="deletedSubcategoryId"></param>
-        /// <returns></returns>
-        private async Task UpdateParentSubcategoryListAfterDeleteAsync(int parentId, int deletedSubcategoryId)
-        {
-            try
-            {
-                // 获取父级记录
-                string currentSubcategoryIds = "";
-                if (parentId >= 10000)
-                {
-                    // 父级是子分类
-                    var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
-                    currentSubcategoryIds = parentSubcategory?.SubcategoryIds ?? "";
-                }
-                else
-                {
-                    // 父级是主分类
-                    var categories = await _databaseManager.GetAllCadCategoriesAsync();
-                    var parentCategory = categories.FirstOrDefault(c => c.Id == parentId);
-                    currentSubcategoryIds = parentCategory?.SubcategoryIds ?? "";
-                }
-
-                // 更新子分类列表（移除已删除的ID）
-                if (!string.IsNullOrEmpty(currentSubcategoryIds))
-                {
-                    var ids = currentSubcategoryIds.Split(',').Select(id => id.Trim()).ToList();
-                    ids.Remove(deletedSubcategoryId.ToString());
-                    string newSubcategoryIds = string.Join(",", ids);
-
-                    // 更新数据库
-                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, newSubcategoryIds);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"更新父级子分类列表失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 更新分类属性（编辑功能）
-        /// </summary>
-        /// <returns></returns>
-        private async Task<bool> UpdateCategoryPropertiesAsync()
-        {
-            try
-            {
-                if (_selectedCategoryNode == null)
-                    throw new Exception("没有选中的分类");
-
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-                if (properties == null || properties.Count == 0)
-                    throw new Exception("没有可更新的属性");
-
-                // 解析更新的属性
-                var (name, displayName, sortOrder) = ParseUpdatedCategoryProperties(properties);
-
-                if (string.IsNullOrEmpty(name))
-                    throw new Exception("分类名称不能为空");
-
-                // 根据节点类型更新相应的记录
-                if (_selectedCategoryNode.Level == 0 && _selectedCategoryNode.Data is CadCategory category)
-                {
-                    // 更新主分类
-                    category.Name = name;
-                    category.DisplayName = displayName ?? name;
-                    category.SortOrder = sortOrder;
-                    category.UpdatedAt = DateTime.Now;
-
-                    int result = await _databaseManager.UpdateCadCategoryAsync(category);
-                    return result > 0;
-                }
-                else if (_selectedCategoryNode.Data is CadSubcategory subcategory)
-                {
-                    // 更新子分类
-                    subcategory.Name = name;
-                    subcategory.DisplayName = displayName ?? name;
-                    subcategory.SortOrder = sortOrder;
-                    subcategory.UpdatedAt = DateTime.Now;
-
-                    int result = await _databaseManager.UpdateCadSubcategoryAsync(subcategory);
-                    return result > 0;
-                }
-                else
-                {
-                    throw new Exception("不支持的分类类型");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"更新分类属性时出错: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 解析更新的分类属性
-        /// </summary>
-        /// <param name="properties"></param>
-        /// <returns></returns>
-        private (string Name, string DisplayName, int SortOrder) ParseUpdatedCategoryProperties(List<CategoryPropertyEditModel> properties)
-        {
-            string name = "";
-            string displayName = "";
-            int sortOrder = 0;
-
-            foreach (var property in properties)
-            {
-                ProcessCategoryProperty(property.PropertyName1, property.PropertyValue1, ref name, ref displayName, ref sortOrder);
-                ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
-            }
-
-            return (name, displayName, sortOrder);
-        }
-
-
-
-
-
-        #endregion
         #endregion
 
 
@@ -3464,7 +3241,7 @@ namespace GB_NewCadPlus_III
                 System.IO.Directory.CreateDirectory(_swStoragePath);
 
                 // 加载并显示SW分类树
-                //await LoadAndDisplayCategoryTreeAsync();
+                await LoadAndDisplayCategoryTreeAsync();
 
                 System.Windows.MessageBox.Show("SW数据库加载成功");
             }
@@ -3488,12 +3265,9 @@ namespace GB_NewCadPlus_III
                 }
                 if (_currentDatabaseType == "CAD")
                 {
-                    _currentOperation = ManagementOperationType.AddCategory;
-                    InitializeCategoryPropertiesForCategory();//初始化新建分类界面
-                    _selectedCategoryNode = null; // 清除选中节点，表示添加主分类
-                                                  
-                    //ShowNewCategoryTips();// 显示提示信息
-                    System.Diagnostics.Debug.WriteLine("初始化新建主分类界面");
+                    _currentOperation = ManagementOperationType.AddCategory;  // 创建新的CAD分类
+                    var existingCategories = await _databaseManager.GetAllCadCategoriesAsync();  // 读取现有的分类数据作为参考
+                    InitializeCategoryPropertiesForCategory(existingCategories);
                 }
                 else if (_currentDatabaseType == "SW")
                 {
@@ -3523,28 +3297,26 @@ namespace GB_NewCadPlus_III
                     System.Windows.MessageBox.Show("请先加载数据库");
                     return;
                 }
+                // 判断当前选中的节点是否为分类
+                if (_currentNodeId <= 0)
+                {
+                    System.Windows.MessageBox.Show("请先选择一个分类或子分类");
+                    return;
+                }
 
                 if (_currentDatabaseType == "CAD")
                 {
-                    if (_selectedCategoryNode != null)
-                    {
-                        _currentOperation = ManagementOperationType.AddSubcategory;
-                        // 初始化子分类属性编辑界面，预填父分类ID
-                        InitializeSubcategoryPropertiesForEditing(_selectedCategoryNode);  
-                        // 显示提示信息
-                        //ShowNewSubcategoryTips(_selectedCategoryNode);
-
-                        System.Diagnostics.Debug.WriteLine($"初始化添加子分类界面，父节点: {_selectedCategoryNode.DisplayText}");
-                    }
-                    else
-                    {
-                        MessageBox.Show("请先选择一个分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
+                    _currentOperation = ManagementOperationType.AddSubcategory;
+                    InitializeCategoryPropertiesForSubcategory();
                 }
+
+                // 重新加载分类树
+                await LoadAndDisplayCategoryTreeAsync();
+                //System.Windows.MessageBox.Show("子分类添加成功");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"添加子分类时出错: {ex.Message}");
+                System.Windows.MessageBox.Show($"添加子分类时出错: {ex.Message}");
             }
         }
 
@@ -3553,31 +3325,135 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private async void Edit_MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            if (_currentNodeId <= 0)
-            {
-                System.Windows.MessageBox.Show("请先选择一个项目");
-                return;
-            }
             try
             {
-                if (_selectedCategoryNode != null)
+                if (_currentNodeId <= 0)
                 {
-                    // 显示当前选中节点的属性用于编辑
-                    DisplayNodePropertiesForEditing(_selectedCategoryNode);
-                    _currentOperation = ManagementOperationType.None; // 设置为编辑模式
-
-                    System.Diagnostics.Debug.WriteLine($"初始化编辑分类界面: {_selectedCategoryNode.DisplayText}");
+                    System.Windows.MessageBox.Show("请先选择一个项目");
+                    return;
                 }
-                else
+
+                // 在DataGrid中显示选中项的详细信息以便编辑
+                var dataGrid = FindVisualChild<DataGrid>(this, null); // 需要根据实际XAML调整
+                if (dataGrid != null)
                 {
-                    MessageBox.Show("请先选择一个分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (_currentNodeType == "Category")
+                    {
+                        // 显示分类信息在DataGrid中
+                        if (_currentDatabaseType == "CAD")
+                        {
+                            var category = _currentSelectedNode as CadCategory;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", category.Id);
+                            dataTable.Rows.Add("名称", category.Name);
+                            dataTable.Rows.Add("显示名称", category.DisplayName);
+                            dataTable.Rows.Add("排序", category.SortOrder);
+                            dataTable.Rows.Add("创建时间", category.CreatedAt);
+                            dataTable.Rows.Add("更新时间", category.UpdatedAt);
+
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                        else if (_currentDatabaseType == "SW")
+                        {
+                            var category = _currentSelectedNode as SwCategory;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", category.Id);
+                            dataTable.Rows.Add("名称", category.Name);
+                            dataTable.Rows.Add("显示名称", category.DisplayName);
+                            dataTable.Rows.Add("排序", category.SortOrder);
+                            dataTable.Rows.Add("创建时间", category.CreatedAt);
+                            dataTable.Rows.Add("更新时间", category.UpdatedAt);
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                    }
+                    else if (_currentNodeType == "Subcategory")
+                    {
+                        // 显示子分类信息在DataGrid中
+                        if (_currentDatabaseType == "CAD")
+                        {
+                            var subcategory = _currentSelectedNode as CadSubcategory;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", subcategory.Id);
+                            dataTable.Rows.Add("分类ID", subcategory.Id);
+                            dataTable.Rows.Add("名称", subcategory.Name);
+                            dataTable.Rows.Add("显示名称", subcategory.DisplayName);
+                            dataTable.Rows.Add("父级ID", subcategory.ParentId);
+                            dataTable.Rows.Add("排序", subcategory.SortOrder);
+                            dataTable.Rows.Add("创建时间", subcategory.CreatedAt);
+                            dataTable.Rows.Add("更新时间", subcategory.UpdatedAt);
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                        else if (_currentDatabaseType == "SW")
+                        {
+                            var subcategory = _currentSelectedNode as SwSubcategory;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", subcategory.Id);
+                            dataTable.Rows.Add("分类ID", subcategory.Id);
+                            dataTable.Rows.Add("名称", subcategory.Name);
+                            dataTable.Rows.Add("显示名称", subcategory.DisplayName);
+                            dataTable.Rows.Add("父级ID", subcategory.ParentId);
+                            dataTable.Rows.Add("排序", subcategory.SortOrder);
+                            dataTable.Rows.Add("创建时间", subcategory.CreatedAt);
+                            dataTable.Rows.Add("更新时间", subcategory.UpdatedAt);
+
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                    }
+                    else if (_currentNodeType == "Graphic")
+                    {
+                        // 显示图元信息在DataGrid中
+                        if (_currentDatabaseType == "CAD")
+                        {
+                            var graphic = _currentSelectedNode as CadGraphic;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", graphic.Id);//Id
+                            dataTable.Rows.Add("子分类ID", graphic.Id); //子分类Id
+                            dataTable.Rows.Add("文件名", graphic.FileName);//文件名
+                            dataTable.Rows.Add("显示名称", graphic.DisplayName);//显示名称
+                            dataTable.Rows.Add("文件路径", graphic.FilePath);//文件路径
+                            dataTable.Rows.Add("预览图名", graphic.PreviewImageName);//预览图名
+                            dataTable.Rows.Add("预览图路径", graphic.PreviewImagePath);//预览图路径
+                            dataTable.Rows.Add("文件大小", graphic.FileSize);//文件大小
+                            dataTable.Rows.Add("创建时间", graphic.CreatedAt);//创建时间
+                            dataTable.Rows.Add("更新时间", graphic.UpdatedAt);//更新时间
+
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                        else if (_currentDatabaseType == "SW")
+                        {
+                            var graphic = _currentSelectedNode as SwGraphic;
+                            var dataTable = new System.Data.DataTable();
+                            dataTable.Columns.Add("属性");
+                            dataTable.Columns.Add("值");
+                            dataTable.Rows.Add("ID", graphic.Id);
+                            dataTable.Rows.Add("子分类ID", graphic.Id);
+                            dataTable.Rows.Add("文件名", graphic.FileName);
+                            dataTable.Rows.Add("显示名称", graphic.DisplayName);
+                            dataTable.Rows.Add("文件路径", graphic.FilePath);
+                            dataTable.Rows.Add("预览图名", graphic.PreviewImageName);//预览图名
+                            dataTable.Rows.Add("预览图路径", graphic.PreviewImagePath);
+                            dataTable.Rows.Add("文件大小", graphic.FileSize);
+                            dataTable.Rows.Add("创建时间", graphic.CreatedAt);
+                            dataTable.Rows.Add("更新时间", graphic.UpdatedAt);
+                            dataGrid.ItemsSource = dataTable.DefaultView;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"初始化编辑分类失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"编辑时出错: {ex.Message}");
             }
-
         }
 
         /// <summary>
@@ -3585,137 +3461,69 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private async void Delete_MenuItem_Click(object sender, RoutedEventArgs e)
         {
-
             try
             {
-                if (_selectedCategoryNode != null)
+                if (_currentNodeId <= 0)
                 {
-                    string nodeName = _selectedCategoryNode.DisplayText;
+                    System.Windows.MessageBox.Show("请先选择一个项目");
+                    return;
+                }
 
-                    if (MessageBox.Show($"确定要删除分类 '{nodeName}' 吗？\n注意：删除操作不可恢复！",
-                                      "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                // 确认删除
+                var result = System.Windows.MessageBox.Show("确定要删除选中的项目吗？这将删除所有相关的子项目。", "确认删除",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.No)
+                {
+                    return;
+                }
+
+                if (_currentNodeType == "Category")
+                {
+                    if (_currentDatabaseType == "CAD")
                     {
-                        await DeleteCategoryNodeAsync(_selectedCategoryNode);
+                        await _databaseManager.DeleteCadCategoryAsync(_currentNodeId);
+                    }
+                    else if (_currentDatabaseType == "SW")
+                    {
+                        await _databaseManager.DeleteSwCategoryAsync(_currentNodeId);
                     }
                 }
-                else
+                else if (_currentNodeType == "Subcategory")
                 {
-                    MessageBox.Show("请先选择一个分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    if (_currentDatabaseType == "CAD")
+                    {
+                        await _databaseManager.DeleteCadSubcategoryAsync(_currentNodeId);
+                    }
+                    else if (_currentDatabaseType == "SW")
+                    {
+                        await _databaseManager.DeleteSwSubcategoryAsync(_currentNodeId);
+                    }
                 }
+                else if (_currentNodeType == "Graphic")
+                {
+                    if (_currentDatabaseType == "CAD")
+                    {
+                        await _databaseManager.DeleteCadGraphicAsync(_currentNodeId);
+                    }
+                    else if (_currentDatabaseType == "SW")
+                    {
+                        await _databaseManager.DeleteSwGraphicAsync(_currentNodeId);
+                    }
+                }
+
+                // 重新加载分类树
+                await LoadAndDisplayCategoryTreeAsync();
+
+                System.Windows.MessageBox.Show("删除成功");
+
+                // 清除选中状态
+                _currentNodeId = 0;
+                _currentNodeType = "";
+                _currentSelectedNode = null;
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"删除分类失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-
-            //try
-            //{
-            //    if (_currentNodeId <= 0)
-            //    {
-            //        System.Windows.MessageBox.Show("请先选择一个项目");
-            //        return;
-            //    }
-
-            //    // 确认删除
-            //    var result = System.Windows.MessageBox.Show("确定要删除选中的项目吗？这将删除所有相关的子项目。", "确认删除",
-            //        MessageBoxButton.YesNo, MessageBoxImage.Question);
-            //    if (result == MessageBoxResult.No)
-            //    {
-            //        return;
-            //    }
-
-            //    if (_currentNodeType == "Category")
-            //    {
-            //        if (_currentDatabaseType == "CAD")
-            //        {
-            //            await _databaseManager.DeleteCadCategoryAsync(_currentNodeId);
-            //        }
-            //        else if (_currentDatabaseType == "SW")
-            //        {
-            //            await _databaseManager.DeleteSwCategoryAsync(_currentNodeId);
-            //        }
-            //    }
-            //    else if (_currentNodeType == "Subcategory")
-            //    {
-            //        if (_currentDatabaseType == "CAD")
-            //        {
-            //            await _databaseManager.DeleteCadSubcategoryAsync(_currentNodeId);
-            //        }
-            //        else if (_currentDatabaseType == "SW")
-            //        {
-            //            await _databaseManager.DeleteSwSubcategoryAsync(_currentNodeId);
-            //        }
-            //    }
-            //    else if (_currentNodeType == "Graphic")
-            //    {
-            //        if (_currentDatabaseType == "CAD")
-            //        {
-            //            await _databaseManager.DeleteCadGraphicAsync(_currentNodeId);
-            //        }
-            //        else if (_currentDatabaseType == "SW")
-            //        {
-            //            await _databaseManager.DeleteSwGraphicAsync(_currentNodeId);
-            //        }
-            //    }
-
-            //    // 重新加载分类树
-            //    //await LoadAndDisplayCategoryTreeAsync();
-
-            //    System.Windows.MessageBox.Show("删除成功");
-
-            //    // 清除选中状态
-            //    _currentNodeId = 0;
-            //    _currentNodeType = "";
-            //    _currentSelectedNode = null;
-            //}
-            //catch (Exception ex)
-            //{
-            //    System.Windows.MessageBox.Show($"删除时出错: {ex.Message}");
-            //}
-        }
-
-        /// <summary>
-        /// 删除分类节点方法
-        /// </summary>
-        /// <param name="nodeToDelete"></param>
-        /// <returns></returns>
-        private async Task DeleteCategoryNodeAsync(CategoryTreeNode nodeToDelete)
-        {
-            try
-            {
-                if (nodeToDelete == null) return;
-
-                bool success = false;
-
-                // 根据节点层级执行不同的删除操作
-                if (nodeToDelete.Level == 0)
-                {
-                    // 删除主分类
-                    success = await DeleteMainCategoryAsync(nodeToDelete);
-                }
-                else
-                {
-                    // 删除子分类
-                    success = await DeleteSubcategoryAsync(nodeToDelete);
-                }
-
-                if (success)
-                {
-                    // 刷新架构树
-                    await RefreshCategoryTreeAsync();
-                    _selectedCategoryNode = null; // 清除选中节点
-                    InitializeCategoryPropertyGrid(); // 清空属性编辑区
-
-                    MessageBox.Show("分类删除成功", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                else
-                {
-                    throw new Exception("删除操作失败");
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"删除分类失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"删除时出错: {ex.Message}");
             }
         }
 
@@ -3857,7 +3665,7 @@ namespace GB_NewCadPlus_III
                     System.Windows.MessageBox.Show("图元添加成功");
 
                     // 重新加载分类树
-                    //await LoadAndDisplayCategoryTreeAsync();
+                    await LoadAndDisplayCategoryTreeAsync();
                 }
             }
             catch (Exception ex)
@@ -3968,7 +3776,7 @@ namespace GB_NewCadPlus_III
                 System.Windows.MessageBox.Show("图元删除成功");
 
                 // 重新加载分类树
-                //await LoadAndDisplayCategoryTreeAsync();
+                await LoadAndDisplayCategoryTreeAsync();
             }
             catch (Exception ex)
             {
@@ -4001,7 +3809,6 @@ namespace GB_NewCadPlus_III
             try
             {
                 bool success = false;
-
                 switch (_currentOperation)
                 {
                     case ManagementOperationType.AddCategory:
@@ -4010,20 +3817,8 @@ namespace GB_NewCadPlus_III
                     case ManagementOperationType.AddSubcategory:
                         success = await ApplySubcategoryPropertiesAsync();
                         break;
-                    case ManagementOperationType.None:
-                        // 如果没有明确的操作类型，可能是编辑操作
-                        if (_selectedCategoryNode != null)
-                        {
-                            success = await UpdateCategoryPropertiesAsync();
-                        }
-                        else
-                        {
-                            MessageBox.Show("请先选择要操作的分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
-                        }
-                        break;
                     default:
-                        MessageBox.Show("未知操作类型", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        MessageBox.Show("请先选择要添加的类型（分类或子分类）", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                 }
 
@@ -4036,20 +3831,18 @@ namespace GB_NewCadPlus_III
                     // 刷新架构树显示
                     await RefreshCategoryTreeAsync();
 
-                    MessageBox.Show("操作成功，架构树已更新", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("属性应用成功，架构树已更新", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show("操作失败，请检查输入数据", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("属性应用失败，请检查输入数据", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"操作失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"应用属性失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
-
 
 
 
@@ -4259,79 +4052,111 @@ namespace GB_NewCadPlus_III
 
         }
         #endregion
-
         #endregion
 
+
+        /// <summary>
+        /// 删除后更新父级子分类列表
+        /// </summary>
+        /// <param name="parentId"></param>
+        /// <param name="deletedSubcategoryId"></param>
+        /// <returns></returns>
+        private async Task UpdateParentSubcategoryListAfterDeleteAsync(int parentId, int deletedSubcategoryId)
+        {
+            try
+            {
+                // 获取父级记录
+                string currentSubcategoryIds = "";
+                if (parentId >= 10000)
+                {
+                    // 父级是子分类
+                    var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
+                    currentSubcategoryIds = parentSubcategory?.SubcategoryIds ?? "";
+                }
+                else
+                {
+                    // 父级是主分类
+                    var categories = await _databaseManager.GetAllCadCategoriesAsync();
+                    var parentCategory = categories.FirstOrDefault(c => c.Id == parentId);
+                    currentSubcategoryIds = parentCategory?.SubcategoryIds ?? "";
+                }
+
+                // 更新子分类列表（移除已删除的ID）
+                if (!string.IsNullOrEmpty(currentSubcategoryIds))
+                {
+                    var ids = currentSubcategoryIds.Split(',').Select(id => id.Trim()).ToList();
+                    ids.Remove(deletedSubcategoryId.ToString());
+                    string newSubcategoryIds = string.Join(",", ids);
+
+                    // 更新数据库
+                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, newSubcategoryIds);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"更新父级子分类列表失败: {ex.Message}");
+            }
+        }
     }
-
-
     /// <summary>
     /// 分类属性编辑模型
     /// </summary>
     public class CategoryPropertyEditModel : INotifyPropertyChanged
     {
-        private string _propertyName1;
-        private string _propertyValue1;
-        private string _propertyName2;
-        private string _propertyValue2;
+        private string _propertyName1;//属性名称1
+        private string _propertyValue1;//属性值1
+        private string _propertyName2;//属性名称2
+        private string _propertyValue2;//属性值2
 
-        public string PropertyName1
+        public string PropertyName1//属性名称1
         {
-            get => _propertyName1;
+            get => _propertyName1;//属性名称1
             set
             {
-                if (_propertyName1 != value)
-                {
-                    _propertyName1 = value;
-                    OnPropertyChanged();
-                }
+                _propertyName1 = value;//属性1的名称值
+                OnPropertyChanged();
             }
         }
-
-        public string PropertyValue1
+        public string PropertyValue1//属性值1
         {
             get => _propertyValue1;
             set
             {
-                if (_propertyValue1 != value)
-                {
-                    _propertyValue1 = value;
-                    OnPropertyChanged();
-                }
+                _propertyValue1 = value;
+                OnPropertyChanged();
             }
         }
-
         public string PropertyName2
         {
             get => _propertyName2;
             set
             {
-                if (_propertyName2 != value)
-                {
-                    _propertyName2 = value;
-                    OnPropertyChanged();
-                }
+                _propertyName2 = value;
+                OnPropertyChanged();
             }
         }
-
         public string PropertyValue2
         {
             get => _propertyValue2;
             set
             {
-                if (_propertyValue2 != value)
-                {
-                    _propertyValue2 = value;
-                    OnPropertyChanged();
-                }
+                _propertyValue2 = value;
+                OnPropertyChanged();
             }
         }
 
+        /// <summary>
+        /// 属性改变事件
+        /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
 
+        /// <summary>
+        /// 属性改变
+        /// </summary>
+        /// <param name="propertyName"></param>
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));//属性改变
         }
     }
 

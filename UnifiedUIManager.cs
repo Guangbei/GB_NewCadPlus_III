@@ -1,5 +1,9 @@
-﻿using System;
+﻿using Dapper;
+using GB_NewCadPlus_III;
+using MySql.Data.MySqlClient;
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace GB_NewCadPlus_III
 {
@@ -60,7 +64,6 @@ namespace GB_NewCadPlus_III
             return defaultValue;
         }
 
-
         /// <summary>
         /// 获取WPF界面TextBox值
         /// </summary>
@@ -102,7 +105,6 @@ namespace GB_NewCadPlus_III
             }
         }
 
-
         /// <summary>
         /// 设置WPF界面TextBox值
         /// </summary>
@@ -139,11 +141,11 @@ namespace GB_NewCadPlus_III
             }
         }
     }
-    /// <summary>
-    /// TextBox值获取帮助类
-    /// </summary>
 
 }
+/// <summary>
+/// 辅助类，用于处理TextBox的值
+/// </summary>
 public static class TextBoxValueHelper
 {
     /// <summary>
@@ -153,7 +155,7 @@ public static class TextBoxValueHelper
     {
         if (textBox == null)
             return string.Empty;
-        
+
 
         if (!string.IsNullOrWhiteSpace(textBox.Text))
             return textBox.Text.Trim();
@@ -188,4 +190,5 @@ public static class TextBoxValueHelper
     }
 
 }
+
 

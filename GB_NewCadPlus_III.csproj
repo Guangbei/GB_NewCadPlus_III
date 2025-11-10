@@ -96,6 +96,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Remove="WpfMainWindow - 复制.xaml.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <None Remove="Resources\上.png" />
 	  <None Remove="Resources\下.png" />
 	  <None Remove="Resources\右.png" />
