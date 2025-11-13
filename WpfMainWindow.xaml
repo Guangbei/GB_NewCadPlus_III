@@ -2910,14 +2910,16 @@
                         Grid.Row="2"
                         Background="FloralWhite">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="5" />
-                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="3*" />
                         </Grid.ColumnDefinitions>
                         <!--  修改架构树的TreeView，添加右键菜单  -->
                         <TreeView
                             x:Name="CategoryTreeView"
                             Grid.Column="0"
+                            MinWidth="100"
+                            MaxWidth="170"
                             Margin="0,0,-3,0"
                             SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
                             <TreeView.ItemContainerStyle>
@@ -2925,7 +2927,10 @@
                             </TreeView.ItemContainerStyle>
                             <TreeView.ItemTemplate>
                                 <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <TextBlock Text="{Binding DisplayText}" />
+                                    <TextBlock
+                                        HorizontalAlignment="Left"
+                                        Text="{Binding DisplayText}"
+                                        TextWrapping="NoWrap" />
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>
@@ -2939,47 +2944,70 @@
                         <DataGrid
                             x:Name="StroageFileDataGrid"
                             Grid.Column="2"
+                            Margin="5"
+                            FontSize="11"
+                            FontStyle="Normal"
                             AutoGenerateColumns="False"
                             CanUserAddRows="False"
                             CanUserDeleteRows="False"
                             GridLinesVisibility="All"
                             HeadersVisibility="Column"
+                            HorizontalScrollBarVisibility="Auto"
+                            Loaded="StroageFileDataGrid_Loaded"
                             MouseDoubleClick="StroageFileDataGrid_MouseDoubleClick"
                             SelectionMode="Single"
-                            SelectionUnit="FullRow">
+                            SelectionUnit="FullRow"
+                            TargetUpdated="StroageFileDataGrid_TargetUpdated"
+                            VerticalScrollBarVisibility="Auto">
                             <DataGrid.Columns>
+                                <!--  文件名列 - 支持自动换行  -->
                                 <DataGridTextColumn
                                     Width="*"
-                                    Binding="{Binding DisplayName}"
-                                    Header="文件名" />
-                                <DataGridTemplateColumn Width="100" Header="预览">
+                                    CanUserResize="True"
+                                    Header="文件名">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextWrapping" Value="Wrap" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                            <Setter Property="Margin" Value="5,3,5,3" />
+                                            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                    <DataGridTextColumn.Binding>
+                                        <Binding Path="DisplayName" />
+                                    </DataGridTextColumn.Binding>
+                                </DataGridTextColumn>
+
+                                <!--  预览图片列  -->
+                                <DataGridTemplateColumn
+                                    Width="100"
+                                    CanUserResize="False"
+                                    Header="预览">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid>
                                                 <Image
                                                     x:Name="PreviewImage"
                                                     Width="80"
-                                                    Height="50"
+                                                    Height="60"
                                                     Loaded="PreviewImage_Loaded"
                                                     Stretch="Uniform">
                                                     <Image.Tag>
                                                         <Binding Path="." />
                                                     </Image.Tag>
                                                 </Image>
-                                                <TextBlock
-                                                    x:Name="LoadingText"
-                                                    HorizontalAlignment="Center"
-                                                    VerticalAlignment="Center"
-                                                    FontSize="10"
-                                                    Foreground="Gray"
-                                                    Text="加载中..." />
                                             </Grid>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
+                            <!-- 设置DataGrid的行样式 -->
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Setter Property="Height" Value="70" />
+                                </Style>
+                            </DataGrid.RowStyle>
                         </DataGrid>
-
                     </Grid>
                     <!--  第四行  -->
                     <Grid

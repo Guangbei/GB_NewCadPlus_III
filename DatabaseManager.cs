@@ -128,7 +128,7 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class FileAttribute
     {
-        
+
         public int Id { get; set; }//属性Id id AS Id,
         public int FileStorageId { get; set; }//文件id file_storage_id AS FileStorageId,
         public string? FileName { get; set; }//文件名称 file_name AS FileName,
@@ -1124,7 +1124,7 @@ namespace GB_NewCadPlus_III
         public async Task<bool> UpdateFileBatchAsync(List<FileStorage> file)
         {
             const string updateSql = @"
-            UPDATE cad_graphics 
+            UPDATE cad_file_storage 
             SET display_name = @DisplayName,
                 file_path = @FilePath,
                 preview_image_path = @PreviewImagePath,
@@ -1239,7 +1239,7 @@ namespace GB_NewCadPlus_III
             category_id AS CategoryId,
             file_attribute_id AS FileAttributeId,
             file_name AS FileName,
-            stored_file_name AS StoredFileName,
+            file_stored_name AS FileStoredName,
             file_type AS FileType,
             file_hash AS FileHash,
             display_name AS DisplayName,
@@ -1263,9 +1263,9 @@ namespace GB_NewCadPlus_III
             last_accessed_at AS LastAccessedAt,
             created_at AS CreatedAt,
             updated_at AS UpdatedAt
-        FROM cad_graphics 
-        WHERE category_id = @categoryId 
-          AND category_type = @categoryType
+        FROM cad_file_stroage 
+        WHERE category_id = @CategoryId 
+          AND category_type = @CategoryType
           AND is_active = 1";
             try
             {
@@ -1296,6 +1296,100 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
+        ///  获取分类下的所有文件
+        /// </summary>
+        /// <param name="categoryId">分类Id</param>
+        /// <param name="categoryType">分类类型</param>
+        /// <returns></returns>
+        public async Task<List<FileStorage>> GetFilesByCategoryIdAsync(int categoryId, string categoryType)
+        {
+            const string sql = @"
+        SELECT 
+            id AS Id,
+            category_id AS CategoryId,
+            category_type AS CategoryType,
+            file_name AS FileName,
+            file_stored_name AS FileStoredName,
+            file_path AS FilePath,
+            file_type AS FileType,
+            file_size AS FileSize,
+            file_hash AS FileHash,
+            display_name AS DisplayName,
+            element_block_name AS ElementBlockName,
+            layer_name AS LayerName,
+            color_index AS ColorIndex,
+            preview_image_name AS PreviewImageName,
+            preview_image_path AS PreviewImagePath,
+            description AS Description,
+            version AS Version,
+            is_preview AS IsPreview,
+            is_active AS IsActive,
+            created_by AS CreatedBy,
+            created_at AS CreatedAt,
+            updated_at AS UpdatedAt
+        FROM cad_file_storage 
+        WHERE category_id = @categoryId 
+          AND category_type = @categoryType
+        ORDER BY created_at DESC";
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var result = await connection.QueryAsync<FileStorage>(sql, new { categoryId, categoryType });
+                return result.AsList();
+            }
+            catch (Exception e)
+            {
+                Env.Editor.WriteMessage(e.Message);
+                return new List<FileStorage>();
+            }
+        }
+        /// <summary>
+        /// 根据分类ID获取文件列表
+        /// </summary>
+        //public async Task<List<FileStorage>> GetFilesByCategoryIdAsync(int categoryId, string categoryType = "sub")
+        //{
+        //    const string sql = @"
+        //SELECT 
+        //    id AS Id,
+        //    category_id AS CategoryId,
+        //    category_type AS CategoryType,
+        //    file_name AS FileName,
+        //    file_stored_name AS FileStoredName,
+        //    file_path AS FilePath,
+        //    file_type AS FileType,
+        //    file_size AS FileSize,
+        //    file_hash AS FileHash,
+        //    display_name AS DisplayName,
+        //    element_block_name AS ElementBlockName,
+        //    layer_name AS LayerName,
+        //    color_index AS ColorIndex,
+        //    preview_image_name AS PreviewImageName,
+        //    preview_image_path AS PreviewImagePath,
+        //    description AS Description,
+        //    version AS Version,
+        //    is_preview AS IsPreview,
+        //    is_active AS IsActive,
+        //    created_by AS CreatedBy,
+        //    created_at AS CreatedAt,
+        //    updated_at AS UpdatedAt
+        //FROM cad_file_storage 
+        //WHERE category_id = @categoryId 
+        //  AND category_type = @categoryType
+        //  AND is_active = 1
+        //ORDER BY created_at DESC";
+        //    try
+        //    {
+        //        using var connection = new MySqlConnection(_connectionString);
+        //        return (await connection.QueryAsync<FileStorage>(sql, new { categoryId, categoryType })).AsList();
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Console.WriteLine(e.Message);
+        //        return new List<FileStorage>();
+        //    }
+
+        //}
+        /// <summary>
         /// 根据文件扩展名获取分类下的文件
         /// </summary>
         public async Task<List<FileStorage>> GetFilesByCategoryAndExtensionAsync(int categoryId, string fileType)
@@ -1306,7 +1400,7 @@ namespace GB_NewCadPlus_III
             category_id AS CategoryId,
             file_attribute_id AS FileAttributeId,
             file_name AS FileName,
-            stored_file_name AS StoredFileName,
+            file_stored_name AS FileStoredName,
             file_type AS FileType,
             file_hash AS FileHash,
             display_name AS DisplayName,
@@ -1330,7 +1424,7 @@ namespace GB_NewCadPlus_III
             last_accessed_at AS LastAccessedAt,
             created_at AS CreatedAt,
             updated_at AS UpdatedAt
-        FROM cad_graphics 
+        FROM cad_file_storage 
         WHERE category_id = @categoryId 
           AND file_type = @fileType
           AND is_active = 1
@@ -1345,7 +1439,6 @@ namespace GB_NewCadPlus_III
                 System.Diagnostics.Debug.WriteLine($"根据文件扩展名获取分类下的文件时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
-
         }
 
         /// <summary>
@@ -1359,7 +1452,7 @@ namespace GB_NewCadPlus_III
             category_id AS CategoryId,
             file_attribute_id AS FileAttributeId,
             file_name AS FileName,
-            stored_file_name AS StoredFileName,
+            file_stored_name AS FileStoredName,
             file_type AS FileType,
             file_hash AS FileHash,
             display_name AS DisplayName,
@@ -1383,7 +1476,7 @@ namespace GB_NewCadPlus_III
             last_accessed_at AS LastAccessedAt,
             created_at AS CreatedAt,
             updated_at AS UpdatedAt
-        FROM cad_graphics 
+        FROM cad_file_storage 
         WHERE is_active = 1";
             try
             {
@@ -1412,7 +1505,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"搜索文件时出错: {ex.Message}");
+                Env.Editor.WriteMessage($"搜索文件时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
 
@@ -1430,7 +1523,7 @@ namespace GB_NewCadPlus_III
             category_id AS CategoryId,
             file_attribute_id AS FileAttributeId,
             file_name AS FileName,
-            stored_file_name AS StoredFileName,
+            file_stored_name AS FileStoredName,
             file_type AS FileType,
             file_hash AS FileHash,
             display_name AS DisplayName,
@@ -1454,7 +1547,7 @@ namespace GB_NewCadPlus_III
             last_accessed_at AS LastAccessedAt,
             created_at AS CreatedAt,
             updated_at AS UpdatedAt
-        FROM cad_graphics 
+        FROM cad_file_storage 
         WHERE id = @fileId AND is_active = 1";
 
             // 获取文件属性信息
@@ -1755,7 +1848,7 @@ namespace GB_NewCadPlus_III
             cg.category_id AS CategoryId,
             cg.file_attribute_id AS FileAttributeId,
             cg.file_name AS FileName,
-            cg.stored_file_name AS StoredFileName,
+            cg.file_stored_name AS FileStoredName,
             cg.file_type AS FileType,
             cg.file_hash AS FileHash,
             cg.display_name AS DisplayName,
@@ -1780,7 +1873,7 @@ namespace GB_NewCadPlus_III
             cg.created_at AS CreatedAt,
             cg.updated_at AS UpdatedAt,
             COUNT(fal.id) as AccessCount
-        FROM cad_graphics cg
+        FROM cad_file_storage cg
         LEFT JOIN file_access_logs fal ON cg.id = fal.file_id
         WHERE cg.is_active = 1
         GROUP BY cg.id
@@ -1812,7 +1905,7 @@ namespace GB_NewCadPlus_III
         public async Task<FileStorage> GetCadGraphicByIdAsync(int categoryId)
         {
             using var connection = GetConnection();
-            var sql = "SELECT * FROM cad_graphics WHERE id = @Id";
+            var sql = "SELECT * FROM cad_file_storage WHERE id = @Id";
             return await connection.QueryFirstOrDefaultAsync<FileStorage>(sql, new { Id = categoryId });
         }
         /// <summary>
@@ -1835,7 +1928,7 @@ namespace GB_NewCadPlus_III
                  file_size AS FileSize,
                  created_at AS CreatedAt,
                  updated_at AS UpdatedAt,
-             FROM cad_graphics 
+             FROM cad_file_storage 
              WHERE subcategory_id = @SubcategoryId 
              ORDER BY file_name";
             using var connection = new MySqlConnection(_connectionString);
@@ -1896,7 +1989,7 @@ namespace GB_NewCadPlus_III
         public async Task<int> UpdateCadGraphicAsync(FileStorage graphic)
         {
             using var connection = GetConnection();
-            var sql = @"UPDATE cad_graphics 
+            var sql = @"UPDATE cad_file_storage 
           SET 
              cad_graphice_id = @CadGraphiceId,//图元ID
              subcategory_id = @SubcategoryId,
@@ -1951,7 +2044,7 @@ namespace GB_NewCadPlus_III
         public async Task<int> DeleteCadGraphicAsync(int id)
         {
             using var connection = GetConnection();
-            var sql = "DELETE FROM cad_graphics WHERE id = @Id";
+            var sql = "DELETE FROM cad_file_storage WHERE id = @Id";
             return await connection.ExecuteAsync(sql, new { Id = id });
         }
 
@@ -1965,7 +2058,7 @@ namespace GB_NewCadPlus_III
                  id AS Id,
                  category_id AS CategoryId,
                  file_name AS FileName,
-                 stored_file_name AS StoredFileName,
+                 file_stored_name AS FileStoredName,
                  file_path AS FilePath,
                  file_type AS FileType,
                  file_size AS FileSize,
@@ -1977,7 +2070,7 @@ namespace GB_NewCadPlus_III
                  updated_at AS UpdatedAt,
                  created_by AS CreatedBy,
                  is_active AS IsActive
-             FROM file_storage 
+             FROM cad_file_storage 
              WHERE id = @fileId";
 
             using var connection = new MySqlConnection(_connectionString);
@@ -2258,7 +2351,7 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                const string sql = "DELETE FROM cad_graphics WHERE id = @fileId";
+                const string sql = "DELETE FROM cad_file_storage WHERE id = @fileId";
 
                 using var connection = new MySqlConnection(_connectionString);
                 return await connection.ExecuteAsync(sql, new { fileId });
@@ -2311,52 +2404,7 @@ namespace GB_NewCadPlus_III
 
         }
 
-        /// <summary>
-        /// 根据分类ID获取文件列表
-        /// </summary>
-        public async Task<List<FileStorage>> GetFilesByCategoryIdAsync(int categoryId, string categoryType = "sub")
-        {
-            const string sql = @"
-        SELECT 
-            id AS Id,
-            category_id AS CategoryId,
-            category_type AS CategoryType,
-            file_name AS FileName,
-            stored_file_name AS StoredFileName,
-            file_path AS FilePath,
-            file_type AS FileType,
-            file_size AS FileSize,
-            file_hash AS FileHash,
-            display_name AS DisplayName,
-            element_block_name AS ElementBlockName,
-            layer_name AS LayerName,
-            color_index AS ColorIndex,
-            preview_image_name AS PreviewImageName,
-            preview_image_path AS PreviewImagePath,
-            description AS Description,
-            version AS Version,
-            is_preview AS IsPreview,
-            is_active AS IsActive,
-            created_by AS CreatedBy,
-            created_at AS CreatedAt,
-            updated_at AS UpdatedAt
-        FROM cad_file_storage 
-        WHERE category_id = @categoryId 
-          AND category_type = @categoryType
-          AND is_active = 1
-        ORDER BY created_at DESC";
-            try
-            {
-                using var connection = new MySqlConnection(_connectionString);
-                return (await connection.QueryAsync<FileStorage>(sql, new { categoryId, categoryType })).AsList();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                return new List<FileStorage>();
-            }
 
-        }
 
 
 

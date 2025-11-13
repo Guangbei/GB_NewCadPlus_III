@@ -205,8 +205,8 @@ namespace GB_NewCadPlus_III
                 {
                     System.Diagnostics.Debug.WriteLine("未找到名称为MainTabControl的控件");
                 }
-
-                InitializeDatabase();//初始化数据库
+                ReinitializeDatabase();
+                //InitializeDatabase();//初始化数据库
 
                 // 添加右键菜单到分类树
                 if (CategoryTreeView != null)
@@ -289,78 +289,78 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 从服务器获取预览图片并缓存
         /// </summary>
-        private async Task<BitmapImage> GetPreviewImageAsync(FileStorage fileStorage)
-        {
-            try
-            {
-                // 检查内存缓存
-                if (_imageCache.ContainsKey(fileStorage.FilePath))
-                {
-                    return _imageCache[fileStorage.FilePath];
-                }
+        //private async Task<BitmapImage> GetPreviewImageAsync(FileStorage fileStorage)
+        //{
+        //    try
+        //    {
+        //        // 检查内存缓存
+        //        if (_imageCache.ContainsKey(fileStorage.FilePath))
+        //        {
+        //            return _imageCache[fileStorage.FilePath];
+        //        }
 
-                // 检查本地缓存文件
-                string cacheFileName = $"{fileStorage.Id}_{Path.GetFileName(fileStorage.PreviewImagePath ?? fileStorage.FilePath)}.png";
-                string cacheFilePath = Path.Combine(_previewCachePath, cacheFileName);
+        //        // 检查本地缓存文件
+        //        string cacheFileName = $"{fileStorage.Id}_{Path.GetFileName(fileStorage.PreviewImagePath ?? fileStorage.FilePath)}";
+        //        string cacheFilePath = Path.Combine(_previewCachePath, cacheFileName);
 
-                if (File.Exists(cacheFilePath))
-                {
-                    // 从本地缓存加载
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(cacheFilePath);
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.EndInit();
+        //        if (File.Exists(cacheFilePath))
+        //        {
+        //            // 从本地缓存加载
+        //            var bitmap = new BitmapImage();
+        //            bitmap.BeginInit();
+        //            bitmap.UriSource = new Uri(cacheFilePath);
+        //            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        //            bitmap.EndInit();
 
-                    // 添加到内存缓存
-                    _imageCache[fileStorage.FilePath] = bitmap;
-                    return bitmap;
-                }
+        //            // 添加到内存缓存
+        //            _imageCache[fileStorage.FilePath] = bitmap;
+        //            return bitmap;
+        //        }
 
-                // 从服务器下载预览图片
-                if (!string.IsNullOrEmpty(fileStorage.PreviewImagePath) && _fileManager != null)
-                {
-                    try
-                    {
-                        using (var imageStream = await _fileManager.DownloadFileAsync(
-                            fileStorage.Id, Environment.UserName, GetLocalIpAddress()))
-                        {
-                            if (imageStream != null)
-                            {
-                                // 保存到本地缓存
-                                using (var fileStream = File.Create(cacheFilePath))
-                                {
-                                    await imageStream.CopyToAsync(fileStream);
-                                }
+        //        // 从服务器下载预览图片
+        //        if (!string.IsNullOrEmpty(fileStorage.PreviewImagePath) && _fileManager != null)
+        //        {
+        //            try
+        //            {
+        //                using (var imageStream = await _fileManager.DownloadFileAsync(
+        //                    fileStorage.Id, Environment.UserName, GetLocalIpAddress()))
+        //                {
+        //                    if (imageStream != null)
+        //                    {
+        //                        // 保存到本地缓存
+        //                        using (var fileStream = File.Create(cacheFilePath))
+        //                        {
+        //                            await imageStream.CopyToAsync(fileStream);
+        //                        }
 
-                                // 加载图片
-                                var bitmap = new BitmapImage();
-                                bitmap.BeginInit();
-                                bitmap.UriSource = new Uri(cacheFilePath);
-                                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                                bitmap.EndInit();
+        //                        // 加载图片
+        //                        var bitmap = new BitmapImage();
+        //                        bitmap.BeginInit();
+        //                        bitmap.UriSource = new Uri(cacheFilePath);
+        //                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        //                        bitmap.EndInit();
 
-                                // 添加到内存缓存
-                                _imageCache[fileStorage.FilePath] = bitmap;
-                                return bitmap;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"下载预览图片失败: {ex.Message}");
-                    }
-                }
+        //                        // 添加到内存缓存
+        //                        _imageCache[fileStorage.FilePath] = bitmap;
+        //                        return bitmap;
+        //                    }
+        //                }
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                System.Diagnostics.Debug.WriteLine($"下载预览图片失败: {ex.Message}");
+        //            }
+        //        }
 
-                // 如果没有预览图片，返回默认图片
-                return GetDefaultPreviewImage();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"获取预览图片时出错: {ex.Message}");
-                return GetDefaultPreviewImage();
-            }
-        }
+        //        // 如果没有预览图片，返回默认图片
+        //        return GetDefaultPreviewImage();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        System.Diagnostics.Debug.WriteLine($"获取预览图片时出错: {ex.Message}");
+        //        return GetDefaultPreviewImage();
+        //    }
+        //}
 
         /// <summary>
         /// 获取默认预览图片
@@ -369,17 +369,163 @@ namespace GB_NewCadPlus_III
         {
             try
             {
+                // 首先尝试从资源加载默认图片
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
-                bitmap.UriSource = new Uri("pack://application:,,,/Resources/default_preview.png");
+                bitmap.UriSource = new Uri("pack://application:,,,/GB_NewCadPlus_III;component/Resources/default_preview.png");
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.EndInit();
+                bitmap.Freeze();
                 return bitmap;
             }
-            catch
+            catch (Exception ex)
             {
-                // 如果默认图片不存在，创建一个空白图片
+                System.Diagnostics.Debug.WriteLine($"加载默认预览图片失败: {ex.Message}");
+
+                // 如果资源图片不存在，创建一个纯色图片
+                try
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri("pack://application:,,,/GB_NewCadPlus_III;component/Resources/no_preview.png");
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    return bitmap;
+                }
+                catch
+                {
+                    // 如果都失败了，创建一个空白图片
+                    return CreatePlaceholderImage();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 创建占位符图片
+        /// </summary>
+        private BitmapImage CreatePlaceholderImage()
+        {
+            try
+            {
+                // 创建一个简单的占位符图片
+                var bitmap = new RenderTargetBitmap(80, 60, 96, 96, PixelFormats.Pbgra32);
+
+                var drawingVisual = new DrawingVisual();
+                using (var drawingContext = drawingVisual.RenderOpen())
+                {
+                    // 绘制灰色背景
+                    drawingContext.DrawRectangle(Brushes.LightGray, new Pen(Brushes.Gray, 1), new System.Windows.Rect(0, 0, 80, 60));
+
+                    // 绘制"No Preview"文本
+                    var text = new FormattedText(
+                        "无预览",
+                        System.Globalization.CultureInfo.CurrentCulture,
+                        FlowDirection,
+                        new Typeface("Arial"),
+                        12,
+                        Brushes.Gray);
+
+                    drawingContext.DrawText(text, new Point(20, 20));
+                }
+
+                bitmap.Render(drawingVisual);
+
+                // 转换为BitmapImage
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+
+                using (var stream = new MemoryStream())
+                {
+                    encoder.Save(stream);
+                    stream.Position = 0;
+
+                    var result = new BitmapImage();
+                    result.BeginInit();
+                    result.StreamSource = stream;
+                    result.CacheOption = BitmapCacheOption.OnLoad;
+                    result.EndInit();
+                    result.Freeze();
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"创建占位符图片失败: {ex.Message}");
+
+                // 最后的备选方案：返回空的BitmapImage
                 return new BitmapImage();
+            }
+        }
+
+        /// <summary>
+        /// 检查文件是否为支持的图片格式
+        /// </summary>
+        private bool IsSupportedImageFormat(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return false;
+
+            string extension = Path.GetExtension(filePath)?.ToLower();
+            var supportedFormats = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".tif", ".tiff" };
+            return supportedFormats.Contains(extension);
+        }
+
+        /// <summary>
+        /// 获取文件的MIME类型
+        /// </summary>
+        private string GetMimeType(string filePath)
+        {
+            string extension = Path.GetExtension(filePath)?.ToLower();
+            switch (extension)
+            {
+                case ".png": return "image/png";
+                case ".jpg":
+                case ".jpeg": return "image/jpeg";
+                case ".bmp": return "image/bmp";
+                case ".gif": return "image/gif";
+                case ".tif":
+                case ".tiff": return "image/tiff";
+                default: return "application/octet-stream";
+            }
+        }
+
+        /// <summary>
+        /// 清理无效的图片缓存
+        /// </summary>
+        private void CleanupInvalidImageCache()
+        {
+            try
+            {
+                var invalidKeys = new List<string>();
+
+                foreach (var kvp in _imageCache)
+                {
+                    try
+                    {
+                        // 检查图片是否仍然有效
+                        if (kvp.Value == null || kvp.Value.Width <= 0 || kvp.Value.Height <= 0)
+                        {
+                            invalidKeys.Add(kvp.Key);
+                        }
+                    }
+                    catch
+                    {
+                        invalidKeys.Add(kvp.Key);
+                    }
+                }
+
+                // 移除无效的缓存项
+                foreach (string key in invalidKeys)
+                {
+                    _imageCache.Remove(key);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"清理了 {invalidKeys.Count} 个无效的图片缓存项");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"清理图片缓存时出错: {ex.Message}");
             }
         }
 
@@ -407,8 +553,187 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 在窗口关闭时清理缓存
-        protected  void OnClosing(CancelEventArgs e)
+
+        /// <summary>
+        /// 从服务器获取预览图片并缓存
+        /// </summary>
+        private async Task<BitmapImage> GetPreviewImageAsync(FileStorage fileStorage)
+        {
+            try
+            {
+                // 检查文件存储对象是否有效
+                if (fileStorage == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("文件存储对象为空");
+                    return GetDefaultPreviewImage();
+                }
+
+                // 检查内存缓存
+                if (_imageCache.ContainsKey(fileStorage.FilePath ?? fileStorage.Id.ToString()))
+                {
+                    return _imageCache[fileStorage.FilePath ?? fileStorage.Id.ToString()];
+                }
+
+                // 检查是否有预览图片路径
+                string previewImagePath = fileStorage.PreviewImagePath ?? fileStorage.FilePath;
+                if (string.IsNullOrEmpty(previewImagePath))
+                {
+                    System.Diagnostics.Debug.WriteLine("预览图片路径为空");
+                    return GetDefaultPreviewImage();
+                }
+
+                // 检查本地缓存文件
+                string cacheFileName = $"{fileStorage.Id}_{Path.GetFileName(previewImagePath)}.png";
+                string cacheFilePath = Path.Combine(_previewCachePath, cacheFileName);
+
+                // 如果本地缓存存在且有效，直接加载
+                if (File.Exists(cacheFilePath))
+                {
+                    try
+                    {
+                        var bitmap = LoadImageFromFile(cacheFilePath);
+                        if (bitmap != null)
+                        {
+                            // 添加到内存缓存
+                            _imageCache[fileStorage.FilePath ?? fileStorage.Id.ToString()] = bitmap;
+                            return bitmap;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"从本地缓存加载图片失败: {ex.Message}");
+                        // 删除损坏的缓存文件
+                        try { File.Delete(cacheFilePath); } catch { }
+                    }
+                }
+
+                // 尝试从原始路径加载图片
+                if (File.Exists(previewImagePath))
+                {
+                    try
+                    {
+                        var bitmap = LoadImageFromFile(previewImagePath);
+                        if (bitmap != null)
+                        {
+                            // 保存到本地缓存
+                            try
+                            {
+                                using (var fileStream = File.Create(cacheFilePath))
+                                {
+                                    var encoder = new PngBitmapEncoder();
+                                    encoder.Frames.Add(BitmapFrame.Create(bitmap));
+                                    encoder.Save(fileStream);
+                                }
+                            }
+                            catch (Exception cacheEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"保存到缓存失败: {cacheEx.Message}");
+                            }
+
+                            // 添加到内存缓存
+                            _imageCache[fileStorage.FilePath ?? fileStorage.Id.ToString()] = bitmap;
+                            return bitmap;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"从原始路径加载图片失败: {ex.Message}");
+                    }
+                }
+
+                // 如果所有方法都失败，返回默认图片
+                return GetDefaultPreviewImage();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"获取预览图片时出错: {ex.Message}");
+                return GetDefaultPreviewImage();
+            }
+        }
+
+        /// <summary>
+        /// 从文件加载图片（带错误处理）
+        /// </summary>
+        private BitmapImage LoadImageFromFile(string imagePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                    return null;
+
+                // 获取文件扩展名
+                string extension = Path.GetExtension(imagePath)?.ToLower();
+
+                // 根据文件类型使用不同的加载方法
+                switch (extension)
+                {
+                    case ".png":
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".bmp":
+                    case ".gif":
+                    case ".tif":
+                    case ".tiff":
+                        return LoadStandardImage(imagePath);
+                    default:
+                        // 尝试使用默认方式加载
+                        return LoadStandardImage(imagePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载图片文件失败 {imagePath}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 加载标准图片格式
+        /// </summary>
+        private BitmapImage LoadStandardImage(string imagePath)
+        {
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                bitmap.EndInit();
+                bitmap.Freeze(); // 冻结以提高性能
+                return bitmap;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载标准图片失败 {imagePath}: {ex.Message}");
+
+                // 尝试使用流方式加载
+                try
+                {
+                    using (var stream = new FileStream(imagePath, FileMode.Open, FileAccess.Read))
+                    {
+                        var bitmap = new BitmapImage();
+                        bitmap.BeginInit();
+                        bitmap.StreamSource = stream;
+                        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmap.EndInit();
+                        bitmap.Freeze();
+                        return bitmap;
+                    }
+                }
+                catch (Exception streamEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"流方式加载图片也失败 {imagePath}: {streamEx.Message}");
+                    return null;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 在窗口关闭时清理缓存
+        /// </summary>
+        /// <param name="e"></param>
+        protected void OnClosing(CancelEventArgs e)
         {
             try
             {
@@ -416,7 +741,7 @@ namespace GB_NewCadPlus_III
                 _serverSyncManager?.StopSync();
 
                 // 清理图片缓存
-                ClearImageCache();
+                CleanupInvalidImageCache();
 
                 OnClosing(e);
             }
@@ -426,12 +751,17 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 添加手动清理缓存按钮
+        /// <summary>
+        /// 添加手动清理缓存按钮
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void 清理缓存按钮_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                ClearImageCache();
+
+                CleanupInvalidImageCache();
                 MessageBox.Show("缓存已清理", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -2311,6 +2641,76 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
+        /// 调整DataGrid行高以适应换行文本
+        /// </summary>
+        private void AdjustDataGridRowHeight()
+        {
+            try
+            {
+                if (StroageFileDataGrid != null)
+                {
+                    // 设置行高为自动调整
+                    StroageFileDataGrid.RowHeight = Double.NaN; // 自动行高
+
+                    // 或者设置一个最小行高
+                    // StroageFileDataGrid.MinRowHeight = 60;
+                }
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"调整DataGrid行高时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 在DataGrid数据源改变时调整行高
+        /// </summary>
+        private void StroageFileDataGrid_TargetUpdated(object sender, System.Windows.Data.DataTransferEventArgs e)
+        {
+            try
+            {
+                // 延迟调整行高，确保数据已加载
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    AdjustDataGridRowHeight();
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"DataGrid数据更新时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 在DataGrid加载完成后调整行高
+        /// </summary>
+        private void StroageFileDataGrid_Loaded(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                AdjustDataGridRowHeight();
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"DataGrid加载时出错: {ex.Message}");
+            }
+        }
+
+        // 添加文件名处理方法
+        private string FormatFileNameForDisplay(string fileName, int maxLength = 50)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return string.Empty;
+
+            if (fileName.Length <= maxLength)
+                return fileName;
+
+            // 截断过长的文件名并添加省略号
+            return fileName.Substring(0, maxLength - 3) + "...";
+        }
+
+
+        /// <summary>
         /// 递归展开所有子节点
         /// </summary>
         /// <param name="item"></param>
@@ -2341,15 +2741,24 @@ namespace GB_NewCadPlus_III
                 if (e.NewValue is CategoryTreeNode selectedNode)
                 {
                     _selectedCategoryNode = selectedNode;
+                    //System.Diagnostics.Debug.WriteLine($"选中分类节点: {selectedNode.DisplayText} (ID: {selectedNode.Id}, Level: {selectedNode.Level})");
+                    Env.Editor.WriteMessage($"选中分类节点: {selectedNode.DisplayText} (ID: {selectedNode.Id}, Level: {selectedNode.Level})");
                     // 根据选中的节点类型显示相应的属性编辑界面
                     DisplayNodePropertiesForEditing(selectedNode);
+
                     // 加载该分类下的文件
                     await LoadFilesForCategoryAsync(selectedNode);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("选中的节点为空或类型不正确");
+                    StroageFileDataGrid.ItemsSource = null;
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"处理架构树选中项改变失败: {ex.Message}");
+                MessageBox.Show($"处理分类选择失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -2434,7 +2843,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 获取子分类数量
+        /// 获取分类数量
         /// </summary>
         /// <param name="category"></param>
         /// <returns></returns>
@@ -2457,7 +2866,6 @@ namespace GB_NewCadPlus_III
 
             return subcategory.SubcategoryIds.Split(',').Length;
         }
-
 
         /// <summary>
         /// 初始化子分类属性编辑界面
@@ -2791,30 +3199,79 @@ namespace GB_NewCadPlus_III
             try
             {
                 if (_databaseManager == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("数据库管理器未初始化");
                     return;
+                }
 
                 List<FileStorage> files = new List<FileStorage>();
 
-                if (categoryNode.Level == 0 && categoryNode.Data is CadCategory)
+                //System.Diagnostics.Debug.WriteLine($"开始加载分类 {categoryNode.Id} ({categoryNode.DisplayText}) 的文件");
+                Env.Editor.WriteMessage($"开始加载分类 {categoryNode.Id} ({categoryNode.DisplayText}) 的文件");
+
+                if (categoryNode.Level == 0 && categoryNode.Data is CadCategory category)
                 {
-                    // 主分类，加载该分类下的所有文件
-                    files = await _databaseManager.GetFilesByCategoryIdAsync(categoryNode.Id, "main");
+                    // 主分类
+                    Env.Editor.WriteMessage($"加载主分类 {category.Name} (ID: {category.Id}) 的文件");
+                    files = await _databaseManager.GetFilesByCategoryIdAsync(category.Id, "main");
                 }
-                else if (categoryNode.Data is CadSubcategory)
+                else if (categoryNode.Data is CadSubcategory subcategory)
                 {
-                    // 子分类，加载该子分类下的所有文件
-                    files = await _databaseManager.GetFilesByCategoryIdAsync(categoryNode.Id, "sub");
+                    // 子分类
+
+                    Env.Editor.WriteMessage($"加载子分类 {subcategory.Name} (ID: {subcategory.Id}) 的文件");
+                    files = await _databaseManager.GetFilesByCategoryIdAsync(subcategory.Id, "sub");
+                }
+                else
+                {
+                    Env.Editor.WriteMessage("未知的节点类型");
+                    return;
                 }
 
-                // 绑定到DataGrid
-                StroageFileDataGrid.ItemsSource = files;
+                Env.Editor.WriteMessage($"从数据库查询到 {files.Count} 个文件");
 
-                // 异步加载预览图片
-                await LoadPreviewImagesAsync(files);
+                // 调试输出文件信息
+                DebugFileData(files);
+
+                // 确保在UI线程更新DataGrid
+                Dispatcher.Invoke(() =>
+                {
+                    StroageFileDataGrid.ItemsSource = files;
+                    Env.Editor.WriteMessage($"DataGrid已更新，显示 {files.Count} 个文件");
+                });
+
+                // 如果没有文件，显示提示
+                if (files.Count == 0)
+                {
+                    Env.Editor.WriteMessage($"分类 '{categoryNode.DisplayText}' 下没有文件");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"加载文件列表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                Env.Editor.WriteMessage($"加载文件列表失败: {ex.Message}");
+                Env.Editor.WriteMessage($"堆栈跟踪: {ex.StackTrace}");
+                Env.Editor.WriteMessage($"加载文件列表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 添加调试方法来检查加载的文件数据
+        /// </summary>
+        /// <param name="files"></param>
+        private void DebugFileData(List<FileStorage> files)
+        {
+            Env.Editor.WriteMessage($"=== 文件数据调试信息 ===");
+            Env.Editor.WriteMessage($"文件总数: {files.Count}");
+
+            foreach (var file in files)
+            {
+                Env.Editor.WriteMessage($"文件ID: {file.Id}");
+                Env.Editor.WriteMessage($"  名称: {file.DisplayName ?? file.FileName}");
+                Env.Editor.WriteMessage($"  路径: {file.FilePath}");
+                Env.Editor.WriteMessage($"  预览图: {file.PreviewImagePath}");
+                Env.Editor.WriteMessage($"  分类ID: {file.CategoryId}");
+                Env.Editor.WriteMessage($"  分类类型: {file.CategoryType}");
+                Env.Editor.WriteMessage("---");
             }
         }
 
@@ -2835,15 +3292,16 @@ namespace GB_NewCadPlus_III
                     // 显示预览图片
                     var previewBitmap = await GetPreviewImageAsync(selectedFile);
 
-                    MessageBox.Show($"选中文件: {selectedFile.DisplayName}\n文件ID: {selectedFile.Id}",
+                    Env.Editor.WriteMessage($"选中文件: {selectedFile.DisplayName}\n文件ID: {selectedFile.Id}",
                         "文件信息", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"处理文件选择失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                Env.Editor.WriteMessage($"处理文件选择失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         /// <summary>
         /// 异步加载预览图片
         /// </summary>
@@ -2861,7 +3319,11 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 添加预览图片加载事件处理
+        /// <summary>
+        /// 添加预览图片加载事件处理
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void PreviewImage_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -2869,30 +3331,61 @@ namespace GB_NewCadPlus_III
                 var image = sender as Image;
                 if (image?.Tag is FileStorage fileStorage)
                 {
-                    // 异步加载图片
-                    var bitmap = await GetPreviewImageAsync(fileStorage);
-
-                    // 在UI线程更新图片
-                    Dispatcher.Invoke(() =>
+                    try
                     {
-                        image.Source = bitmap;
+                        // 异步加载图片
+                        var bitmap = await GetPreviewImageAsync(fileStorage);
 
-                        // 隐藏加载文本
-                        var parentGrid = image.Parent as Grid;
-                        if (parentGrid != null)
+                        // 在UI线程更新图片
+                        await Dispatcher.InvokeAsync(() =>
                         {
-                            var loadingText = parentGrid.Children.OfType<TextBlock>().FirstOrDefault();
-                            if (loadingText != null)
+                            if (image != null)
                             {
-                                loadingText.Visibility = Visibility;// 隐藏加载文本Collapsed
+                                image.Source = bitmap;
+
+                                // 隐藏加载文本
+                                var parentGrid = image.Parent as Grid;
+                                if (parentGrid != null)
+                                {
+                                    var loadingText = parentGrid.Children.OfType<TextBlock>().FirstOrDefault();
+                                    if (loadingText != null)
+                                    {
+                                        loadingText.Visibility = Visibility;
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"设置图片源时出错: {ex.Message}");
+
+                        // 显示错误信息
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            if (image != null)
+                            {
+                                image.Source = GetDefaultPreviewImage();
+
+                                // 显示错误文本
+                                var parentGrid = image.Parent as Grid;
+                                if (parentGrid != null)
+                                {
+                                    var loadingText = parentGrid.Children.OfType<TextBlock>().FirstOrDefault();
+                                    if (loadingText != null)
+                                    {
+                                        loadingText.Text = "加载失败";
+                                        loadingText.Foreground = new SolidColorBrush(Colors.Red);
+                                    }
+                                }
+                            }
+                        });
+                    }
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"加载预览图片失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"预览图片加载事件处理失败: {ex.Message}");
             }
         }
 
@@ -3260,6 +3753,11 @@ namespace GB_NewCadPlus_III
                 deleteItem.Click += Delete_MenuItem_Click;
                 contextMenu.Items.Add(deleteItem);
 
+                // 刷新菜单项
+                var RefreshItem = new System.Windows.Controls.MenuItem { Header = "刷新" };
+                deleteItem.Click += 刷新文件列表按钮_Click;
+                contextMenu.Items.Add(RefreshItem);
+
                 treeView.ContextMenu = contextMenu;
 
                 System.Diagnostics.Debug.WriteLine("右键菜单添加成功");
@@ -3456,7 +3954,31 @@ namespace GB_NewCadPlus_III
             return (name, displayName, sortOrder);
         }
 
-
+        /// <summary>
+        /// 添加手动刷新文件列表的方法
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void 刷新文件列表按钮_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_selectedCategoryNode != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("手动刷新文件列表");
+                    await LoadFilesForCategoryAsync(_selectedCategoryNode);
+                    MessageBox.Show("文件列表已刷新", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("请先选择一个分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"刷新文件列表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
         #endregion
         #endregion
@@ -4220,6 +4742,7 @@ namespace GB_NewCadPlus_III
                 // 执行文件上传
                 UploadFileAndSaveToDatabase();
 
+                LoadFilesForCategoryAsync(_selectedCategoryNode);
             }
             catch (Exception ex)
             {
@@ -4284,9 +4807,10 @@ namespace GB_NewCadPlus_III
             try
             {
                 // 显示文件信息
-               file_Path.Text = fileStorage.FilePath ?? "";
-               File_Name.Text = fileStorage.DisplayName ?? fileStorage.FileName ?? "";
-               File_Size.Text = fileStorage.FileSize > 0 ? $"{fileStorage.FileSize / 1024.0:F2} KB" : "";
+                file_Path.Text = fileStorage.FilePath ?? "";
+                File_Name.Text = fileStorage.DisplayName ?? fileStorage.FileName ?? "";
+                File_Name.Text = FormatFileNameForDisplay(fileStorage.DisplayName ?? fileStorage.FileName ?? "");
+                File_Size.Text = fileStorage.FileSize > 0 ? $"{fileStorage.FileSize / 1024.0:F2} KB" : "";
                 File_Type.Text = fileStorage.FileType ?? "";
                 view_File_Path.Text = fileStorage.PreviewImagePath ?? "无预览图片";
             }
@@ -4457,7 +4981,7 @@ namespace GB_NewCadPlus_III
                     MessageBox.Show("请填写文件名称", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
-                
+
                 // 6. 保存文件属性到数据库
                 int attributeResult = await _databaseManager.AddFileAttributeAsync(_currentFileAttribute);
                 if (attributeResult <= 0)
@@ -4479,7 +5003,7 @@ namespace GB_NewCadPlus_III
                     return;
                 }
                 _currentFileStorage.FileAttributeId = _currentFileAttribute.Id;  // 7. 更新文件记录中的属性ID
-               
+
                 var fileResult = await _databaseManager.AddFileStorageAsync(_currentFileStorage);//新加文件到数据库中
                 if (fileResult != 0)
                 {
@@ -4493,8 +5017,8 @@ namespace GB_NewCadPlus_III
                     Env.Editor.WriteMessage("保存文件记录到数据库:成功");
                 }
                 ;
-                _currentFileStorage= await _databaseManager.GetFileStorageAsync(_currentFileStorage.FileName);//获取文件ID
-                _currentFileAttribute.FileStorageId= _currentFileStorage.Id;//文件属性ID
+                _currentFileStorage = await _databaseManager.GetFileStorageAsync(_currentFileStorage.FileName);//获取文件ID
+                _currentFileAttribute.FileStorageId = _currentFileStorage.Id;//文件属性ID
 
                 await _databaseManager.UpdateFileAttributeAsync(_currentFileAttribute);//更新文件属性
                 // 8. 处理标签信息
@@ -4650,6 +5174,7 @@ namespace GB_NewCadPlus_III
             //    throw new Exception($"文件上传和数据库保存失败: {ex.Message}", ex);
             //}
         }
+
         /// <summary>
         /// 设置文件属性
         /// </summary>
@@ -5595,9 +6120,7 @@ namespace GB_NewCadPlus_III
             }
         }
 
-
         #endregion
-
     }
 
     /// <summary>
