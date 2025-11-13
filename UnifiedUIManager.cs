@@ -1,9 +1,5 @@
-﻿using Dapper;
-using GB_NewCadPlus_III;
-using MySql.Data.MySqlClient;
-using System;
+﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace GB_NewCadPlus_III
 {

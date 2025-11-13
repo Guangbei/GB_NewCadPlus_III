@@ -23,48 +23,111 @@ namespace GB_NewCadPlus_III.Properties {
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("\tlocalhost")]
-        public string MySqlServer {
+        public string ServerIP {
             get {
-                return ((string)(this["MySqlServer"]));
+                return ((string)(this["ServerIP"]));
+            }
+            set {
+                this["ServerIP"] = value;
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("GB_CadTools")]
-        public string MySqlDatabase {
+        [global::System.Configuration.DefaultSettingValueAttribute("cad_sw_library")]
+        public string DatabaseName {
             get {
-                return ((string)(this["MySqlDatabase"]));
+                return ((string)(this["DatabaseName"]));
+            }
+            set {
+                this["DatabaseName"] = value;
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("root")]
-        public string MySqlUserId {
+        public string Username {
             get {
-                return ((string)(this["MySqlUserId"]));
+                return ((string)(this["Username"]));
+            }
+            set {
+                this["Username"] = value;
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("123456")]
-        public string MySqlPassword {
+        [global::System.Configuration.DefaultSettingValueAttribute("root")]
+        public string Password {
             get {
-                return ((string)(this["MySqlPassword"]));
+                return ((string)(this["Password"]));
+            }
+            set {
+                this["Password"] = value;
             }
         }
         
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("3306")]
-        public string MySqlPort {
+        public int ServerPort {
             get {
-                return ((string)(this["MySqlPort"]));
+                return ((int)(this["ServerPort"]));
+            }
+            set {
+                this["ServerPort"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("D:\\GB_Tools\\Cad_Sw_Library")]
+        public string StoragePath {
+            get {
+                return ((string)(this["StoragePath"]));
+            }
+            set {
+                this["StoragePath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseDPath {
+            get {
+                return ((bool)(this["UseDPath"]));
+            }
+            set {
+                this["UseDPath"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool AutoSync {
+            get {
+                return ((bool)(this["AutoSync"]));
+            }
+            set {
+                this["AutoSync"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("30")]
+        public int SyncInterval {
+            get {
+                return ((int)(this["SyncInterval"]));
+            }
+            set {
+                this["SyncInterval"] = value;
             }
         }
     }

@@ -88,8 +88,6 @@
             <!--  字体加粗  -->
             <Setter Property="Margin" Value="0" />
             <!--  间隔  -->
-
-
         </Style>
         <!--  修改TabItem的样式，使其适应纵向布局  -->
         <Style x:Key="VerticalTabStyle" TargetType="{x:Type TabItem}">
@@ -351,6 +349,8 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+
     </UserControl.Resources>
     <!--  Grid白色背景，最小、大的宽度350，最小高度900  -->
     <Grid
@@ -2613,58 +2613,6 @@
                             FontSize="11"
                             FontWeight="Normal"
                             VerticalScrollBarVisibility="Auto">
-                            <!--<WrapPanel x:Name="属性">
-                                <TextBlock Margin="5,3,110,3" Text="属性 1" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 2" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 3" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 4" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 5" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 6" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 7" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 8" />
-                                <TextBlock Margin="5,3,110,3" Text="属性 9" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 10" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 11" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 12" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 13" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 14" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 15" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 16" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 17" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 18" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 19" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 20" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 21" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 22" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 23" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 24" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 25" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 26" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 27" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 28" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 29" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 30" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 31" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 32" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 33" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 34" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 35" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 36" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 37" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 38" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 39" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 40" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 41" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 42" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 43" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 44" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 45" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 46" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 47" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 48" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 49" />
-                                <TextBlock Margin="5,3,100,3" Text="属性 50" />
-                            </WrapPanel>-->
                             <DataGrid
                                 x:Name="PropertiesDataGrid"
                                 Margin="5"
@@ -2699,30 +2647,167 @@
                 </Grid>
 
             </TabItem>
-            <!--  第一TabControlItem(检查模块)  -->
-            <TabItem Header=" SW图元 ">
+            <!--  第二个TabControlItem(设置)  -->
+            <!--  修改工具设置TabItem，添加端口输入框  -->
+            <TabItem Header="工具设置">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="50" />
-                        <RowDefinition Height="55" />
-                        <RowDefinition Height="5*" />
-                        <RowDefinition Height="50" />
-                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="40" />
                     </Grid.RowDefinitions>
-                    <TabControl Grid.Row="3" />
-                </Grid>
 
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="10">
+                            <!--  数据库设置  -->
+                            <GroupBox Margin="0,5,0,10" Header="数据库设置">
+                                <StackPanel Margin="5">
+                                    <TextBlock Margin="0,5,0,2" Text="服务器IP地址：" />
+                                    <TextBox
+                                        x:Name="TextBox_Set_ServiceIP"
+                                        Margin="0,0,0,5"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入服务器IP地址"
+                                        Text="localhost" />
+
+                                    <TextBlock Margin="0,5,0,2" Text="端口号：" />
+                                    <TextBox
+                                        x:Name="TextBox_Set_ServicePort"
+                                        Margin="0,0,0,5"
+                                        DataObject.Pasting="TextBox_Set_ServicePort_Pasting"
+                                        PreviewTextInput="TextBox_Set_ServicePort_PreviewTextInput"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入端口号"
+                                        Text="3306" />
+
+                                    <TextBlock Margin="0,5,0,2" Text="数据库名称：" />
+                                    <TextBox
+                                        x:Name="TextBox_Set_DatabaseName"
+                                        Margin="0,0,0,5"
+                                        Background="#f0f0f0"
+                                        FontFamily="Microsoft YaHei UI"
+                                        FontWeight="Normal"
+                                        IsReadOnly="True"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入数据库名称"
+                                        Text="cad_sw_library" />
+
+                                    <TextBlock Margin="0,5,0,2" Text="用户名：" />
+                                    <TextBox
+                                        x:Name="TextBox_Set_Username"
+                                        Margin="0,0,0,5"
+                                        Background="#f0f0f0"
+                                        FontFamily="Microsoft YaHei UI"
+                                        FontWeight="Normal"
+                                        IsReadOnly="True"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入用户名"
+                                        Text="root" />
+
+                                    <TextBlock Margin="0,5,0,2" Text="密码：" />
+                                    <TextBox
+                                        x:Name="PasswordBox_Set_Password"
+                                        Margin="0,0,0,5"
+                                        Background="#f0f0f0"
+                                        FontFamily="Microsoft YaHei UI"
+                                        FontWeight="Normal"
+                                        IsReadOnly="True"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Text="root" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!--  文件存储设置  -->
+                            <GroupBox Margin="0,5,0,10" Header="文件存储设置">
+                                <StackPanel Margin="5">
+                                    <TextBlock Margin="0,5,0,2" Text="首选存储路径：" />
+                                    <TextBox
+                                        x:Name="TextBox_Set_StoragePath"
+                                        Margin="0,0,0,5"
+                                        Background="#f0f0f0"
+                                        FontFamily="Microsoft YaHei UI"
+                                        FontWeight="Normal"
+                                        IsReadOnly="True"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入文件存储路径"
+                                        Text="D:\GB_Tools\Cad_Sw_Library" />
+
+                                    <CheckBox
+                                        x:Name="CheckBox_UseDPath"
+                                        Margin="0,5,0,5"
+                                        Content="优先使用D盘存储"
+                                        IsChecked="True"
+                                        IsEnabled="False" />
+                                </StackPanel>
+                            </GroupBox>
+
+                            <!--  其他设置  -->
+                            <GroupBox Margin="0,5,0,10" Header="其他设置">
+                                <StackPanel Margin="5">
+                                    <CheckBox
+                                        x:Name="CheckBox_AutoSync"
+                                        Margin="0,5,0,5"
+                                        Background="#f0f0f0"
+                                        Content="启用自动同步"
+                                        IsChecked="True"
+                                        IsEnabled="False" />
+
+                                    <TextBlock Margin="0,5,0,2" Text="同步间隔（分钟）：" />
+                                    <TextBox
+                                        x:Name="TextBox_SyncInterval"
+                                        Margin="0,0,0,5"
+                                        Background="#f0f0f0"
+                                        FontFamily="Microsoft YaHei UI"
+                                        FontWeight="Normal"
+                                        IsReadOnly="True"
+                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                        Tag="请输入同步间隔"
+                                        Text="30" />
+                                </StackPanel>
+                            </GroupBox>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <StackPanel
+                        Grid.Row="1"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                        <Button
+                            x:Name="保存设置按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="5"
+                            Click="保存设置按钮_Click"
+                            Content="保存设置" />
+                        <Button
+                            x:Name="测试连接按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="5"
+                            Click="测试连接按钮_Click"
+                            Content="测试连接" />
+                        <Button
+                            x:Name="应用设置按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="5"
+                            Click="应用设置按钮_Click"
+                            Content="应用设置" />
+                    </StackPanel>
+                </Grid>
             </TabItem>
             <!--  第一TabControlItem(管理员模块)  -->
-            <TabItem Header="管理员模块" HorizontalAlignment="Right" Width="82">
+            <TabItem
+                Width="82"
+                HorizontalAlignment="Right"
+                Header="管理员模块">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="40" />
                         <RowDefinition Height="55" />
                         <RowDefinition Height="5*" />
-                        <RowDefinition Height="145" />
-                        <RowDefinition Height="30" />
-                        <RowDefinition Height="145" />
+                        <RowDefinition Height="155" />
+                        <RowDefinition Height="1" />
+                        <RowDefinition Height="200" />
                     </Grid.RowDefinitions>
                     <!--  第一行  -->
                     <Grid Grid.Row="0" Background="FloralWhite">
@@ -2824,12 +2909,16 @@
                         x:Name="CategoryDisplayGrid"
                         Grid.Row="2"
                         Background="FloralWhite">
-
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="5" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <!--  修改架构树的TreeView，添加右键菜单  -->
                         <TreeView
                             x:Name="CategoryTreeView"
                             Grid.Column="0"
-                            Margin="5"
+                            Margin="0,0,-3,0"
                             SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="{x:Type TreeViewItem}" />
@@ -2840,97 +2929,214 @@
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
                         </TreeView>
-
-
-                        <!--  这里将显示分类树  -->
-                        <!--<TreeView
-                            x:Name="CategoryTreeView"
-                            Margin="0,5,5,5"
-                            Background="White"
-                            FontSize="12">
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                    <Setter Property="IsExpanded" Value="True" />
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                        </TreeView>-->
-
+                        <!--  分割线  -->
+                        <GridSplitter
+                            Grid.Column="1"
+                            Width="5"
+                            HorizontalAlignment="Stretch"
+                            Background="LightGray" />
+                        <!--  右侧：文件列表  -->
+                        <DataGrid
+                            x:Name="StroageFileDataGrid"
+                            Grid.Column="2"
+                            AutoGenerateColumns="False"
+                            CanUserAddRows="False"
+                            CanUserDeleteRows="False"
+                            GridLinesVisibility="All"
+                            HeadersVisibility="Column"
+                            MouseDoubleClick="StroageFileDataGrid_MouseDoubleClick"
+                            SelectionMode="Single"
+                            SelectionUnit="FullRow">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn
+                                    Width="*"
+                                    Binding="{Binding DisplayName}"
+                                    Header="文件名" />
+                                <DataGridTemplateColumn Width="100" Header="预览">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <Image
+                                                    x:Name="PreviewImage"
+                                                    Width="80"
+                                                    Height="50"
+                                                    Loaded="PreviewImage_Loaded"
+                                                    Stretch="Uniform">
+                                                    <Image.Tag>
+                                                        <Binding Path="." />
+                                                    </Image.Tag>
+                                                </Image>
+                                                <TextBlock
+                                                    x:Name="LoadingText"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center"
+                                                    FontSize="10"
+                                                    Foreground="Gray"
+                                                    Text="加载中..." />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
 
                     </Grid>
                     <!--  第四行  -->
-                    <Grid Grid.Row="3" Background="Azure">
+                    <Grid
+                        Grid.Row="3"
+                        Height="155"
+                        Background="Azure">
 
                         <Button
                             Width="NaN"
-                            Height="25"
+                            Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="10,5,262,115"
-                            Click="AddGraphic_Btn_Click"
+                            Margin="5,3,257,127"
+                            Click="SelectFile_Btn_Click"
                             FontSize="14">
                             <TextBlock
                                 x:Name="add_Graphice"
                                 FontSize="12"
-                                Text="添加图元" />
+                                Text="选择图元文件" />
                         </Button>
+                        <TextBox
+                            x:Name="file_Path"
+                            Width="245"
+                            Height="20"
+                            Margin="90,0,0,129"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="10"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="文件路径："
+                            TextWrapping="Wrap" />
                         <Button
                             Width="NaN"
-                            Height="25"
+                            Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="10,32,262,88"
-                            Click="AddPreviewImage_Btn_Click"
+                            Margin="5,28,257,105"
+                            Click="SelectViewImage_Btn_Click"
                             FontSize="14">
                             <TextBlock
                                 x:Name="del_Graphice"
                                 FontSize="12"
-                                Text="添加预览图" />
+                                Text="选择预览图" />
                         </Button>
+                        <TextBox
+                            x:Name="view_File_Path"
+                            Width="245"
+                            Height="20"
+                            Margin="90,0,0,106"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="10"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="预览图文件路径："
+                            TextWrapping="Wrap" />
+                        <TextBox
+                            x:Name="File_Name"
+                            Width="147"
+                            Height="20"
+                            Margin="90,0,0,83"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="10"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="文件名称："
+                            TextWrapping="Wrap" />
+                        <TextBox
+                            x:Name="File_Size"
+                            Width="147"
+                            Height="20"
+                            Margin="90,0,0,60"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="10"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="文件大小："
+                            TextWrapping="Wrap" />
+                        <TextBox
+                            x:Name="File_Type"
+                            Width="147"
+                            Height="20"
+                            Margin="90,0,0,36"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            AcceptsTab="True"
+                            BorderThickness="1,2,1,1"
+                            FontSize="10"
+                            SelectionOpacity="0.5"
+                            Style="{StaticResource WatermarkTextBoxStyle}"
+                            Tag="文件类型："
+                            TextWrapping="Wrap" />
+
+
                         <Button
                             Width="NaN"
-                            Height="25"
+                            Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="10,60,262,60"
+                            Margin="5,51,257,82"
                             Click="DeleteGraphic_Btn_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="删除图元" />
                         </Button>
                         <Button
-                            Width="NaN"
-                            Height="25"
+                            Width="70"
+                            Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="10,88,262,32"
+                            Margin="90,129,182,4"
                             Click="ResetToInitial_Btn_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="还原初始值" />
                         </Button>
                         <Button
-                            Width="NaN"
-                            Height="25"
+                            x:Name="ApplyProperties_Btn"
+                            Width="70"
+                            Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="10,115,262,5"
+                            Margin="167,129,105,4"
                             Click="ApplyProperties_Btn_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="应用属性" />
                         </Button>
-                        <Viewbox
+                        <Button
+                            x:Name="AddFile_Btn"
+                            Width="NaN"
+                            Height="NaN"
+                            MaxWidth="200"
+                            MaxHeight="50"
+                            Margin="5,74,257,31"
+                            Click="AddFile_Btn_Click"
+                            FontSize="14">
+                            <TextBlock FontSize="12" Text="完成添加" />
+                        </Button>
+
+                        <Image
                             x:Name="ViewImage"
-                            Margin="90,0,0,0"
-                            Stretch="Fill" />
+                            Width="100"
+                            Height="100"
+                            Margin="239,52,3,3"
+                            Stretch="Uniform" />
 
                     </Grid>
-                    <Grid Grid.Row="4" Background="FloralWhite">
-
-                        <TextBlock
-                            Margin="5,3,5,3"
-                            VerticalAlignment="Center"
-                            FontWeight="Normal"
-                            Foreground="Gray"
-                            Text="图元路径" />
-                    </Grid>
+                    <Grid Grid.Row="4" Background="FloralWhite" />
                     <Grid Grid.Row="5">
                         <ScrollViewer Margin="0,0,0,0" VerticalScrollBarVisibility="Auto">
                             <!--  属性编辑DataGrid  -->
@@ -3016,100 +3222,175 @@
 
             </TabItem>
 
-            <!--  在管理员模块中添加架构树显示区域  -->
-            <TabItem Header="架构管理">
+            <!--  在TabControl中添加管理员模块  -->
+
+            <!--<TabItem Header="管理员模块">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="150" />
+            <RowDefinition Height="200" />
+        </Grid.RowDefinitions>
+
+            -->
+            <!--  上半部分：架构树和操作按钮  -->
+            <!--
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="200" />
+            </Grid.ColumnDefinitions>
+
+            -->
+            <!--  架构树  -->
+            <!--
+            <TreeView
+                x:Name="CategoryTreeView1"
+                Grid.Column="0"
+                Margin="5"
+                SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding DisplayText}" />
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            -->
+            <!--  操作按钮  -->
+            <!--
+            <StackPanel Grid.Column="1" Margin="5">
+                <Button
+                    x:Name="添加图元文件按钮"
+                    Content="添加图元文件"
+                    Height="25"
+                    Margin="2"
+                    Click="添加图元文件按钮_Click" />
+                <Button
+                    x:Name="刷新架构树按钮1"
+                    Content="刷新架构树"
+                    Height="25"
+                    Margin="2"
+                    Click="刷新架构树按钮_Click" />
+            </StackPanel>
+        </Grid>
+
+            -->
+            <!--  中间部分：文件选择和基本信息  -->
+            <!--
+        <Grid Grid.Row="1" Background="LightBlue">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="150" />
+            </Grid.ColumnDefinitions>
+
+            -->
+            <!--  文件信息显示  -->
+            <!--
+            <StackPanel Grid.Column="0" Margin="5">
+                <TextBlock Text="文件信息：" FontWeight="Bold" Margin="0,0,0,5" />
                 <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="200" />
-                        <!--  用于属性编辑  -->
+                        <RowDefinition Height="25" />
+                        <RowDefinition Height="25" />
+                        <RowDefinition Height="25" />
                     </Grid.RowDefinitions>
 
-                    <!--  左侧架构树  -->
-                    <Grid Grid.Row="0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="200" />
-                        </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="文件路径：" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="FilePathText" IsReadOnly="True" Margin="0,0,5,0" />
 
-                        <!--  架构树显示  -->
-                        <TreeView
-                            x:Name="CategoryTreeView1"
-                            Grid.Column="0"
-                            Margin="5"
-                            SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
-                            <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <TextBlock Text="{Binding DisplayText}" />
-                                </HierarchicalDataTemplate>
-                            </TreeView.ItemTemplate>
-                        </TreeView>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="文件名：" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="3" x:Name="FileNameText" IsReadOnly="True" />
 
-                        <!--  操作按钮  -->
-                        <StackPanel Grid.Column="1" Margin="5" />
-                    </Grid>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="文件大小：" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="FileSizeText" IsReadOnly="True" Margin="0,0,5,0" />
 
-                    <!--  属性编辑区域  -->
-                    <Grid Grid.Row="1" Background="LightBlue">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="40" />
-                        </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="文件类型：" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="3" x:Name="FileTypeText" IsReadOnly="True" />
 
-                        <!--  属性编辑DataGrid  -->
-                        <DataGrid
-                            x:Name="CategoryPropertiesDataGrid1"
-                            Grid.Row="0"
-                            Margin="5"
-                            AutoGenerateColumns="False"
-                            CanUserAddRows="True"
-                            CanUserDeleteRows="True"
-                            FontSize="12"
-                            GridLinesVisibility="All"
-                            HeadersVisibility="Column">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn
-                                    Width="*"
-                                    Binding="{Binding PropertyName1}"
-                                    Header="属性名称1" />
-                                <DataGridTextColumn
-                                    Width="*"
-                                    Binding="{Binding PropertyValue1}"
-                                    Header="值1" />
-                                <DataGridTextColumn
-                                    Width="*"
-                                    Binding="{Binding PropertyName2}"
-                                    Header="属性名称2" />
-                                <DataGridTextColumn
-                                    Width="*"
-                                    Binding="{Binding PropertyValue2}"
-                                    Header="值2" />
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                        <!--  操作按钮  -->
-                        <StackPanel
-                            Grid.Row="1"
-                            HorizontalAlignment="Center"
-                            Orientation="Horizontal">
-                            <!--<Button
-                                x:Name="应用属性按钮"
-                                Width="80"
-                                Height="25"
-                                Margin="5"
-                                Click="应用属性按钮_Click"
-                                Content="应用属性" />
-                            <Button
-                                x:Name="取消按钮"
-                                Width="80"
-                                Height="25"
-                                Margin="5"
-                                Click="取消按钮_Click"
-                                Content="取消" />-->
-                        </StackPanel>
-                    </Grid>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="预览图片：" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PreviewImagePathText" IsReadOnly="True" Margin="0,0,5,0" />
                 </Grid>
-            </TabItem>
+            </StackPanel>
+
+            -->
+            <!--  操作按钮  -->
+            <!--
+            <StackPanel Grid.Column="1" Margin="5" VerticalAlignment="Center">
+                <Button
+                    x:Name="选择文件按钮"
+                    Content="选择文件"
+                    Height="25"
+                    Margin="2"
+                    Click="选择文件按钮_Click" />
+                <Button
+                    x:Name="选择预览图片按钮"
+                    Content="选择预览图片"
+                    Height="25"
+                    Margin="2"
+                    Click="选择预览图片按钮_Click" />
+            </StackPanel>
+        </Grid>
+
+            -->
+            <!--  下半部分：属性编辑区域  -->
+            <!--
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="30" />
+            </Grid.RowDefinitions>
+
+            -->
+            <!--  属性编辑DataGrid (4列布局)  -->
+            <!--
+            <DataGrid
+                x:Name="CategoryPropertiesDataGrid1"
+                Grid.Row="0"
+                AutoGenerateColumns="False"
+                CanUserAddRows="True"
+                CanUserDeleteRows="True"
+                HeadersVisibility="Column"
+                GridLinesVisibility="All"
+                Margin="5"
+                FontSize="12">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="字段1" Binding="{Binding PropertyName1}" Width="*" />
+                    <DataGridTextColumn Header="值1" Binding="{Binding PropertyValue1}" Width="*" />
+                    <DataGridTextColumn Header="字段2" Binding="{Binding PropertyName2}" Width="*" />
+                    <DataGridTextColumn Header="值2" Binding="{Binding PropertyValue2}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            -->
+            <!--  操作按钮  -->
+            <!--
+            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button
+                    x:Name="完成添加按钮"
+                    Content="完成添加"
+                    Width="80"
+                    Height="25"
+                    Margin="5"
+                    Click="完成添加按钮_Click" />
+                <Button
+                    x:Name="取消按钮"
+                    Content="取消"
+                    Width="80"
+                    Height="25"
+                    Margin="5"
+                    Click="取消按钮_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</TabItem>-->
+
         </TabControl>
 
     </Grid>
