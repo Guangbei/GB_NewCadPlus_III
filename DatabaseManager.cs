@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Windows.ToolPalette;
+using Dapper;
 using MySql.Data.MySqlClient;
 using Mysqlx.Session;
 using MySqlX.XDevAPI.Common;
@@ -238,7 +240,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"生成子分类ID失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"生成子分类ID失败: {ex.Message}");
                 throw;
             }
         }
@@ -467,38 +469,38 @@ namespace GB_NewCadPlus_III
             {
                 using var connection = GetConnection();
                 connection.Open();
-                System.Diagnostics.Debug.WriteLine("数据库连接测试成功");
+                LogManager.Instance.LogInfo("数据库连接测试成功");
                 return true;
             }
             catch (MySqlException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"MySQL连接错误: {ex.Number} - {ex.Message}");
+                LogManager.Instance.LogInfo($"MySQL连接错误: {ex.Number} - {ex.Message}");
                 switch (ex.Number)
                 {
                     case 0:
-                        System.Diagnostics.Debug.WriteLine("无法连接到MySQL服务器");
+                        LogManager.Instance.LogInfo("无法连接到MySQL服务器");
                         break;
                     case 1042:
-                        System.Diagnostics.Debug.WriteLine("无法解析主机名");
+                        LogManager.Instance.LogInfo("无法解析主机名");
                         break;
                     case 1045:
-                        System.Diagnostics.Debug.WriteLine("用户名或密码错误");
+                        LogManager.Instance.LogInfo("用户名或密码错误");
                         break;
                     case 1049:
-                        System.Diagnostics.Debug.WriteLine("未知数据库");
+                        LogManager.Instance.LogInfo("未知数据库");
                         break;
                     case 2002:
-                        System.Diagnostics.Debug.WriteLine("连接超时或服务器无响应");
+                        LogManager.Instance.LogInfo("连接超时或服务器无响应");
                         break;
                     default:
-                        System.Diagnostics.Debug.WriteLine($"MySQL错误代码: {ex.Number}");
+                        LogManager.Instance.LogInfo($"MySQL错误代码: {ex.Number}");
                         break;
                 }
                 return false;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"数据库连接测试失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"数据库连接测试失败: {ex.Message}");
                 return false;
             }
         }
@@ -535,13 +537,13 @@ namespace GB_NewCadPlus_III
 
                 using var connection = new MySqlConnection(_connectionString);
                 var categories = await connection.QueryAsync<CadCategory>(sql);
-                System.Diagnostics.Debug.WriteLine($"查询返回 {categories.AsList().Count} 条记录");
+                LogManager.Instance.LogInfo($"查询返回 {categories.AsList().Count} 条记录");
                 return categories.AsList();
 
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"数据库查询出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"数据库查询出错: {ex.Message}");
                 throw;
             }
         }
@@ -555,14 +557,27 @@ namespace GB_NewCadPlus_III
                id AS Id,
                name AS Name,
                display_name AS DisplayName,
+               subcategory_ids AS SubcategoryIds,
                sort_order AS SortOrder,
                created_at AS CreatedAt,
                updated_at AS UpdatedAt
             FROM cad_categories 
-            WHERE name = @categoryName";
+            WHERE name LIKE @Name";
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var parameters = new Dictionary<string, object>();
+                parameters.Add("Name", $"%{categoryName}%");
+                var result = await connection.QuerySingleOrDefaultAsync<CadCategory>(sql, parameters);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"数据库查询出错: {ex.Message}");
+                throw;
+            }
 
-            using var connection = new MySqlConnection(_connectionString);
-            return await connection.QuerySingleOrDefaultAsync<CadCategory>(sql, new { categoryName });
+
         }
         /// <summary>
         /// 添加CAD分类
@@ -671,12 +686,23 @@ namespace GB_NewCadPlus_III
                                     created_at AS CreatedAt,
                                     updated_at AS UpdatedAt
                                FROM cad_subcategories 
-                               WHERE parent_id = @categoryId 
+                               WHERE parent_id = @ParentId 
                                ORDER BY sort_order";
-
-            using var connection = new MySqlConnection(_connectionString);
-            var subcategories = await connection.QueryAsync<CadSubcategory>(sql, new { categoryId });
-            return subcategories.AsList();
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var parameters = new Dictionary<string, object>();
+                parameters.Add("ParentId", categoryId);
+                
+                var subcategories = await connection.QueryAsync<CadSubcategory>(sql,  parameters );
+                return subcategories.AsList();
+            }
+            catch(Exception ex)
+            {
+                LogManager.Instance.LogInfo($"数据库查询出错: {ex.Message}");
+                throw;
+            }
+            
         }
 
         /// <summary>
@@ -699,7 +725,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取子分类时出错: {ex.Message}", ex);
+                LogManager.Instance.LogInfo($"获取子分类时出错: {ex.Message}");
                 return null;
             }
         }
@@ -727,12 +753,12 @@ namespace GB_NewCadPlus_III
             VALUES ( @Id, @ParentId, @Name, @DisplayName, @SortOrder, @Level, @SubcategoryIds, NOW(), NOW())";
 
                 var result = await connection.ExecuteAsync(sql, subcategory);
-                System.Diagnostics.Debug.WriteLine($"成功添加子分类: {subcategory.Name}");
+                LogManager.Instance.LogInfo($"成功添加子分类: {subcategory.Name}");
                 return result;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"添加CAD子分类时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"添加CAD子分类时出错: {ex.Message}");
                 // throw new Exception($"添加CAD子分类失败: {ex.Message}", ex);
                 return 0;
             }
@@ -806,7 +832,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"更新父级子分类列表失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"更新父级子分类列表失败: {ex.Message}");
                 return 0;
             }
         }
@@ -836,7 +862,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"更新父级子分类列表失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"更新父级子分类列表失败: {ex.Message}");
                 return 0;
             }
         }
@@ -1289,7 +1315,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取分类下的文件时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取分类下的文件时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
 
@@ -1328,13 +1354,16 @@ namespace GB_NewCadPlus_III
             created_at AS CreatedAt,
             updated_at AS UpdatedAt
         FROM cad_file_storage 
-        WHERE category_id = @categoryId 
-          AND category_type = @categoryType
+        WHERE category_id = @CategoryId 
+          AND category_type = @CategoryType
         ORDER BY created_at DESC";
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
-                var result = await connection.QueryAsync<FileStorage>(sql, new { categoryId, categoryType });
+                var parameters = new Dictionary<string, object>();
+                parameters.Add("CategoryId", categoryId);
+                parameters.Add("CategoryType", categoryType);
+                var result = await connection.QueryAsync<FileStorage>(sql, parameters);
                 return result.AsList();
             }
             catch (Exception e)
@@ -1436,7 +1465,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"根据文件扩展名获取分类下的文件时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"根据文件扩展名获取分类下的文件时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
         }
@@ -1518,87 +1547,88 @@ namespace GB_NewCadPlus_III
         {
             // 获取文件信息
             const string fileSql = @"
-        SELECT 
-            id AS Id,
-            category_id AS CategoryId,
-            file_attribute_id AS FileAttributeId,
-            file_name AS FileName,
-            file_stored_name AS FileStoredName,
-            file_type AS FileType,
-            file_hash AS FileHash,
-            display_name AS DisplayName,
-            element_block_name AS ElementBlockName,
-            layer_name AS LayerName,
-            color_index AS ColorIndex,
-            file_path AS FilePath,
-            preview_image_name AS PreviewImageName,
-            preview_image_path AS PreviewImagePath,
-            file_size AS FileSize,
-            is_preview AS IsPreview,
-            version AS Version,
-            description AS Description,
-            is_active AS IsActive,
-            created_by AS CreatedBy,
-            category_type AS CategoryType,
-            title AS Title,
-            keywords AS Keywords,
-            is_public AS IsPublic,
-            updated_by AS UpdatedBy,
-            last_accessed_at AS LastAccessedAt,
-            created_at AS CreatedAt,
-            updated_at AS UpdatedAt
-        FROM cad_file_storage 
-        WHERE id = @fileId AND is_active = 1";
+             SELECT 
+                 id AS Id,
+                 category_id AS CategoryId,
+                 file_attribute_id AS FileAttributeId,
+                 file_name AS FileName,
+                 file_stored_name AS FileStoredName,
+                 display_name AS DisplayName,
+                 file_type AS FileType,
+                 file_hash AS FileHash,
+                 element_block_name AS ElementBlockName,
+                 layer_name AS LayerName,
+                 color_index AS ColorIndex,
+                 file_path AS FilePath,
+                 preview_image_name AS PreviewImageName,
+                 preview_image_path AS PreviewImagePath,
+                 file_size AS FileSize,
+                 is_preview AS IsPreview,
+                 version AS Version,
+                 description AS Description,
+                 is_active AS IsActive,
+                 created_by AS CreatedBy,
+                 category_type AS CategoryType,
+                 title AS Title,
+                 keywords AS Keywords,
+                 is_public AS IsPublic,
+                 updated_by AS UpdatedBy,
+                 last_accessed_at AS LastAccessedAt,
+                 created_at AS CreatedAt,
+                 updated_at AS UpdatedAt
+             FROM cad_file_storage 
+             WHERE id = @Id";
 
             // 获取文件属性信息
             const string attributeSql = @"
-        SELECT 
-            id AS Id,
-            storage_file_id AS StorageFileId,
-            graphice_name AS FileName,
-            length AS Length,
-            width AS Width,
-            height AS Height,
-            angle AS Angle,
-            base_point_x AS BasePointX,
-            base_point_y AS BasePointY,
-            base_point_z AS BasePointZ,
-            created_at AS CreatedAt,
-            updated_at AS UpdatedAt,
-            description AS Description,
-            medium_name AS MediumName,
-            specifications AS Specifications,
-            material AS Material,
-            standard_number AS StandardNumber,
-            power AS Power,
-            volume AS Volume,
-            pressure AS Pressure,
-            temperature AS Temperature,
-            diameter AS Diameter,
-            outer_diameter AS OuterDiameter,
-            inner_diameter AS InnerDiameter,
-            thickness AS Thickness,
-            weight AS Weight,
-            model AS Model,
-            remarks AS Remarks,
-            customize1 AS Customize1,
-            customize2 AS Customize2,
-            customize3 AS Customize3
-        FROM cad_file_attributes 
-        WHERE storage_file_id = @fileId";
+            SELECT 
+                id AS Id,
+                file_storage_id AS FileStorageId,
+                file_name AS FileName,
+                length AS Length,
+                width AS Width,
+                height AS Height,
+                angle AS Angle,
+                base_point_x AS BasePointX,
+                base_point_y AS BasePointY,
+                base_point_z AS BasePointZ,
+                created_at AS CreatedAt,
+                updated_at AS UpdatedAt,
+                description AS Description,
+                medium_name AS MediumName,
+                specifications AS Specifications,
+                material AS Material,
+                standard_number AS StandardNumber,
+                power AS Power,
+                volume AS Volume,
+                pressure AS Pressure,
+                temperature AS Temperature,
+                diameter AS Diameter,
+                outer_diameter AS OuterDiameter,
+                inner_diameter AS InnerDiameter,
+                thickness AS Thickness,
+                weight AS Weight,
+                model AS Model,
+                remarks AS Remarks,
+                customize1 AS Customize1,
+                customize2 AS Customize2,
+                customize3 AS Customize3
+            FROM cad_file_attributes 
+            WHERE file_storage_id = @FileStorageId";
 
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
-
-                var file = await connection.QuerySingleOrDefaultAsync<FileStorage>(fileSql, new { fileId });
-                var attribute = await connection.QuerySingleOrDefaultAsync<FileAttribute>(attributeSql, new { fileId });
+                int Id = fileId;
+                var file = await connection.QuerySingleOrDefaultAsync<FileStorage>(fileSql, new { Id });
+                var FileStorageId = fileId;
+                var attribute = await connection.QuerySingleOrDefaultAsync<FileAttribute>(attributeSql, new { FileStorageId });
 
                 return (file, attribute);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取文件详细信息时出错: {ex.Message}");
+                Env.Editor.WriteMessage($"获取文件详细信息时出错: {ex.Message}");
                 return (null, null);
             }
 
@@ -1649,7 +1679,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取文件详细信息时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取文件详细信息时出错: {ex.Message}");
                 return null;
             }
         }
@@ -1708,7 +1738,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取文件详细信息时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取文件详细信息时出错: {ex.Message}");
                 return null;
             }
         }
@@ -1743,7 +1773,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"更新分类统计信息时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"更新分类统计信息时出错: {ex.Message}");
             }
 
         }
@@ -1771,7 +1801,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取分类统计信息时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取分类统计信息时出错: {ex.Message}");
                 return null;
             }
 
@@ -1799,7 +1829,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取文件访问统计时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取文件访问统计时出错: {ex.Message}");
                 return new FileAccessStats();
             }
 
@@ -1831,7 +1861,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"记录文件访问日志时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"记录文件访问日志时出错: {ex.Message}");
                 return 0;
             }
 
@@ -1887,7 +1917,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"获取热门文件时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取热门文件时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
 
@@ -1931,21 +1961,30 @@ namespace GB_NewCadPlus_III
              FROM cad_file_storage 
              WHERE subcategory_id = @SubcategoryId 
              ORDER BY file_name";
-            using var connection = new MySqlConnection(_connectionString);
-            var graphics = await connection.QueryAsync<FileStorage>(sql, new { subcategoryId });
-            return graphics.AsList();
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var parameters = new { SubcategoryId = subcategoryId };
+                var FileStorage = await connection.QueryAsync<FileStorage>(sql, new { parameters });
+                return FileStorage.AsList();
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"获取子分类图元列表时出错: {ex.Message}");
+                return new List<FileStorage>();
+            }
+
         }
         /// <summary>
         /// 根据ID获取图元属性
         /// </summary>
-        public async Task<FileAttribute> GetFileAttributeByGraphicIdAsync(int file_attribute_id)
+        public async Task<FileAttribute> GetFileAttributeByGraphicIdAsync(int fileStorageId)
         {
             const string sql = @"
              SELECT 
                  id AS Id,//主键ID
-                 subcategory_id AS SubcategoryId,//子分类ID
-                 cad_file_storage_id AS CadFileStorageId ,//文件ID
-                 graphice_name AS GraphiceName,//图元名称
+                 file_storage_id AS FileStorageId ,//文件ID
+                 file_Name AS FileName,//图元名称
                  length AS Length,//长度
                  width AS Width,//宽度
                  height AS Height,//高度
@@ -1975,24 +2014,34 @@ namespace GB_NewCadPlus_III
                  customize2 AS Customize2,//自定义字段2
                  customize3 AS Customize3,//自定义字段3
              FROM cad_file_attributes 
-             WHERE cad_file_storage_id = @CadFileStorageId";
+             WHERE file_storage_id = @FileStorageId";
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var FileStorageId = fileStorageId;
+                var result = await connection.QuerySingleOrDefaultAsync<FileAttribute>(sql, new { FileStorageId });
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"获取图元属性时出错: {ex.Message}");
+                return null;
+            }
 
-            using var connection = new MySqlConnection(_connectionString);
-            return await connection.QuerySingleOrDefaultAsync<FileAttribute>(sql, new { file_attribute_id });
         }
 
         /// <summary>
         /// 修改CAD图元
         /// </summary>
-        /// <param name="graphic"></param>
+        /// <param name="fileStorage"></param>
         /// <returns></returns>
-        public async Task<int> UpdateCadGraphicAsync(FileStorage graphic)
+        public async Task<int> UpdateCadGraphicAsync(FileStorage fileStorage)
         {
             using var connection = GetConnection();
             var sql = @"UPDATE cad_file_storage 
           SET 
-             cad_graphice_id = @CadGraphiceId,//图元ID
-             subcategory_id = @SubcategoryId,
+             id = @Id,//图元ID
+             category_id = @CategoryId,
              file_name = @FileName,
              display_name = @DisplayName,
              element_block_name = @ElementBlockName,
@@ -2034,7 +2083,7 @@ namespace GB_NewCadPlus_III
              customize2 = @Customize2,//自定义字段2
              customize3 = @Customize3,//自定义字段3
           WHERE id = @Id";
-            return await connection.ExecuteAsync(sql, graphic);
+            return await connection.ExecuteAsync(sql, fileStorage);
         }
         /// <summary>
         /// 删除CAD图元

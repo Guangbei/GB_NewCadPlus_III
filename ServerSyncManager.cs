@@ -23,7 +23,6 @@ namespace GB_NewCadPlus_III
             _fileManager = fileManager;
         }
 
-
         /// <summary>
         /// 执行同步操作
         /// </summary>

@@ -2764,6 +2764,24 @@
                                         Text="30" />
                                 </StackPanel>
                             </GroupBox>
+                            <GroupBox Margin="0,5,0,10" Header="日志">
+                                <StackPanel Margin="5">
+                                    <Button
+                                        x:Name="查看日志按钮"
+                                        Width="80"
+                                        Height="25"
+                                        Margin="5"
+                                        Click="查看日志按钮_Click"
+                                        Content="查看日志" />
+                                    <Button
+                                        x:Name="显示最新日志按钮"
+                                        Width="80"
+                                        Height="25"
+                                        Margin="5"
+                                        Click="显示最新日志按钮_Click"
+                                        Content="显示最新日志 " />
+                                </StackPanel>
+                            </GroupBox>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -2944,17 +2962,18 @@
                         <DataGrid
                             x:Name="StroageFileDataGrid"
                             Grid.Column="2"
-                            Margin="5"
-                            FontSize="11"
-                            FontStyle="Normal"
+                            Margin="0"
                             AutoGenerateColumns="False"
                             CanUserAddRows="False"
                             CanUserDeleteRows="False"
+                            FontSize="11"
+                            FontStyle="Normal"
                             GridLinesVisibility="All"
                             HeadersVisibility="Column"
                             HorizontalScrollBarVisibility="Auto"
                             Loaded="StroageFileDataGrid_Loaded"
                             MouseDoubleClick="StroageFileDataGrid_MouseDoubleClick"
+                            SelectedCellsChanged="StroageFileDataGrid_SelectedCellsChanged"
                             SelectionMode="Single"
                             SelectionUnit="FullRow"
                             TargetUpdated="StroageFileDataGrid_TargetUpdated"
@@ -2969,8 +2988,13 @@
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="Wrap" />
                                             <Setter Property="VerticalAlignment" Value="Center" />
-                                            <Setter Property="Margin" Value="5,3,5,3" />
+                                            <Setter Property="Margin" Value="0" />
                                             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="ToolTip" Value="{Binding DisplayName}" />
+                                                </Trigger>
+                                            </Style.Triggers>
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                     <DataGridTextColumn.Binding>
@@ -2980,7 +3004,7 @@
 
                                 <!--  预览图片列  -->
                                 <DataGridTemplateColumn
-                                    Width="100"
+                                    Width="80"
                                     CanUserResize="False"
                                     Header="预览">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -3001,7 +3025,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                             </DataGrid.Columns>
-                            <!-- 设置DataGrid的行样式 -->
+                            <!--  设置DataGrid的行样式  -->
                             <DataGrid.RowStyle>
                                 <Style TargetType="DataGridRow">
                                     <Setter Property="Height" Value="70" />
