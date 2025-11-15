@@ -36,10 +36,7 @@ public class PsetArgs
     /// 构造函数
     /// </summary>
     public PsetArgs() { }
-    /// <summary>
-    /// 字符串字典
-    /// </summary>
-    public Dictionary<string, string> dictS { get; set; } = new Dictionary<string, string>();
+   
 }
 namespace GB_NewCadPlus_III
 {

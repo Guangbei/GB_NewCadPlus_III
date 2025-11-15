@@ -219,8 +219,10 @@ namespace GB_NewCadPlus_III
                 {
                     LogManager.Instance.LogWarning("未找到CategoryTreeView控件");
                 }
-                //
+                // 初始化文件属性网格
+                InitializeFilePropertiesGrid();
                 Load();
+                LogManager.Instance.LogInfo("=== WPF主窗口加载完成 ===");
             }
             catch (Exception ex)
             {
@@ -3360,15 +3362,15 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                var graphics = await _databaseManager.GetFileStorageBySubcategoryIdAsync(subcategoryId);
-                foreach (var graphic in graphics)
+                var files = await _databaseManager.GetFileStorageBySubcategoryIdAsync(subcategoryId);
+                foreach (var file in files)
                 {
-                    TreeViewItem graphicItem = new TreeViewItem
+                    TreeViewItem fileItem = new TreeViewItem
                     {
-                        Header = $"    {graphic.LayerName}",
-                        Tag = new { Type = "Graphic", Id = graphic.Id, Object = graphic }
+                        Header = $"    {file.LayerName}",
+                        Tag = new { Type = "Graphic", Id = file.Id, Object = file }
                     };
-                    parentItem.Items.Add(graphicItem);
+                    parentItem.Items.Add(fileItem);
                 }
             }
             catch (Exception ex)
@@ -4261,7 +4263,7 @@ namespace GB_NewCadPlus_III
 
 
         /// <summary>
-        /// 添加图元按钮点击事件
+        /// 选择文件按钮点击事件
         /// </summary>
         private async void SelectFile_Btn_Click(object sender, RoutedEventArgs e)
         {
@@ -4290,7 +4292,7 @@ namespace GB_NewCadPlus_III
                     DisplayFileInfo(_selectedFilePath);
 
                     // 初始化属性编辑界面
-                    InitializeFilePropertiesGrid();
+                    AddFileInitializeFilePropertiesGrid();
                 }
                 MessageBox.Show("文件已上传到服务器，可以编辑属性后点击'完成添加'", "成功",
                     MessageBoxButton.OK, MessageBoxImage.Information);
@@ -4561,7 +4563,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 初始化属性编辑网格
         /// </summary>
-        private void InitializeFilePropertiesGrid()
+        private void AddFileInitializeFilePropertiesGrid()
         {
             try
             {
@@ -4598,7 +4600,28 @@ namespace GB_NewCadPlus_III
                 MessageBox.Show($"初始化属性编辑失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+        /// <summary>
+        /// 初始化文件属性编辑网格
+        /// </summary>
+        private void InitializeFilePropertiesGrid()
+        {
+            try
+            {
+                var initialRows = new List<CategoryPropertyEditModel>
+        {
+            new CategoryPropertyEditModel(),
+            new CategoryPropertyEditModel(),
+            new CategoryPropertyEditModel()
+        };
 
+                CategoryPropertiesDataGrid.ItemsSource = initialRows;
+                LogManager.Instance.LogInfo("初始化文件属性编辑网格成功:InitializeFilePropertiesGrid()");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"初始化文件属性编辑网格失败: {ex.Message}");
+            }
+        }
         /// <summary>
         /// 上传文件并保存到数据库
         /// </summary>
@@ -5090,17 +5113,19 @@ namespace GB_NewCadPlus_III
             {
                 if (StroageFileDataGrid.SelectedItem is FileStorage selectedFile)
                 {
+                    LogManager.Instance.LogInfo($"选中文件: {selectedFile.DisplayName} (ID: {selectedFile.Id})");
                     _selectedFileStorage = selectedFile;
 
                     // 显示文件基本信息
                     DisplayFileBasicInfo(selectedFile);
-
                     // 加载并显示文件属性
                     await LoadAndDisplayFileAttributesAsync(selectedFile);
 
                     // 加载预览图片
                     var previewImage = await GetPreviewImageAsync(selectedFile);
                     // 预览图片会在PreviewImage_Loaded事件中处理
+                    // 初始化属性编辑界面
+                    //InitializeFilePropertiesGrid();
                 }
             }
             catch (Exception ex)
@@ -5135,7 +5160,7 @@ namespace GB_NewCadPlus_III
         /// </summary>
         /// <param name="fileStorage"></param>
         /// <returns></returns>
-        private async Task LoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
+        private async Task AddFileLoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
         {
             try
             {
@@ -5145,15 +5170,16 @@ namespace GB_NewCadPlus_III
                 // 获取文件属性
                 //var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
                 var selectedFile = await _databaseManager.GetFileWithAttributeAsync(fileStorage.Id);
-
+                var propertyRows = PrepareFileAttributeData(_currentFileStorage);
                 _selectedFileAttribute = selectedFile.Attribute;
                 _currentFileStorage = selectedFile.File;
                 if (_selectedFileAttribute != null && _currentFileStorage != null)
                 {
                     // 准备属性数据显示
-                    var propertyRows = PrepareFileAttributeData(_currentFileStorage);
+
                     propertyRows = PrepareFileAttributeData(_selectedFileAttribute);
                     CategoryPropertiesDataGrid.ItemsSource = propertyRows;
+
                 }
                 else
                 {
@@ -5165,6 +5191,7 @@ namespace GB_NewCadPlus_III
                         new CategoryPropertyEditModel()
                     };
                     CategoryPropertiesDataGrid.ItemsSource = emptyRows;
+
                 }
                 propertyRows = new List<CategoryPropertyEditModel>();
             }
@@ -5175,10 +5202,216 @@ namespace GB_NewCadPlus_III
             }
         }
 
+
         /// <summary>
-        /// 文件属性编辑模型
+        /// 加载并显示文件属性（修改现有方法）
         /// </summary>
-        public List<CategoryPropertyEditModel>? propertyRows = new List<CategoryPropertyEditModel>();
+        /// <param name="fileStorage">数据库储存的文件</param>
+        /// <returns></returns>
+        private async Task LoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo($"开始加载文件 {fileStorage.DisplayName} 的属性");
+
+                if (_databaseManager == null)
+                {
+                    LogManager.Instance.LogWarning("数据库管理器为空");
+                    return;
+                }
+
+                // 获取文件属性
+                var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
+                _selectedFileAttribute = fileAttribute;
+
+                // 准备显示数据
+                var displayData = PrepareFileDisplayData(fileStorage, fileAttribute);
+                CategoryPropertiesDataGrid.ItemsSource = displayData;
+
+                LogManager.Instance.LogInfo("文件属性加载完成");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"加载文件属性时出错: {ex.Message}");
+                MessageBox.Show($"加载文件属性时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        // 准备文件显示数据
+        private List<CategoryPropertyEditModel> PrepareFileDisplayData(FileStorage fileStorage, FileAttribute fileAttribute)
+        {
+            var propertyRows = new List<CategoryPropertyEditModel>();
+
+            try
+            {
+                LogManager.Instance.LogDebug("准备文件显示数据");
+
+                // 收集所有属性
+                var allProperties = new List<KeyValuePair<string, string>>();
+
+                // 添加FileStorage属性
+                if (fileStorage != null)
+                {
+                    AddObjectProperties(allProperties, fileStorage, "文件信息");
+                }
+
+                // 添加FileAttribute属性
+                if (fileAttribute != null)
+                {
+                    AddObjectProperties(allProperties, fileAttribute, "属性信息");
+                }
+
+                // 转换为两列显示格式
+                for (int i = 0; i < allProperties.Count; i += 2)
+                {
+                    var row = new CategoryPropertyEditModel();
+
+                    // 第一列
+                    var prop1 = allProperties[i];
+                    row.PropertyName1 = GetPropertyDisplayName(prop1.Key);
+                    row.PropertyValue1 = prop1.Value ?? "";
+
+                    // 第二列（如果有）
+                    if (i + 1 < allProperties.Count)
+                    {
+                        var prop2 = allProperties[i + 1];
+                        row.PropertyName2 = GetPropertyDisplayName(prop2.Key);
+                        row.PropertyValue2 = prop2.Value ?? "";
+                    }
+
+                    propertyRows.Add(row);
+                }
+
+                // 确保至少有几行空行用于编辑
+                while (propertyRows.Count < 5)
+                {
+                    propertyRows.Add(new CategoryPropertyEditModel());
+                }
+
+                LogManager.Instance.LogDebug($"准备完成 {propertyRows.Count} 行属性数据");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"准备文件显示数据时出错: {ex.Message}");
+            }
+
+            return propertyRows;
+        }
+
+        // 添加对象属性到列表
+        private void AddObjectProperties(List<KeyValuePair<string, string>> properties, object obj, string category)
+        {
+            try
+            {
+                if (obj == null) return;
+
+                var objectType = obj.GetType();
+                var objectProperties = objectType.GetProperties();
+
+                foreach (var prop in objectProperties)
+                {
+                    try
+                    {
+                        // 跳过一些不需要显示的属性
+                        if (ShouldSkipProperty(prop.Name))
+                            continue;
+
+                        var value = prop.GetValue(obj);
+                        string displayValue = value?.ToString() ?? "";
+
+                        // 特殊处理某些属性
+                        if (prop.Name == "FileSize" && value is long fileSize)
+                        {
+                            displayValue = FormatFileSize(fileSize);
+                        }
+                        else if (prop.Name.EndsWith("At") && value is DateTime dateTime)
+                        {
+                            displayValue = dateTime.ToString("yyyy-MM-dd HH:mm:ss");
+                        }
+                        else if (prop.Name == "IsActive" || prop.Name == "IsPublic" || prop.Name == "IsPreview")
+                        {
+                            displayValue = (value?.ToString() == "True") ? "是" : "否";
+                        }
+
+                        properties.Add(new KeyValuePair<string, string>($"{category}.{prop.Name}", displayValue));
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Instance.LogDebug($"获取属性 {prop.Name} 值时出错: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"添加对象属性时出错: {ex.Message}");
+            }
+        }
+
+        // 判断是否应该跳过属性
+        private bool ShouldSkipProperty(string propertyName)
+        {
+            var skipProperties = new[] { "FileData", "PreviewImageData" }; // 跳过二进制数据
+            return skipProperties.Contains(propertyName);
+        }
+
+        // 获取属性显示名称
+        private string GetPropertyDisplayName(string fullPropertyName)
+        {
+            try
+            {
+                // 分离分类和属性名
+                if (fullPropertyName.Contains("."))
+                {
+                    var parts = fullPropertyName.Split('.');
+                    var category = parts[0];
+                    var propertyName = parts[1];
+
+                    // 获取映射名称
+                    if (_propertyDisplayNameMap.TryGetValue(propertyName, out string displayName))
+                    {
+                        return displayName;
+                    }
+                }
+                else
+                {
+                    // 直接属性名
+                    if (_propertyDisplayNameMap.TryGetValue(fullPropertyName, out string displayName))
+                    {
+                        return displayName;
+                    }
+                }
+
+                // 如果没有映射，返回原始名称
+                return fullPropertyName.Contains(".") ? fullPropertyName.Split('.')[1] : fullPropertyName;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogDebug($"获取属性显示名称时出错: {ex.Message}");
+                return fullPropertyName;
+            }
+        }
+
+        // 格式化文件大小
+        private string FormatFileSize(long fileSize)
+        {
+            try
+            {
+                if (fileSize < 1024)
+                    return $"{fileSize} B";
+                else if (fileSize < 1024 * 1024)
+                    return $"{fileSize / 1024.0:F2} KB";
+                else if (fileSize < 1024 * 1024 * 1024)
+                    return $"{fileSize / (1024.0 * 1024.0):F2} MB";
+                else
+                    return $"{fileSize / (1024.0 * 1024.0 * 1024.0):F2} GB";
+            }
+            catch
+            {
+                return fileSize.ToString();
+            }
+        }
+
+
         /// <summary>
         /// 准备文件属性数据显示
         /// </summary>
@@ -5186,7 +5419,7 @@ namespace GB_NewCadPlus_III
         /// <returns></returns>
         private List<CategoryPropertyEditModel> PrepareFileAttributeData(object fileInto)
         {
-            // List<CategoryPropertyEditModel>? propertyRows = new List<CategoryPropertyEditModel>();
+            List<CategoryPropertyEditModel>? propertyRows = new List<CategoryPropertyEditModel>();
 
             try
             {
@@ -6025,6 +6258,78 @@ namespace GB_NewCadPlus_III
             }
         }
         #endregion
+
+
+        /// <summary>
+        /// 添加属性名称映射字典（如果还没有的话）
+        /// </summary>
+        private readonly Dictionary<string, string> _propertyDisplayNameMap = new Dictionary<string, string>
+        {
+            // FileStorage 属性映射
+            { "Id", "文件ID" },
+            { "FileName", "文件名" },
+            { "CategoryId", "分类ID" },
+            { "FileAttributeId", "属性ID" },
+            { "FileStoredName", "存储文件名" },
+            { "DisplayName", "显示名称" },
+            { "FileType", "文件类型" },
+            { "FileHash", "文件哈希" },
+            { "ElementBlockName", "元素块名" },
+            { "LayerName", "图层名称" },
+            { "ColorIndex", "颜色索引" },
+            { "FilePath", "文件路径" },
+            { "PreviewImageName", "预览图片名" },
+            { "PreviewImagePath", "预览图片路径" },
+            { "FileSize", "文件大小" },
+            { "IsPreview", "是否预览" },
+            { "Version", "版本号" },
+            { "Description", "描述" },
+            { "CreatedAt", "创建时间" },
+            { "UpdatedAt", "更新时间" },
+            { "CategoryType", "分类类型" },
+            { "CreatedBy", "创建者" },
+            { "IsActive", "是否激活" },
+            { "Title", "标题" },
+            { "Keywords", "关键字" },
+            { "IsPublic", "是否公开" },
+            { "UpdatedBy", "更新者" },
+            { "LastAccessedAt", "最后访问时间" },
+             //FileAttribute 属性映射
+            //{ "Id", "属性Id" },
+            { "FileStorageId", "存储文件ID" },
+            //{ "FileName", "文件名称" },
+            { "Length", "长度" },
+            { "Width", "宽度" },
+            { "Height", "高度" },
+            { "Angle", "角度" },
+            { "BasePointX", "基点X" },
+            { "BasePointY", "基点Y" },
+            { "BasePointZ", "基点Z" },
+            //{ "CreatedAt", "创建时间" },
+            //{ "UpdatedAt", "更新时间" },
+            { "MediumName", "介质" },
+            { "Specifications", "规格" },
+            { "Material", "材质" },
+            { "StandardNumber", "标准编号" },
+            { "Power", "功率" },
+            { "Volume", "容积" },
+            { "Pressure", "压力" },
+            { "Temperature", "温度" },
+            { "Diameter", "直径" },
+            { "OuterDiameter", "外径" },
+            { "InnerDiameter", "内径" },
+            { "Thickness", "厚度" },
+            { "Weight", "重量" },
+            { "Model", "型号" },
+            { "Remarks", "备注" },
+            { "Customize1", "自定义1" },
+            { "Customize2", "自定义2" },
+            { "Customize3", "自定义3" }
+        };
+
+
+
+
     }
 
     /// <summary>
