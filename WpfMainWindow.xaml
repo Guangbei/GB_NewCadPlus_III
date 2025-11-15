@@ -487,9 +487,9 @@
                             FontSize="10"
                             FontWeight="Normal"
                             Text="预览：" />
-                        <Viewbox Margin="5,0,120,0">
-                            <Image x:Name="预览" />
-                        </Viewbox>
+                        <Image  x:Name="预览" Margin="5,0,120,0">
+                           
+                        </Image>
 
                     </Grid>
                     <Grid Grid.Row="1" />

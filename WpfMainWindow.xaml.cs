@@ -219,8 +219,9 @@ namespace GB_NewCadPlus_III
                 {
                     LogManager.Instance.LogWarning("未找到CategoryTreeView控件");
                 }
-                // 初始化文件属性网格
-                InitializeFilePropertiesGrid();
+               
+                // 查找PropertiesDataGrid控件
+                PropertiesDataGrid = FindVisualChild<DataGrid>(this, "PropertiesDataGrid");
                 Load();
                 LogManager.Instance.LogInfo("=== WPF主窗口加载完成 ===");
             }
@@ -651,29 +652,6 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 获取本地IP地址
-        /// </summary>
-        private string GetLocalIpAddress()
-        {
-            try
-            {
-                var host = System.Net.Dns.GetHostEntry(System.Net.Dns.GetHostName());
-                foreach (var ip in host.AddressList)
-                {
-                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
-                    {
-                        return ip.ToString();
-                    }
-                }
-                return "127.0.0.1";
-            }
-            catch
-            {
-                return "127.0.0.1";
-            }
-        }
-
 
         #region 图元tabItem
 
@@ -875,9 +853,9 @@ namespace GB_NewCadPlus_III
 
                 // 定义背景色
                 List<System.Windows.Media.Color> backgroundColors = new List<System.Windows.Media.Color>
-        {
-            Colors.FloralWhite, Colors.Azure, Colors.FloralWhite, Colors.Azure
-        };
+                {
+                    Colors.FloralWhite, Colors.Azure, Colors.FloralWhite, Colors.Azure
+                };
 
                 int colorIndex = 0;
 
@@ -1436,7 +1414,6 @@ namespace GB_NewCadPlus_III
                                             ButtonName = buttonName,
                                             FilePath = fullPath
                                         };
-                                        btn.Click += (s, e) => Button_Click(s, e, buttonName, fullPath);
                                     }
 
                                     // 添加按钮到行面板
@@ -1801,6 +1778,7 @@ namespace GB_NewCadPlus_III
             return result.ToString();
         }
 
+
         /// <summary>
         /// 动态生成按钮的统一点击事件处理
         /// </summary>
@@ -1813,16 +1791,28 @@ namespace GB_NewCadPlus_III
                 // 检查发送者是否为按钮
                 if (sender is Button btn)
                 {
-                    if (_useDatabaseMode && btn.Tag is FileStorage fileStorage)
+                    FileStorage fileStorage = null;
+
+                    if (_useDatabaseMode && btn.Tag is ButtonTagCommandInfo tagInfo)
                     {
                         // 数据库模式：处理数据库图元
-                        LogManager.Instance.LogInfo($"点击了数据库图元按钮: {fileStorage.DisplayName}");
+                        fileStorage = tagInfo.fileStorage;
+                        LogManager.Instance.LogInfo($"点击了数据库图元按钮: {tagInfo.ButtonName}");
+
+                        // 显示预览图片
+                        ShowFilePreview(fileStorage);
+
+                        // 显示文件详细属性（使用PropertiesDataGrid）
+                        DisplayFilePropertiesInDataGridAsync(fileStorage);
+
+                        // 执行原有操作
                         ExecuteDynamicButtonActionFromDatabase(fileStorage);
                     }
                     else if (!_useDatabaseMode && btn.Tag is string filePath)
                     {
                         // Resources模式：处理文件路径
                         LogManager.Instance.LogInfo($"点击了Resources图元按钮: {filePath}");
+
                         // 从文件路径提取按钮名称
                         string fileNameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(filePath);
                         string buttonName = fileNameWithoutExt;
@@ -1830,20 +1820,198 @@ namespace GB_NewCadPlus_III
                         {
                             buttonName = fileNameWithoutExt.Substring(fileNameWithoutExt.IndexOf("_") + 1);
                         }
+
+                        // 显示预览图片
+                        ShowPreviewImage(filePath, buttonName);
+
+                        // 清空属性显示
+                        ClearFilePropertiesInDataGrid();
+
+                        // 执行原有操作
                         ExecuteDynamicButtonActionFromResources(buttonName, filePath);
+                    }
+                    else if (btn.Tag is FileStorage directFileStorage)
+                    {
+                        // 直接的FileStorage对象
+                        fileStorage = directFileStorage;
+                        LogManager.Instance.LogInfo($"点击了文件按钮: {fileStorage.DisplayName}");
+
+                        // 显示预览图片
+                        ShowFilePreview(fileStorage);
+
+                        // 显示文件详细属性（使用PropertiesDataGrid）
+                        _ = DisplayFilePropertiesInDataGridAsync(fileStorage);
+
+                        // 执行操作
+                        ExecuteDynamicButtonActionFromDatabase(fileStorage);
                     }
                     else
                     {
-                        LogManager.Instance.LogInfo("按钮点击事件处理失败：无法识别的数据类型");
+                        LogManager.Instance.LogWarning("按钮点击事件处理失败：无法识别的数据类型");
                     }
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"处理按钮点击事件时出错: {ex.Message}");
+                LogManager.Instance.LogError($"处理按钮点击事件时出错: {ex.Message}");
                 System.Windows.MessageBox.Show($"处理按钮点击事件时出错: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// 在DataGrid中显示文件属性（用于CAD图元界面）
+        /// </summary>
+        private async Task DisplayFilePropertiesInDataGridAsync(FileStorage fileStorage)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo($"在PropertiesDataGrid中显示文件 {fileStorage.DisplayName} 的属性");
+
+                if (PropertiesDataGrid == null)
+                {
+                    LogManager.Instance.LogWarning("PropertiesDataGrid控件为空");
+                    return;
+                }
+
+                if (_databaseManager == null)
+                {
+                    LogManager.Instance.LogWarning("数据库管理器为空");
+                    PropertiesDataGrid.ItemsSource = null;
+                    return;
+                }
+
+                // 获取文件属性
+                var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
+
+                // 准备显示数据
+                //var displayData = PrepareFileDisplayDataForDataGrid(fileStorage, fileAttribute);
+                var displayData = PrepareFileDisplayData(fileStorage, fileAttribute);
+                PropertiesDataGrid.ItemsSource = displayData;
+
+                LogManager.Instance.LogInfo("文件属性在PropertiesDataGrid中显示完成");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"在PropertiesDataGrid中显示文件属性时出错: {ex.Message}");
+                if (PropertiesDataGrid != null)
+                {
+                    PropertiesDataGrid.ItemsSource = null;
+                }
+                MessageBox.Show($"显示文件属性时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 显示文件预览图片
+        /// </summary>
+        private async void ShowFilePreview(FileStorage fileStorage)
+        {
+            try
+            {
+                if (预览 == null)
+                {
+                    LogManager.Instance.LogWarning("预览图片控件为空");
+                    return;
+                }
+
+                // 清空现有预览
+                预览.Source = null;
+
+                if (fileStorage == null)
+                {
+                    LogManager.Instance.LogWarning("文件存储对象为空");
+                    return;
+                }
+
+                LogManager.Instance.LogInfo($"显示文件预览: {fileStorage.DisplayName}");
+
+                // 获取预览图片
+                var previewImage = await GetPreviewImageAsync(fileStorage);
+
+                if (previewImage != null)
+                {
+                    预览.Source = previewImage;
+                    LogManager.Instance.LogInfo("预览图片显示成功");
+                }
+                else
+                {
+                    LogManager.Instance.LogWarning("无法加载预览图片");
+                    // 显示默认图片或提示
+                    预览.Source = GetDefaultPreviewImage();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"显示文件预览时出错: {ex.Message}");
+                // 显示错误图片
+                预览.Source = GetDefaultPreviewImage();
+            }
+        }
+
+        /// <summary>
+        /// 显示文件详细信息和属性
+        /// </summary>
+        private async void ShowFileDetails(FileStorage fileStorage)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo($"显示文件详细信息: {fileStorage.DisplayName}");
+
+                if (fileStorage == null)
+                {
+                    LogManager.Instance.LogWarning("文件存储对象为空");
+                    return;
+                }
+
+                // 显示基本信息（如果存在相应的控件）
+                // 注意：这里需要在XAML中添加显示文件信息的控件
+                // 暂时只处理属性显示
+
+                // 显示属性信息
+                await DisplayFilePropertiesAsync(fileStorage);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"显示文件详细信息时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示文件属性
+        /// </summary>
+        private async Task DisplayFilePropertiesAsync(FileStorage fileStorage)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo($"显示文件属性: {fileStorage.DisplayName}");
+
+                if (_databaseManager == null)
+                {
+                    LogManager.Instance.LogWarning("数据库管理器为空");
+                    return;
+                }
+
+                // 获取文件属性
+                var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
+
+                // 准备显示数据
+                var displayData = PrepareFileDisplayData(fileStorage, fileAttribute);
+
+                // 更新显示（CAD图元界面）
+                if (PropertiesDataGrid != null)
+                {
+                    PropertiesDataGrid.ItemsSource = displayData;
+                }
+
+                LogManager.Instance.LogInfo("文件属性显示完成");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"显示文件属性时出错: {ex.Message}");
+            }
+        }
+
+
 
         /// <summary>
         /// 执行Resources图元按钮点击后的操作
@@ -1880,7 +2048,7 @@ namespace GB_NewCadPlus_III
             try
             {
                 // 1. 显示预览图
-                ShowPreviewImageFromDatabase(fileStorage);
+                //ShowPreviewImageFromDatabase(fileStorage);
 
                 // 2. 获取图元属性
                 var graphicAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
@@ -1955,8 +2123,10 @@ namespace GB_NewCadPlus_III
             }
         }
 
+
+
         /// <summary>
-        /// 从数据库信息设置相关变量
+        /// 添加文件时从数据库信息设置相关变量
         /// </summary>
         /// <param Name="cadBlock">图元信息</param>
         /// <param Name="blockAttribute">图元属性</param>
@@ -1969,8 +2139,8 @@ namespace GB_NewCadPlus_III
                 {
                     VariableDictionary.entityRotateAngle = (double)(cadGraphicAttribute.Angle ?? 0);
                     VariableDictionary.btnFileName = fileStorage.FileName;
-                    VariableDictionary.btnBlockLayer = fileStorage.LayerName ?? "TJ(工艺专业GY)";
-                    VariableDictionary.layerColorIndex = fileStorage.ColorIndex ?? 40;
+                    VariableDictionary.btnBlockLayer = fileStorage.LayerName ?? "TJ()";
+                    VariableDictionary.layerColorIndex = fileStorage.ColorIndex ?? 0;
 
                     // 设置其他属性
                     VariableDictionary.textbox_S_Width = cadGraphicAttribute.Width?.ToString();
@@ -1982,8 +2152,8 @@ namespace GB_NewCadPlus_III
                     // 默认值
                     VariableDictionary.entityRotateAngle = 0;
                     VariableDictionary.btnFileName = fileStorage.FileName;
-                    VariableDictionary.btnBlockLayer = "TJ(工艺专业GY)";
-                    VariableDictionary.layerColorIndex = 40;
+                    VariableDictionary.btnBlockLayer = "TJ()";
+                    VariableDictionary.layerColorIndex = 0;
                 }
 
                 LogManager.Instance.LogInfo($"已设置变量: btnFileName={VariableDictionary.btnFileName}, btnBlockLayer={VariableDictionary.btnBlockLayer}");
@@ -2032,28 +2202,6 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 按钮点击事件处理
-        /// </summary>
-        /// <param Name="sender">事件发送者</param>
-        /// <param Name="e">路由事件参数</param>
-        /// <param Name="buttonName">按钮名称</param>
-        /// <param Name="filePath">文件完整路径</param>
-        private void Button_Click(object sender, RoutedEventArgs e, string buttonName, string filePath)
-        {
-            try
-            {
-                // 显示预览图
-                ShowPreviewImage(filePath, buttonName);
-
-                // 调用Command类中的GB_InsertBlock_方法
-                // Command.GB_InsertBlock_(new Point3d(0,0,0), 0.1, buttonName);
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"执行命令时出错: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// 显示预览图片
@@ -5156,54 +5304,6 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 加载并显示文件属性
-        /// </summary>
-        /// <param name="fileStorage"></param>
-        /// <returns></returns>
-        private async Task AddFileLoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
-        {
-            try
-            {
-                if (_databaseManager == null)
-                    return;
-
-                // 获取文件属性
-                //var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
-                var selectedFile = await _databaseManager.GetFileWithAttributeAsync(fileStorage.Id);
-                var propertyRows = PrepareFileAttributeData(_currentFileStorage);
-                _selectedFileAttribute = selectedFile.Attribute;
-                _currentFileStorage = selectedFile.File;
-                if (_selectedFileAttribute != null && _currentFileStorage != null)
-                {
-                    // 准备属性数据显示
-
-                    propertyRows = PrepareFileAttributeData(_selectedFileAttribute);
-                    CategoryPropertiesDataGrid.ItemsSource = propertyRows;
-
-                }
-                else
-                {
-                    // 如果没有属性，创建空的属性行
-                    var emptyRows = new List<CategoryPropertyEditModel>
-                    {
-                        new CategoryPropertyEditModel(),
-                        new CategoryPropertyEditModel(),
-                        new CategoryPropertyEditModel()
-                    };
-                    CategoryPropertiesDataGrid.ItemsSource = emptyRows;
-
-                }
-                propertyRows = new List<CategoryPropertyEditModel>();
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"加载文件属性时出错: {ex.Message}");
-                MessageBox.Show($"加载文件属性时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-
-        /// <summary>
         /// 加载并显示文件属性（修改现有方法）
         /// </summary>
         /// <param name="fileStorage">数据库储存的文件</param>
@@ -5237,7 +5337,12 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 准备文件显示数据
+        /// <summary>
+        /// 准备文件显示数据
+        /// </summary>
+        /// <param name="fileStorage"></param>
+        /// <param name="fileAttribute"></param>
+        /// <returns></returns>
         private List<CategoryPropertyEditModel> PrepareFileDisplayData(FileStorage fileStorage, FileAttribute fileAttribute)
         {
             var propertyRows = new List<CategoryPropertyEditModel>();
@@ -5298,7 +5403,12 @@ namespace GB_NewCadPlus_III
             return propertyRows;
         }
 
-        // 添加对象属性到列表
+        /// <summary>
+        /// 添加对象属性到列表
+        /// </summary>
+        /// <param name="properties"></param>
+        /// <param name="obj"></param>
+        /// <param name="category"></param>
         private void AddObjectProperties(List<KeyValuePair<string, string>> properties, object obj, string category)
         {
             try
@@ -5347,14 +5457,22 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 判断是否应该跳过属性
+        /// <summary>
+        /// 判断是否应该跳过属性
+        /// </summary>
+        /// <param name="propertyName"></param>
+        /// <returns></returns>
         private bool ShouldSkipProperty(string propertyName)
         {
             var skipProperties = new[] { "FileData", "PreviewImageData" }; // 跳过二进制数据
             return skipProperties.Contains(propertyName);
         }
 
-        // 获取属性显示名称
+        /// <summary>
+        /// 获取属性显示名称
+        /// </summary>
+        /// <param name="fullPropertyName"></param>
+        /// <returns></returns>
         private string GetPropertyDisplayName(string fullPropertyName)
         {
             try
@@ -5391,7 +5509,11 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 格式化文件大小
+        /// <summary>
+        /// 格式化文件大小
+        /// </summary>
+        /// <param name="fileSize"></param>
+        /// <returns></returns>
         private string FormatFileSize(long fileSize)
         {
             try
@@ -5411,77 +5533,23 @@ namespace GB_NewCadPlus_III
             }
         }
 
-
         /// <summary>
-        /// 准备文件属性数据显示
+        /// 清空DataGrid中的文件属性显示
         /// </summary>
-        /// <param name="fileAttribute">文件属性</param>
-        /// <returns></returns>
-        private List<CategoryPropertyEditModel> PrepareFileAttributeData(object fileInto)
+        private void ClearFilePropertiesInDataGrid()
         {
-            List<CategoryPropertyEditModel>? propertyRows = new List<CategoryPropertyEditModel>();
-
             try
             {
-                // 使用反射获取所有属性
-                var properties = fileInto.GetType().GetProperties();
-                var propertyList = new List<KeyValuePair<string, string>>();
-
-                foreach (var property in properties)
+                if (PropertiesDataGrid != null)
                 {
-                    try
-                    {
-                        var value = property.GetValue(fileInto);
-                        if (value != null)
-                        {
-                            propertyList.Add(new KeyValuePair<string, string>(property.Name, value.ToString()));
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        LogManager.Instance.LogInfo($"获取属性值时出错 {property.Name}: {ex.Message}");
-                    }
-                }
-
-                // 转换为两列格式
-                for (int i = 0; i < propertyList.Count; i += 2)
-                {
-                    if (i + 1 < propertyList.Count)
-                    {
-                        propertyRows.Add(new CategoryPropertyEditModel
-                        {
-                            PropertyName1 = propertyList[i].Key,
-                            PropertyValue1 = propertyList[i].Value,
-                            PropertyName2 = propertyList[i + 1].Key,
-                            PropertyValue2 = propertyList[i + 1].Value
-                        });
-                    }
-                    else
-                    {
-                        propertyRows.Add(new CategoryPropertyEditModel
-                        {
-                            PropertyName1 = propertyList[i].Key,
-                            PropertyValue1 = propertyList[i].Value,
-                            PropertyName2 = "",
-                            PropertyValue2 = ""
-                        });
-                    }
-                }
-
-                // 如果行数少于3行，添加空行
-                while (propertyRows.Count < 3)
-                {
-                    propertyRows.Add(new CategoryPropertyEditModel());
+                    PropertiesDataGrid.ItemsSource = null;
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"准备属性数据时出错: {ex.Message}");
+                LogManager.Instance.LogError($"清空PropertiesDataGrid时出错: {ex.Message}");
             }
-
-            return propertyRows;
         }
-
 
         /// <summary>
         /// 更新选中文件
