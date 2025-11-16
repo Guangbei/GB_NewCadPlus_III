@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualBasic;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
 using System.ComponentModel;
+using System.Data;
 using System.Drawing.Imaging;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -10,10 +11,13 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using OfficeOpenXml;
+using System.IO;
 using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using Button = System.Windows.Controls.Button;
 using DataGrid = System.Windows.Controls.DataGrid;
+using DataTable = System.Data.DataTable;
 using Image = System.Windows.Controls.Image;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
@@ -219,7 +223,7 @@ namespace GB_NewCadPlus_III
                 {
                     LogManager.Instance.LogWarning("未找到CategoryTreeView控件");
                 }
-               
+
                 // 查找PropertiesDataGrid控件
                 PropertiesDataGrid = FindVisualChild<DataGrid>(this, "PropertiesDataGrid");
                 Load();
@@ -4937,127 +4941,6 @@ namespace GB_NewCadPlus_III
                     await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, _currentFileStorage, _currentFileAttribute);
                 }
             }
-
-            //try
-            //{
-            //    if (string.IsNullOrEmpty(_selectedFilePath) || _selectedCategoryNode == null)
-            //    {
-            //        throw new Exception("文件路径或分类节点为空");
-            //    }
-
-            //    // 1. 创建文件存储对象
-            //    var fileInfo = new FileInfo(_selectedFilePath);
-            //    string fileExtension = fileInfo.Extension.ToLower();
-            //    string fileName = fileInfo.Name;
-            //    string displayName = Path.GetFileNameWithoutExtension(fileName);
-
-            //    _currentFileStorage = new FileStorage
-            //    {
-            //        CategoryId = _selectedCategoryNode.Id,
-            //        CategoryType = _selectedCategoryNode.Level == 0 ? "main" : "sub",
-            //        FileName = fileName,
-            //        DisplayName = displayName,
-            //        FileType = fileExtension,
-            //        FileSize = fileInfo.Length,
-            //        IsPreview = FileManager.IsPreviewFile(fileExtension),
-            //        Version = 1,
-            //        IsActive = true,
-            //        IsPublic = true,
-            //        CreatedBy = Environment.UserName,
-            //        UpdatedBy = Environment.UserName,
-            //        Title = displayName,
-            //        CreatedAt = DateTime.Now,
-            //        UpdatedAt = DateTime.Now
-            //    };
-
-            //    // 2. 生成存储文件名和路径
-            //    string storedFileName = $"{Guid.NewGuid()}{fileExtension}";
-            //    string categoryPath = Path.Combine(AppPath, "FileStorage", _currentFileStorage.CategoryType, _selectedCategoryNode.Id.ToString());
-
-
-            //    // 确保存储目录存在
-            //    if (!Directory.Exists(categoryPath))
-            //    {
-            //        Directory.CreateDirectory(categoryPath);
-            //    }
-
-            //    string storedFilePath = Path.Combine(categoryPath, storedFileName);
-            //    _currentFileStorage.FileStoredName = storedFileName;
-            //    _currentFileStorage.FilePath = storedFilePath;
-
-            //    // 3. 复制主文件到存储位置
-            //    File.Copy(_selectedFilePath, storedFilePath, true);
-
-            //    // 4. 如果有预览图片，也复制预览图片
-            //    if (!string.IsNullOrEmpty(_selectedPreviewImagePath))
-            //    {
-            //        var previewInfo = new FileInfo(_selectedPreviewImagePath);
-            //        string previewStoredName = $"{Guid.NewGuid()}{previewInfo.Extension}";
-            //        string previewStoredPath = Path.Combine(categoryPath, previewStoredName);
-            //        File.Copy(_selectedPreviewImagePath, previewStoredPath, true);
-
-            //        _currentFileStorage.PreviewImageName = previewStoredName;
-            //        _currentFileStorage.PreviewImagePath = previewStoredPath;
-            //    }
-            //    // 5. 计算文件哈希值
-            //    using (var fileStream = File.OpenRead(storedFilePath))
-            //    {
-            //        _currentFileStorage.FileHash = await FileManager.CalculateFileHashAsync(fileStream);
-            //    }
-
-            //    // 7. 创建文件属性对象
-            //    _currentFileAttribute = new FileAttribute
-            //    {
-            //        //FileStorageId = _currentFileStorage.Id,
-            //        FileName = _currentFileStorage.FileName,
-            //        CreatedAt = DateTime.Now,
-            //        UpdatedAt = DateTime.Now
-            //    };
-
-            //    // 8. 从属性编辑网格中获取属性值
-            //    var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-            //    if (properties != null)
-            //    {
-            //        foreach (var property in properties)
-            //        {
-            //            SetFileAttributeProperty(_currentFileAttribute, property.PropertyName1, property.PropertyValue1);
-            //            SetFileAttributeProperty(_currentFileAttribute, property.PropertyName2, property.PropertyValue2);
-            //        }
-            //    }
-            //    _currentFileAttribute.FileStorageId = _currentFileStorage.Id;// 关联文件存储
-            //    // 9. 保存文件属性到数据库
-            //    int attributeResult = await _databaseManager.AddFileAttributeAsync(_currentFileAttribute);
-            //    if (attributeResult <= 0)
-            //    {
-            //        throw new Exception("保存文件属性失败");
-            //    }
-            //    // 10. 更新文件记录中的属性ID
-            //    _currentFileStorage.FileAttributeId = _currentFileAttribute.Id;
-            //    // 6. 保存文件存储信息到数据库
-            //    var fileResult = _databaseManager.AddFileStorageAsync(_currentFileStorage);
-            //    if (fileResult.IsCompleted)
-            //    {
-            //        throw new Exception("保存文件信息失败");
-            //    }
-
-            //    //await _databaseManager.UpdateFileStorageAsync(_currentFileStorage);
-            //    // 11. 处理标签信息
-            //    await ProcessFileTags(_currentFileStorage.Id, properties);
-            //    // 12. 更新分类统计
-            //    await _databaseManager.UpdateCategoryStatisticsAsync(
-            //        _currentFileStorage.CategoryId,
-            //        _currentFileStorage.CategoryType);
-
-            //    if (_currentFileStorage == null)
-            //    {
-            //        throw new Exception("没有待保存的文件信息");
-            //    }
-            //    MessageBox.Show($"文件已成功上传并保存到数据库", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-            //}
-            //catch (Exception ex)
-            //{
-            //    throw new Exception($"文件上传和数据库保存失败: {ex.Message}", ex);
-            //}
         }
 
         /// <summary>
@@ -5162,7 +5045,7 @@ namespace GB_NewCadPlus_III
                         _currentFileStorage.ColorIndex = Convert.ToInt32(propertyValue);
                         break;
                     case "是否公开":
-                        _currentFileStorage.IsPublic = boolValue;
+                        _currentFileStorage.IsPublic = Convert.ToInt32(propertyValue);
                         break;
                     case "描述":
                         _currentFileStorage.Description = propertyValue;
@@ -5674,7 +5557,6 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"更新属性 {propertyName} 时出错: {ex.Message}");
             }
         }
-
 
         /// <summary>
         /// 直接刷新当前选中分类的文件显示
@@ -6361,11 +6243,8 @@ namespace GB_NewCadPlus_III
             { "Keywords", "关键字" },
             { "IsPublic", "是否公开" },
             { "UpdatedBy", "更新者" },
-            { "LastAccessedAt", "最后访问时间" },
              //FileAttribute 属性映射
-            //{ "Id", "属性Id" },
             { "FileStorageId", "存储文件ID" },
-            //{ "FileName", "文件名称" },
             { "Length", "长度" },
             { "Width", "宽度" },
             { "Height", "高度" },
@@ -6373,8 +6252,6 @@ namespace GB_NewCadPlus_III
             { "BasePointX", "基点X" },
             { "BasePointY", "基点Y" },
             { "BasePointZ", "基点Z" },
-            //{ "CreatedAt", "创建时间" },
-            //{ "UpdatedAt", "更新时间" },
             { "MediumName", "介质" },
             { "Specifications", "规格" },
             { "Material", "材质" },
@@ -6395,8 +6272,655 @@ namespace GB_NewCadPlus_III
             { "Customize3", "自定义3" }
         };
 
+        #region 批量添加文件
 
+        private void 导出模板_Btn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo("开始导出模板");
 
+                // 创建模板DataTable
+                DataTable templateTable = CreateTemplateDataTable();
+
+                // 选择保存路径
+                var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "保存模板文件",
+                    Filter = "Excel文件 (*.xlsx)|*.xlsx|Excel 97-2003文件 (*.xls)|*.xls",
+                    FileName = "图元批量添加模板.xlsx"
+                };
+
+                if (saveFileDialog.ShowDialog() == true)
+                {
+                    string filePath = saveFileDialog.FileName;
+
+                    // 导出到Excel
+                    if (ExportDataTableToExcel(templateTable, filePath))
+                    {
+                        MessageBox.Show($"模板已成功导出到:\n{filePath}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        LogManager.Instance.LogInfo($"模板导出成功: {filePath}");
+                    }
+                    else
+                    {
+                        MessageBox.Show("模板导出失败", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        LogManager.Instance.LogError("模板导出失败");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"导出模板时出错: {ex.Message}");
+                MessageBox.Show($"导出模板时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void 导入模板_Btn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "选择Excel文件",
+                    Filter = "Excel文件 (*.xlsx;*.xls)|*.xlsx;*.xls",
+                    Multiselect = false
+                };
+
+                if (openFileDialog.ShowDialog() == true)
+                {
+                    file_Path.Text = openFileDialog.FileName;
+                    LogManager.Instance.LogInfo($"选择Excel文件: {openFileDialog.FileName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"选择Excel文件时出错: {ex.Message}");
+                MessageBox.Show($"选择Excel文件时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        private void 批量添加图元_Btn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(file_Path.Text))
+                {
+                    MessageBox.Show("请先选择Excel文件", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!File.Exists(file_Path.Text))
+                {
+                    MessageBox.Show("选择的Excel文件不存在", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 显示确认对话框
+                var result = MessageBox.Show("确定要批量添加图元吗？这将导入Excel文件中的所有数据。",
+                    "确认", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.No)
+                    return;
+
+                // 开始批量导入
+                BatchImportGraphicsAsync(file_Path.Text);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"批量添加图元时出错: {ex.Message}");
+                MessageBox.Show($"批量添加图元时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 创建模板DataTable
+        /// </summary>
+        private DataTable CreateTemplateDataTable()
+        {
+            DataTable dt = new DataTable("图元批量添加模板");
+            #region FileStorage
+            // 添加列（基于FileStorage和FileAttribute的所有字段）
+            dt.Columns.Add("分类ID", typeof(int));
+            dt.Columns.Add("分类类型", typeof(string));
+            dt.Columns.Add("文件名", typeof(string));
+            dt.Columns.Add("显示名称", typeof(string));
+            dt.Columns.Add("文件路径", typeof(string));
+            dt.Columns.Add("文件类型", typeof(string));
+            dt.Columns.Add("文件大小", typeof(long));
+            dt.Columns.Add("元素块名", typeof(string));
+            dt.Columns.Add("图层名称", typeof(string));
+            dt.Columns.Add("颜色索引", typeof(int));
+            dt.Columns.Add("预览图片名称", typeof(string));
+            dt.Columns.Add("预览图片路径", typeof(string));
+            dt.Columns.Add("是否预览", typeof(int));
+            dt.Columns.Add("创建者", typeof(string));
+            dt.Columns.Add("标题", typeof(string));
+            dt.Columns.Add("关键字", typeof(string));
+            dt.Columns.Add("更新者", typeof(string));
+            dt.Columns.Add("版本号", typeof(int));
+            dt.Columns.Add("是否激活", typeof(int));
+            dt.Columns.Add("是否公开", typeof(int));
+            dt.Columns.Add("描述", typeof(string));
+            #endregion
+            #region FileAttribute
+            // FileAttribute字段
+            dt.Columns.Add("存储文件ID", typeof(string));
+            dt.Columns.Add("文件名称", typeof(string));
+            dt.Columns.Add("长度", typeof(double));
+            dt.Columns.Add("宽度", typeof(double));
+            dt.Columns.Add("高度", typeof(double));
+            dt.Columns.Add("角度", typeof(string));
+            dt.Columns.Add("介质", typeof(string));
+            dt.Columns.Add("材质", typeof(string));
+            dt.Columns.Add("规格", typeof(string));
+            dt.Columns.Add("标准编号", typeof(string));
+            dt.Columns.Add("功率", typeof(string));
+            dt.Columns.Add("容积", typeof(string));
+            dt.Columns.Add("压力", typeof(string));
+            dt.Columns.Add("温度", typeof(string));
+            dt.Columns.Add("直径", typeof(string));
+            dt.Columns.Add("外径", typeof(string));
+            dt.Columns.Add("内径", typeof(string));
+            dt.Columns.Add("厚度", typeof(string));
+            dt.Columns.Add("重量", typeof(string));
+            dt.Columns.Add("型号", typeof(string));
+            dt.Columns.Add("备注", typeof(string));
+            dt.Columns.Add("自定义1", typeof(string));
+            dt.Columns.Add("自定义2", typeof(string));
+            dt.Columns.Add("自定义3", typeof(string));
+            #endregion
+            #region FileStorage 示例
+            // 添加示例行
+            DataRow sampleRow = dt.NewRow();
+            sampleRow["分类ID"] = 1;
+            sampleRow["分类类型"] = "sub";
+            sampleRow["文件名"] = "示例文件.dwg";
+            sampleRow["显示名称"] = "示例图元";
+            sampleRow["文件路径"] = "C:\\示例路径\\示例文件.dwg";
+            sampleRow["文件类型"] = ".dwg";
+            sampleRow["文件大小"] = 102400;
+            sampleRow["元素块名"] = "220V插座";
+            sampleRow["图层名称"] = "TJ(电气专业D)";
+            sampleRow["颜色索引"] = "142";
+            sampleRow["预览图片名称"] = "示例图片.png";
+            sampleRow["预览图片路径"] = "C:\\示例路径\\示例文件.png";
+            sampleRow["是否预览"] = 0;
+            sampleRow["创建者"] = "张三";
+            sampleRow["标题"] = "220V电源插座";
+            sampleRow["描述"] = "220V电源插座";
+            sampleRow["关键字"] = "220V、电源插座";
+            sampleRow["版本号"] = 1;
+            sampleRow["是否激活"] = 1;
+            sampleRow["是否公开"] = 1;
+            #endregion
+            #region FileAttribute示例数据
+            sampleRow["长度"] = 200.0;
+            sampleRow["宽度"] = 100.0;
+            sampleRow["高度"] = 50.0;
+            sampleRow["角度"] = 90.0;
+            sampleRow["介质"] = "水";
+            sampleRow["材质"] = "316不锈钢";
+            sampleRow["规格"] = "Standard";
+            sampleRow["标准编号"] = "2.5";
+            sampleRow["功率"] = "10KW";
+            sampleRow["容积"] = "100L";
+            sampleRow["压力"] = "5MPa";
+            sampleRow["温度"] = "100℃";
+            sampleRow["直径"] = "100mm";
+            sampleRow["外径"] = "10mm";
+            sampleRow["内径"] = "90mm";
+            sampleRow["厚度"] = "10mm";
+            sampleRow["重量"] = "10Kg";
+            sampleRow["型号"] = "A4";
+            sampleRow["备注"] = "备注";
+            sampleRow["自定义1"] = "自定义1";
+            sampleRow["自定义2"] = "自定义2";
+            sampleRow["自定义3"] = "自定义3";
+            #endregion
+            dt.Rows.Add(sampleRow);
+
+            return dt;
+        }
+
+        /// <summary>
+        /// 导出DataTable到Excel
+        /// </summary>
+        private bool ExportDataTableToExcel(DataTable dataTable, string filePath)
+        {
+            try
+            {
+                // 使用EPPlus库导出Excel（推荐方式）
+                using (var package = new OfficeOpenXml.ExcelPackage())
+                {
+                    var worksheet = package.Workbook.Worksheets.Add("图元批量添加模板");
+
+                    // 添加标题行
+                    for (int i = 0; i < dataTable.Columns.Count; i++)
+                    {
+                        worksheet.Cells[1, i + 1].Value = dataTable.Columns[i].ColumnName;//设置标题
+                        worksheet.Cells[1, i + 1].Style.Font.Bold = true;//设置字体加粗
+                        //worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillPatternType.Solid;//设置单元格填充颜色
+                        worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);//设置填充颜色
+                    }
+
+                    // 添加数据行
+                    for (int i = 0; i < dataTable.Rows.Count; i++)
+                    {
+                        for (int j = 0; j < dataTable.Columns.Count; j++)
+                        {
+                            worksheet.Cells[i + 2, j + 1].Value = dataTable.Rows[i][j];
+                        }
+                    }
+
+                    // 自动调整列宽
+                    worksheet.Cells.AutoFitColumns();
+
+                    // 保存文件
+                    var fileInfo = new FileInfo(filePath);
+                    package.SaveAs(fileInfo);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"导出Excel时出错: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 批量导入图元
+        /// </summary>
+        private async Task BatchImportGraphicsAsync(string excelFilePath)
+        {
+            try
+            {
+                LogManager.Instance.LogInfo($"开始批量导入图元: {excelFilePath}");
+
+                // 读取Excel文件
+                DataTable dataTable = ReadExcelToDataTable(excelFilePath);
+
+                if (dataTable == null || dataTable.Rows.Count == 0)
+                {
+                    MessageBox.Show("Excel文件中没有数据", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                int successCount = 0;
+                int failCount = 0;
+
+                // 遍历每一行数据
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    try
+                    {
+                        // 创建FileStorage对象
+                        var fileStorage = CreateFileStorageFromRow(row);
+
+                        if (fileStorage != null)
+                        {
+                            // 保存到数据库
+                            int fileId = await _databaseManager.AddFileStorageAsync(fileStorage);
+
+                            if (fileId > 0)
+                            {
+                                // 创建FileAttribute对象
+                                var fileAttribute = CreateFileAttributeFromRow(row, fileId);
+
+                                if (fileAttribute != null)
+                                {
+                                    // 保存文件属性
+                                    await _databaseManager.AddFileAttributeAsync(fileAttribute);
+                                }
+
+                                successCount++;
+                                LogManager.Instance.LogInfo($"成功导入图元: {fileStorage.DisplayName}");
+                            }
+                            else
+                            {
+                                failCount++;
+                                LogManager.Instance.LogWarning($"导入图元失败: {fileStorage?.DisplayName}");
+                            }
+                        }
+                        else
+                        {
+                            failCount++;
+                            LogManager.Instance.LogWarning("创建FileStorage对象失败");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failCount++;
+                        LogManager.Instance.LogError($"导入单个图元时出错: {ex.Message}");
+                    }
+                }
+
+                // 显示结果
+                MessageBox.Show($"批量导入完成\n成功: {successCount} 个\n失败: {failCount} 个",
+                    "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                LogManager.Instance.LogInfo($"批量导入完成 - 成功: {successCount}, 失败: {failCount}");
+
+                // 刷新分类树
+                await RefreshCategoryTreeAsync();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"批量导入图元时出错: {ex.Message}");
+                MessageBox.Show($"批量导入图元时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 从Excel行数据创建FileStorage对象
+        /// </summary>
+        private FileStorage CreateFileStorageFromRow(DataRow row)
+        {
+            try
+            {
+                var fileStorage = new FileStorage
+                {
+                    /*
+                        CategoryId("分类ID", typeof(int));
+                        CategoryType("分类类型", typeof(string));
+                       FileName ("文件名", typeof(string));
+                       DisplayName ("显示名称", typeof(string));
+                        FilePath("文件路径", typeof(string));
+                        FileType("文件类型", typeof(string));
+                        FileSize("文件大小", typeof(long));
+                        ElementBlockName("元素块名", typeof(string));
+                        LayerName("图层名称", typeof(string));
+                        ColorIndex("颜色索引", typeof(int));
+                        PreviewImageName("预览图片名称", typeof(string));
+                        PreviewImagePath("预览图片路径", typeof(string));
+                        IsPreview("是否预览", typeof(int));
+                        CreatedBy("创建者", typeof(string));
+                        Title("标题", typeof(string));
+                        Keywords("关键字", typeof(string));
+                        UpdatedBy("更新者", typeof(string));
+                        Version("版本号", typeof(int));
+                        IsActive("是否激活", typeof(int));
+                        IsPublic("是否公开", typeof(int));
+                        Description("描述", typeof(string));
+       
+                     */
+                    CategoryId = GetIntValue(row, "分类ID"),
+                    CategoryType = "sub", // 默认为主分类
+                    FileName = GetStringValue(row, "文件名"),
+                    DisplayName = GetStringValue(row, "显示名称"),
+                    FilePath = GetStringValue(row, "文件路径"),
+                    FileType = GetStringValue(row, "文件类型"),
+                    FileSize = GetLongValue(row, "文件大小"),
+                    ElementBlockName = GetStringValue(row, "元素块名"),
+                    LayerName = GetStringValue(row, "图层名称"),
+                    ColorIndex = GetIntValue(row, "颜色索引"),
+                    PreviewImageName = GetStringValue(row, "预览图片名称"),
+                    PreviewImagePath = GetStringValue(row, "预览图片路径"),
+                    IsPreview = GetIntValue(row, "是否预览", 0),
+                    CreatedBy = GetStringValue(row, "创建者"),
+                    Title = GetStringValue(row, "标题"),
+                    Version = GetIntValue(row, "版本号", 1),
+                    IsActive = GetIntValue(row, "是否激活", 1),
+                    IsPublic = GetIntValue(row, "是否公开", 1),
+                    Description = GetStringValue(row, "描述"),
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                return fileStorage;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"创建FileStorage对象时出错: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 从Excel行数据创建FileAttribute对象
+        /// </summary>
+        private FileAttribute CreateFileAttributeFromRow(DataRow row, int storageFileId)
+        {
+            try
+            {
+                var fileAttribute = new FileAttribute
+                {
+                    /*
+                      { "FileStorageId", "存储文件ID" },
+                      { "Length", "长度" },
+                      { "Width", "宽度" },
+                      { "Height", "高度" },
+                      { "Angle", "角度" },
+                      { "BasePointX", "基点X" },
+                      { "BasePointY", "基点Y" },
+                      { "BasePointZ", "基点Z" },
+                      { "MediumName", "介质" },
+                      { "Specifications", "规格" },
+                      { "Material", "材质" },
+                      { "StandardNumber", "标准编号" },
+                      { "Power", "功率" },
+                      { "Volume", "容积" },
+                      { "Pressure", "压力" },
+                      { "Temperature", "温度" },
+                      { "Diameter", "直径" },
+                      { "OuterDiameter", "外径" },
+                      { "InnerDiameter", "内径" },
+                      { "Thickness", "厚度" },
+                      { "Weight", "重量" },
+                      { "Model", "型号" },
+                      { "Remarks", "备注" },
+                      { "Customize1", "自定义1" },
+                      { "Customize2", "自定义2" },
+                      { "Customize3", "自定义3" }
+                     */
+                    FileStorageId = storageFileId,
+                    Width = (decimal?)GetDoubleValue(row, "宽度"),
+                    Height = (decimal?)GetDoubleValue(row, "高度"),
+                    Length = (decimal?)GetDoubleValue(row, "长度"),
+                    Angle = (decimal?)GetDoubleValue(row, "角度"),
+                    BasePointX = (decimal?)GetDoubleValue(row, "基点X"),
+                    BasePointZ = (decimal?)GetDoubleValue(row, "基点Y"),
+                    BasePointY = (decimal?)GetDoubleValue(row, "基点Z"),
+                    MediumName = GetStringValue(row, "介质"),
+                    Specifications = GetStringValue(row, "规格"),
+                    Material = GetStringValue(row, "材质"),
+                    StandardNumber = GetStringValue(row, "标准编号"),
+                    Power = GetStringValue(row, "功率"),
+                    Volume = GetStringValue(row, "容积"),
+                    Pressure = GetStringValue(row, "压力"),
+                    Temperature = GetStringValue(row, "温度"),
+                    Diameter = GetStringValue(row, "直径"),
+                    OuterDiameter = GetStringValue(row, "外径"),
+                    InnerDiameter = GetStringValue(row, "内径"),
+                    Thickness = GetStringValue(row, "厚度"),
+                    Weight = GetStringValue(row, "重量"),
+                    Model = GetStringValue(row, "型号"),
+                    Remarks = GetStringValue(row, "备注"),
+                    Customize1 = GetStringValue(row, "自定义1"),
+                    Customize2 = GetStringValue(row, "自定义2"),
+                    Customize3 = GetStringValue(row, "自定义3"),
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                return fileAttribute;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"创建FileAttribute对象时出错: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 读取Excel文件到DataTable
+        /// </summary>
+        private DataTable ReadExcelToDataTable(string filePath)
+        {
+            try
+            {
+                DataTable dataTable = new DataTable();
+
+                // 使用EPPlus读取Excel
+                using (var package = new OfficeOpenXml.ExcelPackage(new FileInfo(filePath)))
+                {
+                    var worksheet = package.Workbook.Worksheets[0]; // 读取第一个工作表
+
+                    // 读取标题行
+                    for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
+                    {
+                        var cellValue = worksheet.Cells[1, col].Value?.ToString() ?? "";
+                        dataTable.Columns.Add(cellValue);
+                    }
+
+                    // 读取数据行
+                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        var dataRow = dataTable.NewRow();
+                        for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
+                        {
+                            dataRow[col - 1] = worksheet.Cells[row, col].Value ?? DBNull.Value;
+                        }
+                        dataTable.Rows.Add(dataRow);
+                    }
+                }
+
+                return dataTable;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"读取Excel文件时出错: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 辅助方法
+        /// </summary>
+        /// <param name="row">行</param>
+        /// <param name="columnName">列</param>
+        /// <returns></returns>
+        private string GetStringValue(DataRow row, string columnName)
+        {
+            try
+            {
+                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
+                {
+                    return row[columnName].ToString();
+                }
+                return string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+        /// <summary>
+        /// 获取整型值
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="columnName"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        private int GetIntValue(DataRow row, string columnName, int defaultValue = 0)
+        {
+            try
+            {
+                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
+                {
+                    if (int.TryParse(row[columnName].ToString(), out int result))
+                    {
+                        return result;
+                    }
+                }
+                return defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        /// <summary>
+        /// 获取长整型值
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="columnName"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        private long GetLongValue(DataRow row, string columnName, long defaultValue = 0)
+        {
+            try
+            {
+                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
+                {
+                    if (long.TryParse(row[columnName].ToString(), out long result))
+                    {
+                        return result;
+                    }
+                }
+                return defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        /// <summary>
+        /// 获取双精度值
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="columnName"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        private double GetDoubleValue(DataRow row, string columnName, double defaultValue = 0.0)
+        {
+            try
+            {
+                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
+                {
+                    if (double.TryParse(row[columnName].ToString(), out double result))
+                    {
+                        return result;
+                    }
+                }
+                return defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        /// <summary>
+        /// 获取布尔值
+        /// </summary>
+        /// <param name="row"></param>
+        /// <param name="columnName"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        private bool GetBoolValue(DataRow row, string columnName, bool defaultValue = false)
+        {
+            try
+            {
+                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
+                {
+                    if (bool.TryParse(row[columnName].ToString(), out bool result))
+                    {
+                        return result;
+                    }
+                    // 处理"是"/"否"等中文表示
+                    string value = row[columnName].ToString().ToLower();
+                    if (value == "是" || value == "true" || value == "1")
+                        return true;
+                    if (value == "否" || value == "false" || value == "0")
+                        return false;
+                }
+                return defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        #endregion
 
     }
 

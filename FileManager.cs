@@ -71,7 +71,7 @@ namespace GB_NewCadPlus_III
             {
                 // 获取文件信息
                 var file = await _databaseManager.GetFileByIdAsync(fileId);
-                if (file == null || !file.IsActive)
+                if (file == null)
                 {
                     throw new Exception("文件不存在或已被删除");
                 }
@@ -171,10 +171,11 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 判断是否为预览文件
         /// </summary>
-        public static bool IsPreviewFile(string fileExtension)
+        public static int IsPreviewFile(string fileExtension)
         {
-            var previewExtensions = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif" };
-            return previewExtensions.Contains(fileExtension.ToLower());
+            var previewExtensions = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif" };// 预览文件扩展名列表
+            if(previewExtensions.Contains(fileExtension.ToLower())) { return 1; }else { return 0; }// 判断文件扩展名是否为预览文件
+
         }
 
 
@@ -378,8 +379,8 @@ namespace GB_NewCadPlus_III
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now,
                     CreatedBy = createdBy,
-                    IsActive = true,
-                    IsPublic = true
+                    IsActive = 1,
+                    IsPublic = 1
                 };
 
                 return fileRecord;

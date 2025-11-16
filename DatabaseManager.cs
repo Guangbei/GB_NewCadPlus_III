@@ -107,21 +107,21 @@ namespace GB_NewCadPlus_III
         public string LayerName { get; set; }//层名
         public int? ColorIndex { get; set; }//颜色索引
         public string FilePath { get; set; }//文件路径
-        public string PreviewImageName { get; set; }
+        public string PreviewImageName { get; set; }//预览图片名称
         public string PreviewImagePath { get; set; }//预览图片路径
         public long? FileSize { get; set; }//文件大小
-        public bool IsPreview { get; set; }      // 是否为预览文件
+        public int IsPreview { get; set; }      // 是否为预览文件
         public int Version { get; set; }         // 文件版本
-        public string Description { get; set; }  // 文件描述
+        public string? Description { get; set; }  // 文件描述
         public DateTime CreatedAt { get; set; }//创建时间
         public DateTime UpdatedAt { get; set; }//更新时间
-        public bool IsActive { get; set; }       // 是否激活
+        public int IsActive { get; set; }       // 是否激活
         public string? CreatedBy { get; set; }    // 创建者
         public string CategoryType { get; set; } = "sub"; // main 或 sub
         public string? Title { get; set; }//标题
-        public string Keywords { get; set; }//关键字
-        public bool IsPublic { get; set; } = true;//是否公开
-        public string UpdatedBy { get; set; }//更新者
+        public string? Keywords { get; set; }//关键字
+        public int IsPublic { get; set; } = 1;//是否公开
+        public string? UpdatedBy { get; set; }//更新者
         public DateTime? LastAccessedAt { get; set; }//最后访问时间
     }
 

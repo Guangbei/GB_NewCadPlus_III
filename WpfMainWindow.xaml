@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
     xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
+  
     d:Margin="0"
     d:MaxWidth="350"
     d:MinHeight="800"
@@ -487,9 +488,7 @@
                             FontSize="10"
                             FontWeight="Normal"
                             Text="预览：" />
-                        <Image  x:Name="预览" Margin="5,0,120,0">
-                           
-                        </Image>
+                        <Image x:Name="预览" Margin="5,0,120,0" />
 
                     </Grid>
                     <Grid Grid.Row="1" />
@@ -2900,26 +2899,33 @@
                             <TextBlock Text="删除分类" />
                         </Button>
                         <Button
-                            x:Name="刷新架构树按钮"
-                            Width="80"
-                            Height="25"
-                            Margin="173,2,89,27"
-                            Click="刷新架构树按钮_Click"
-                            Content="刷新架构树" />
-                        <Button
                             x:Name="展开所有按钮"
                             Width="80"
                             Height="25"
-                            Margin="258,2,4,27"
+                            Margin="173,2,89,27"
                             Click="展开所有按钮_Click"
                             Content="展开所有" />
                         <Button
                             x:Name="折叠所有按钮"
                             Width="80"
                             Height="25"
-                            Margin="258,28,4,1"
+                            Margin="173,28,89,1"
                             Click="折叠所有按钮_Click"
                             Content="折叠所有" />
+                        <Button
+                            x:Name="刷新架构树按钮"
+                            Width="80"
+                            Height="25"
+                            Margin="258,2,4,27"
+                            Click="刷新架构树按钮_Click"
+                            Content="刷新架构树" />
+                        <Button
+                            x:Name="导出模板"
+                            Width="80"
+                            Height="25"
+                            Margin="258,29,4,1"
+                            Click="导出模板_Btn_Click"
+                            Content="导出模板" />
 
                     </Grid>
                     <!--  第三行，管理员模块中的Grid.Row="2"  -->
@@ -3152,7 +3158,7 @@
                             Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="90,129,182,4"
+                            Margin="90,127,182,6"
                             Click="ResetToInitial_Btn_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="还原初始值" />
@@ -3163,7 +3169,7 @@
                             Height="22"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="167,129,105,4"
+                            Margin="167,127,105,6"
                             Click="ApplyProperties_Btn_Click"
                             FontSize="14">
                             <TextBlock FontSize="12" Text="应用属性" />
@@ -3171,15 +3177,42 @@
                         <Button
                             x:Name="AddFile_Btn"
                             Width="NaN"
-                            Height="NaN"
+                            Height="28"
                             MaxWidth="200"
                             MaxHeight="50"
-                            Margin="5,74,257,31"
+                            Margin="5,123,257,4"
+                            Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                             Click="AddFile_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="完成添加" />
+                            FontSize="14"
+                            Foreground="White">
+                            <TextBlock FontSize="15" Text="完成添加" />
                         </Button>
-
+                        <Button
+                            x:Name="导入模板_Btn"
+                            Width="80"
+                            Height="22"
+                            MaxWidth="80"
+                            MaxHeight="22"
+                            Margin="5,0,0,59"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            Click="导入模板_Btn_Click"
+                            FontSize="14">
+                            <TextBlock FontSize="12" Text="导入模板" />
+                        </Button>
+                        <Button
+                            x:Name="批量添加图元_Btn"
+                            Width="80"
+                            Height="22"
+                            MaxWidth="80"
+                            MaxHeight="22"
+                            Margin="5,0,0,36"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            Click="批量添加图元_Btn_Click"
+                            FontSize="14">
+                            <TextBlock FontSize="12" Text="批量添加图元" />
+                        </Button>
                         <Image
                             x:Name="ViewImage"
                             Width="100"
