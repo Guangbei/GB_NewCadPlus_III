@@ -13,6 +13,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using OfficeOpenXml;
 using System.IO;
+using System.Drawing;
+using OfficeOpenXml.Style;
 using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using Button = System.Windows.Controls.Button;
@@ -26,6 +28,11 @@ using TabControl = System.Windows.Controls.TabControl;
 using TextBox = System.Windows.Controls.TextBox;
 using TreeView = System.Windows.Controls.TreeView;
 using UserControl = System.Windows.Controls.UserControl;
+using Brushes = System.Windows.Media.Brushes;
+using Pen = System.Windows.Media.Pen;
+using Point = System.Windows.Point;
+using Border = System.Windows.Controls.Border;
+using FontFamily = System.Windows.Media.FontFamily;
 
 namespace GB_NewCadPlus_III
 {
@@ -6488,17 +6495,19 @@ namespace GB_NewCadPlus_III
             try
             {
                 // 使用EPPlus库导出Excel（推荐方式）
-                using (var package = new OfficeOpenXml.ExcelPackage())
+                using (var package = new ExcelPackage())
                 {
                     var worksheet = package.Workbook.Worksheets.Add("图元批量添加模板");
 
                     // 添加标题行
                     for (int i = 0; i < dataTable.Columns.Count; i++)
                     {
-                        worksheet.Cells[1, i + 1].Value = dataTable.Columns[i].ColumnName;//设置标题
-                        worksheet.Cells[1, i + 1].Style.Font.Bold = true;//设置字体加粗
-                        //worksheet.Cells[1, i + 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillPatternType.Solid;//设置单元格填充颜色
-                        worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);//设置填充颜色
+                        worksheet.Cells[1, i + 1].Value = dataTable.Columns[i].ColumnName;
+                        worksheet.Cells[1, i + 1].Style.Font.Bold = true;
+
+                        // 修复ExcelFillPatternType的引用问题
+                        worksheet.Cells[1, i + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        worksheet.Cells[1, i + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                     }
 
                     // 添加数据行
