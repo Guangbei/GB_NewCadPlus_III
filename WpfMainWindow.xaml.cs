@@ -1,38 +1,41 @@
-﻿using Microsoft.VisualBasic;
+using Microsoft.VisualBasic;
+using OfficeOpenXml;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
+using OfficeOpenXml.Style;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
+using System.Windows.Forms.Integration;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OfficeOpenXml;
-using System.IO;
-using System.Drawing;
-using OfficeOpenXml.Style;
 using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
+using Border = System.Windows.Controls.Border;
+using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using DataGrid = System.Windows.Controls.DataGrid;
 using DataTable = System.Data.DataTable;
+using FontFamily = System.Windows.Media.FontFamily;
 using Image = System.Windows.Controls.Image;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
 using Panel = System.Windows.Controls.Panel;
+using Pen = System.Windows.Media.Pen;
+using Point = System.Windows.Point;
 using TabControl = System.Windows.Controls.TabControl;
 using TextBox = System.Windows.Controls.TextBox;
 using TreeView = System.Windows.Controls.TreeView;
 using UserControl = System.Windows.Controls.UserControl;
-using Brushes = System.Windows.Media.Brushes;
-using Pen = System.Windows.Media.Pen;
-using Point = System.Windows.Point;
-using Border = System.Windows.Controls.Border;
-using FontFamily = System.Windows.Media.FontFamily;
 
 namespace GB_NewCadPlus_III
 {
@@ -203,6 +206,35 @@ namespace GB_NewCadPlus_III
         {
             try
             {
+                //Task.Delay(100);
+                //FixAutocadLayout();
+                //Task.Delay(200);
+                //FixAutocadLayout();
+                #region 布局调试
+                // 输出本控件与父级链的宽度信息，帮助定位是谁限制了宽度
+                Env.Editor.WriteMessage($"[LayoutDebug] WpfMainWindow - ActualWidth={ActualWidth}, ActualHeight={ActualHeight}, DesiredSize={DesiredSize}");
+                var sb = new StringBuilder();//创建一个StringBuilder对象
+                DependencyObject current = this;//设置当前对象为本控件
+                int level = 0;
+                while (current != null)//循环判断当前对象是否为空
+                {
+                    if (current is FrameworkElement fe)//判断当前对象是否是FrameworkElement
+                    {
+                        //输出当前对象的信息
+                        sb.AppendLine($"Level {level}: Type={fe.GetType().Name}, Name='{fe.Name}', ActualWidth={fe.ActualWidth}, Width={fe.Width}, MinWidth={fe.MinWidth}, MaxWidth={fe.MaxWidth}, DesiredWidth={fe.DesiredSize.Width}");
+                    }
+                    else
+                    {
+                        //输出当前对象信息
+                        sb.AppendLine($"Level {level}: Type={current.GetType().Name}");
+                    }
+                    //获取当前对象的父级对象
+                    current = VisualTreeHelper.GetParent(current);
+                    level++;
+                }
+                Env.Editor.WriteMessage(sb.ToString());//输出所有对象信息
+                #endregion
+
                 // 获取预览Viewbox的引用
                 previewViewbox = FindVisualChild<Viewbox>(this, "预览Viewbox") ??
                                  FindVisualChild<Viewbox>(this, "Viewbox");
@@ -241,7 +273,35 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogWarning($"窗口加载时出错: {ex.Message}");
             }
         }
+        private void FixAutocadLayout()
+        {
+            this.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Render, new Action(() =>
+            {
+                this.Width = 350;
+                this.Height = 700;
 
+                // 强制测量和排列
+                this.Measure(new System.Windows.Size(350, 700));
+                this.Arrange(new System.Windows.Rect(0, 0, 350, 700));
+
+                // 更新所有父级容器
+                UpdateParentSizes(this);
+            }));
+        }
+
+        private void UpdateParentSizes(DependencyObject child)
+        {
+            var parent = VisualTreeHelper.GetParent(child);
+            while (parent != null)
+            {
+                if (parent is FrameworkElement fe)
+                {
+                    fe.Width = 350;
+                    fe.UpdateLayout();
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+        }
         /// <summary>
         /// 重新初始化数据库连接
         /// </summary>

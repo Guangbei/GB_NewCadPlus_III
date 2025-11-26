@@ -8,11 +8,9 @@
     xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
     xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
     d:Margin="0"
-    d:MaxWidth="350"
-    d:MinHeight="800"
-    d:MinWidth="350"
     d:Name="MainWindows"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    Width="350" MinWidth="350" MaxWidth="350">
     <UserControl.Resources>
         <!--引入集中式样式文件（Resources/Styles.xaml）-->
         <ResourceDictionary>
@@ -30,8 +28,7 @@
         MaxWidth="350"
         Background="White">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition Width="0*" />
+            <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <TabControl
             MinWidth="350"
