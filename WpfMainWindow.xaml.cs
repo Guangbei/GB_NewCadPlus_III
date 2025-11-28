@@ -1,8 +1,13 @@
 ﻿using Microsoft.VisualBasic;
+using OfficeOpenXml;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
+using OfficeOpenXml.Style;
 using System.ComponentModel;
 using System.Data;
+using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,28 +16,24 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using OfficeOpenXml;
-using System.IO;
-using System.Drawing;
-using OfficeOpenXml.Style;
 using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
+using Border = System.Windows.Controls.Border;
+using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using DataGrid = System.Windows.Controls.DataGrid;
 using DataTable = System.Data.DataTable;
+using FontFamily = System.Windows.Media.FontFamily;
 using Image = System.Windows.Controls.Image;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using MessageBox = System.Windows.MessageBox;
 using Panel = System.Windows.Controls.Panel;
+using Pen = System.Windows.Media.Pen;
+using Point = System.Windows.Point;
 using TabControl = System.Windows.Controls.TabControl;
 using TextBox = System.Windows.Controls.TextBox;
 using TreeView = System.Windows.Controls.TreeView;
 using UserControl = System.Windows.Controls.UserControl;
-using Brushes = System.Windows.Media.Brushes;
-using Pen = System.Windows.Media.Pen;
-using Point = System.Windows.Point;
-using Border = System.Windows.Controls.Border;
-using FontFamily = System.Windows.Media.FontFamily;
 
 namespace GB_NewCadPlus_III
 {
@@ -985,9 +986,23 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private Button CreateFileButton(FileStorage file)
         {
+            // 仅显示最后一个下划线后的名称，例如 "DQTJ_EQUIP_潮湿插座" -> "潮湿插座"
+            string buttonText = file?.DisplayName ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(buttonText))
+            {
+                int lastUnderscore = buttonText.LastIndexOf('_');
+                if (lastUnderscore >= 0 && lastUnderscore + 1 < buttonText.Length)
+                {
+                    buttonText = buttonText.Substring(lastUnderscore + 1).Trim();
+                }
+                else
+                {
+                    buttonText = buttonText.Trim();
+                }
+            }
             Button btn = new Button
             {
-                Content = file.DisplayName ?? file.FileName ?? "未命名文件",
+                Content = buttonText,
                 Width = 88,
                 Height = 22,
                 Margin = new Thickness(0, 0, 5, 0),
@@ -996,7 +1011,7 @@ namespace GB_NewCadPlus_III
                 Tag = new ButtonTagCommandInfo
                 {
                     Type = "FileStorage",
-                    ButtonName = file.DisplayName ?? file.FileName ?? "未命名文件",
+                    ButtonName = buttonText,
                     fileStorage = file
                 }
             };
@@ -1537,7 +1552,7 @@ namespace GB_NewCadPlus_III
                     for (int j = 0; j < columns && (i + j) < conditionFiles.Count; j++)
                     {
                         var file = conditionFiles[i + j];
-                        Button btn = CreateConditionButton(file);
+                        Button btn = CreateConditionButton(file);//创建条件按钮
                         rowPanel.Children.Add(btn);
                     }
 
@@ -1655,9 +1670,23 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private Button CreateConditionButton(ConditionFileInfo fileInfo)
         {
+            // 仅显示最后一个下划线后的名称，例如 "DQTJ_EQUIP_潮湿插座" -> "潮湿插座"
+            string buttonText = fileInfo?.DisplayName ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(buttonText))
+            {
+                int lastUnderscore = buttonText.LastIndexOf('_');
+                if (lastUnderscore >= 0 && lastUnderscore + 1 < buttonText.Length)
+                {
+                    buttonText = buttonText.Substring(lastUnderscore + 1).Trim();
+                }
+                else
+                {
+                    buttonText = buttonText.Trim();
+                }
+            }
             Button btn = new Button
             {
-                Content = fileInfo.DisplayName,
+                Content = buttonText,
                 Width = 85,
                 Height = 20,
                 Margin = new Thickness(5, 1, 1, 1),
@@ -4495,39 +4524,73 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private async void DeleteGraphic_Btn_Click(object sender, RoutedEventArgs e)
         {
+            var selected = StroageFileDataGrid.SelectedItem as FileStorage;// 获取选中的行 获取选中的图元
+            if (selected == null)
+            {
+                MessageBox.Show("未选中要删除的图元。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"确定删除图元：{selected.DisplayName ?? selected.FileName} ?\n该操作将删除所有关联数据且不可恢复。",
+                "删除确认",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes) return;
+
+            DeleteGraphic_Btn.IsEnabled = false;
+
             try
             {
-                if (_currentNodeId <= 0 || _currentNodeType != "Graphic")
+                if (_databaseManager == null || !_databaseManager.IsDatabaseAvailable)
                 {
-                    System.Windows.MessageBox.Show("请先选择一个图元");
+                    MessageBox.Show("数据库不可用，无法删除。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
 
-                // 确认删除
-                var result = System.Windows.MessageBox.Show("确定要删除选中的图元吗？", "确认删除",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (result == MessageBoxResult.No)
+                bool ok = await _databaseManager.DeleteCadGraphicCascadeAsync(selected.Id, physicalDelete: true);
+                if (ok)
                 {
-                    return;
-                }
+                    // 尝试从 ItemsSource 移除并刷新
+                    var src = StroageFileDataGrid.ItemsSource;
 
-                if (_currentDatabaseType == "CAD")
+                    if (src is IList<FileStorage> list)
+                    {
+                        list.Remove(selected);
+                    }
+                    else if (src is System.Collections.IList nonGenericList)
+                    {
+                        nonGenericList.Remove(selected);
+                    }
+                    else if (src is System.Windows.Data.CollectionView view && view.SourceCollection is System.Collections.IList viewList)
+                    {
+                        viewList.Remove(selected);
+                        view.Refresh();
+                    }
+                    else
+                    {
+                        // 退化策略：直接刷新当前分类文件列表
+                        await RefreshFilesForCurrentCategoryAsync();
+                    }
+
+                    StroageFileDataGrid.Items.Refresh();
+                    CategoryPropertiesDataGrid.ItemsSource = null;
+
+                    MessageBox.Show("删除成功。", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
                 {
-                    await _databaseManager.DeleteCadGraphicAsync(_currentNodeId);
+                    MessageBox.Show("删除失败，请查看日志。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
-                else if (_currentDatabaseType == "SW")
-                {
-                    await _databaseManager.DeleteSwGraphicAsync(_currentNodeId);
-                }
-
-                System.Windows.MessageBox.Show("图元删除成功");
-
-                // 重新加载分类树
-                //await LoadAndDisplayCategoryTreeAsync();
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"删除图元时出错: {ex.Message}");
+                MessageBox.Show($"删除过程中发生错误：{ex.Message}", "异常", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                DeleteGraphic_Btn.IsEnabled = true;
             }
         }
 
@@ -4883,25 +4946,26 @@ namespace GB_NewCadPlus_III
                 if (attributeResult <= 0)
                 {
                     LogManager.Instance.LogInfo("保存文件属性失败");
+
                 }
                 else
                 {
                     LogManager.Instance.LogInfo("保存文件属性到数据库:成功");
                 }
-
                 //获取文件属性ID
                 _currentFileAttribute = await _databaseManager.GetFileAttributeAsync(_currentFileStorage.DisplayName);
-                if (_currentFileAttribute.Id == null)
+                if (_currentFileAttribute == null || _currentFileAttribute.Id == null)
                 {
                     LogManager.Instance.LogInfo("获取文件属性ID失败");
                     // 发生异常，需要回滚操作
                     await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, _currentFileStorage, _currentFileAttribute);
                     return;
                 }
-                _currentFileStorage.FileAttributeId = _currentFileAttribute.Id;  // 7. 更新文件记录中的属性ID
+                _currentFileStorage.FileAttributeId = _currentFileAttribute.Id;
 
-                var fileResult = await _databaseManager.AddFileStorageAsync(_currentFileStorage);//新加文件到数据库中
-                if (fileResult != 0)
+                //新加文件到数据库中
+                var fileResult = await _databaseManager.AddFileStorageAsync(_currentFileStorage);
+                if (fileResult == 0)
                 {
                     LogManager.Instance.LogInfo("保存文件记录到数据库:失败");
                     // 发生异常，需要回滚操作
@@ -4913,7 +4977,7 @@ namespace GB_NewCadPlus_III
                     LogManager.Instance.LogInfo("保存文件记录到数据库:成功");
                 }
                 ;
-                _currentFileStorage = await _databaseManager.GetFileStorageAsync(_currentFileStorage.FileName);//获取文件ID
+                _currentFileStorage = await _databaseManager.GetFileStorageAsync(_currentFileStorage.FileHash);//获取文件的基本信息
                 _currentFileAttribute.FileStorageId = _currentFileStorage.Id;//文件属性ID
 
                 await _databaseManager.UpdateFileAttributeAsync(_currentFileAttribute);//更新文件属性
@@ -4921,16 +4985,16 @@ namespace GB_NewCadPlus_III
                 await ProcessFileTags(_currentFileStorage.Id, properties);
 
                 // 9. 更新分类统计
-                await _databaseManager.UpdateCategoryStatisticsAsync(
+                var updateBool = await _databaseManager.UpdateCategoryStatisticsAsync(
                     _currentFileStorage.CategoryId,
                     _currentFileStorage.CategoryType);
 
                 // 如果所有操作都成功，标记事务成功
                 transactionSuccess = true;
                 // 11. 刷新分类树和界面显示
-                //await RefreshCategoryTreeAndDisplayAsync();
                 // 替换为：
-                await RefreshCurrentCategoryFilesAsync();
+                //await RefreshCurrentCategoryFilesAsync();
+                await RefreshCurrentCategoryDisplayAsync(_selectedCategoryNode);
                 MessageBox.Show($"文件已成功上传并保存到服务器指定路径\n文件路径: {_currentFileStorage.FilePath}",
                     "成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -5039,7 +5103,7 @@ namespace GB_NewCadPlus_III
                     case "备注":
                         attribute.Remarks = propertyValue;
                         break;
-                    case "显示名称":
+                    case "名称":
                         attribute.FileName = propertyValue;
                         break;
                     case "元素块名":
@@ -5088,7 +5152,12 @@ namespace GB_NewCadPlus_III
                             CreatedAt = DateTime.Now
                         };
                         // 这里需要在DatabaseManager中添加添加标签的方法
-                        await _databaseManager.AddFileTagAsync(tag);
+                        var addFileTagBool = await _databaseManager.AddFileTagAsync(tag);
+                        if (addFileTagBool)
+                        {
+                            LogManager.Instance.LogInfo($"添加标签 {tag.TagName} 成功");
+                        }
+                        
                     }
 
                     // 处理标签2
@@ -5100,7 +5169,11 @@ namespace GB_NewCadPlus_III
                             TagName = property.PropertyValue2,
                             CreatedAt = DateTime.Now
                         };
-                        await _databaseManager.AddFileTagAsync(tag);
+                        var addFileTagBool = await _databaseManager.AddFileTagAsync(tag);
+                        if (addFileTagBool)
+                        {
+                            LogManager.Instance.LogInfo($"添加标签 {tag.TagName} 成功");
+                        }
                     }
                 }
             }
@@ -5764,7 +5837,39 @@ namespace GB_NewCadPlus_III
                 return string.Empty;
             }
         }
+        /// <summary>
+        /// 刷新右侧图元文件列表（根据当前选中的分类节点）
+        /// </summary>
+        private async Task RefreshFilesForCurrentCategoryAsync()
+        {
+            try
+            {
+                if (_selectedCategoryNode == null || _databaseManager == null || !_databaseManager.IsDatabaseAvailable)
+                    return;
 
+                var nodeData = _selectedCategoryNode.Data;
+                List<FileStorage> files = null;
+
+                if (nodeData is CadCategory main)
+                {
+                    files = await _databaseManager.GetFilesByCategoryIdAsync(main.Id, "main");
+                }
+                else if (nodeData is CadSubcategory sub)
+                {
+                    files = await _databaseManager.GetFilesByCategoryIdAsync(sub.Id, "sub");
+                }
+
+                if (files != null)
+                {
+                    StroageFileDataGrid.ItemsSource = files;
+                    StroageFileDataGrid.Items.Refresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"刷新文件列表失败: {ex.Message}");
+            }
+        }
 
         #endregion
 

@@ -8,6 +8,7 @@ using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
 using OfficeOpenXml.FormulaParsing.Utilities;
 using Org.BouncyCastle.Asn1.Cms;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -132,6 +133,7 @@ namespace GB_NewCadPlus_III
     {
 
         public int Id { get; set; }//属性Id id AS Id,
+        public int CategoryId { get; set; }//分类id category_id AS CategoryId,
         public int FileStorageId { get; set; }//文件id file_storage_id AS FileStorageId,
         public string? FileName { get; set; }//文件名称 file_name AS FileName,
         public decimal? Length { get; set; }//长度 length AS Length,
@@ -693,16 +695,16 @@ namespace GB_NewCadPlus_III
                 using var connection = new MySqlConnection(_connectionString);
                 var parameters = new Dictionary<string, object>();
                 parameters.Add("ParentId", categoryId);
-                
-                var subcategories = await connection.QueryAsync<CadSubcategory>(sql,  parameters );
+
+                var subcategories = await connection.QueryAsync<CadSubcategory>(sql, parameters);
                 return subcategories.AsList();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 LogManager.Instance.LogInfo($"数据库查询出错: {ex.Message}");
                 throw;
             }
-            
+
         }
 
         /// <summary>
@@ -874,7 +876,7 @@ namespace GB_NewCadPlus_III
         /// <returns></returns>
         public async Task<int> DeleteCadSubcategoryAsync(int id)
         {
-            //这个方法还有不完善的地方，比如子分类下还有子分类或图元，如果不删除子分类下的图元，则无法删除子分类，需要先删除子分类下的图元，不然这个分类下的图元与子分类就是在数据库中的垃圾数据；
+            //这个方法还有不完善的地方，比如子分类下还有子分类或图元，如果不删除子分类下的图元，则无法删除子分类，需要前删除子分类下的图元，不然这个分类下的图元与子分类就是在数据库中的垃圾数据；
             using var connection = GetConnection();
             var sql = "DELETE FROM cad_subcategories WHERE id = @Id";
             return await connection.ExecuteAsync(sql, new { Id = id });
@@ -1636,8 +1638,11 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 获取文件的详细信息（包括属性）
         /// </summary>
-        public async Task<FileStorage> GetFileStorageAsync(string fileName)
+        public async Task<FileStorage> GetFileStorageAsync(string filehash)
         {
+            if (string.IsNullOrWhiteSpace(filehash))
+                return null;
+
             const string fileSql = @"
              SELECT 
                  id AS Id,
@@ -1669,16 +1674,19 @@ namespace GB_NewCadPlus_III
                  created_at AS CreatedAt,
                  updated_at AS UpdatedAt
              FROM cad_file_storage 
-             WHERE file_name = @FileName";
+             WHERE file_hash = @FileHash
+             LIMIT 1";
+
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
-                var parameters = new { FileName = fileName };
-                var file = await connection.QuerySingleOrDefaultAsync<FileStorage>(fileSql, parameters);
-                return file;
+                var fileStorageInfo = await connection.QueryFirstOrDefaultAsync<FileStorage>(
+                    fileSql, new { FileHash = filehash });
+                return fileStorageInfo;
             }
             catch (Exception ex)
             {
+                
                 LogManager.Instance.LogInfo($"获取文件详细信息时出错: {ex.Message}");
                 return null;
             }
@@ -1688,11 +1696,14 @@ namespace GB_NewCadPlus_III
         /// </summary>
         public async Task<FileAttribute> GetFileAttributeAsync(string fileName)
         {
-
+            // 规范化文件名：不带扩展名和原始名（带扩展名）
+            string noExtName = Path.GetFileNameWithoutExtension(fileName) ?? string.Empty;
+            string rawName = Path.GetFileName(fileName) ?? string.Empty;
             // 获取文件属性信息
             const string attributeSql = @"
             SELECT 
                 id AS Id,
+                category_id AS CategoryId,
                 file_storage_id AS FileStorageId,
                 file_name AS FileName,
                 length AS Length,
@@ -1724,58 +1735,64 @@ namespace GB_NewCadPlus_III
                 customize2 AS Customize2,
                 customize3 AS Customize3
             FROM cad_file_attributes 
-            WHERE file_name = @FileName";
-
+            WHERE file_name LIKE CONCAT('%', @Name1, '%')
+            OR file_name LIKE CONCAT('%', @Name2, '%')
+            LIMIT 1";
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
+                var parameters = new { Name1 = noExtName, Name2 = rawName };
+                var attribute = await connection.QueryFirstOrDefaultAsync<FileAttribute>(attributeSql,parameters );
 
-                // 使用参数化查询，避免 SQL 注入
-                var parameters = new { FileName = Path.GetFileNameWithoutExtension(fileName) };
-                var attribute = await connection.QuerySingleOrDefaultAsync<FileAttribute>(attributeSql, parameters);
-
-                return attribute; // 移除了多余的括号
+                return attribute;
             }
             catch (Exception ex)
             {
                 LogManager.Instance.LogInfo($"获取文件详细信息时出错: {ex.Message}");
                 return null;
             }
+
+
         }
 
         /// <summary>
         /// 更新分类统计信息
         /// </summary>
-        public async Task UpdateCategoryStatisticsAsync(int categoryId, string categoryType)
+        public async Task<bool> UpdateCategoryStatisticsAsync(int categoryId, string categoryType)
         {
             const string sql = @"
-        INSERT INTO category_statistics 
-        (category_id, category_type, file_count, total_size, last_file_added)
-        SELECT 
-            @CategoryId,
-            @CategoryType,
-            COUNT(*),
-            COALESCE(SUM(file_size), 0),
-            MAX(created_at)
-        FROM cad_file_storage 
-        WHERE category_id = @CategoryId 
-          AND category_type = @CategoryType 
-          AND is_active = 1
-        ON DUPLICATE KEY UPDATE
-            file_count = VALUES(file_count),
-            total_size = VALUES(total_size),
-            last_file_added = VALUES(last_file_added),
-            updated_at = CURRENT_TIMESTAMP";
+             INSERT INTO category_statistics 
+                 (category_id, category_type, file_count, total_size, last_file_added, updated_at)
+             SELECT 
+                 @CategoryId,
+                 @CategoryType,
+                 COUNT(*),
+                 COALESCE(SUM(file_size), 0),
+                 MAX(created_at),
+                 CURRENT_TIMESTAMP
+             FROM cad_file_storage 
+             WHERE category_id = @CategoryId 
+               AND category_type = @CategoryType 
+               AND is_active = 1
+             ON DUPLICATE KEY UPDATE
+                 file_count = VALUES(file_count),
+                 total_size = VALUES(total_size),
+                 last_file_added = VALUES(last_file_added),
+                 updated_at = CURRENT_TIMESTAMP";
+
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
-                await connection.ExecuteAsync(sql, new { categoryId, categoryType });
+                var affected = await connection.ExecuteAsync(sql, new { CategoryId = categoryId, CategoryType = categoryType });
+                // MySQL 的 INSERT ... ON DUPLICATE KEY UPDATE 返回受影响的行数：
+                // 插入返回1，更新返回2（或更多）。这里只需判断执行是否成功。
+                return affected > 0;
             }
             catch (Exception ex)
             {
                 LogManager.Instance.LogInfo($"更新分类统计信息时出错: {ex.Message}");
+                return false;
             }
-
         }
 
         /// <summary>
@@ -1944,36 +1961,34 @@ namespace GB_NewCadPlus_III
         public async Task<List<FileStorage>> GetFileStorageBySubcategoryIdAsync(int subcategoryId)
         {
             const string sql = @"
-             SELECT 
-                 id AS Id,
-                 subcategory_id AS SubcategoryId,
-                 file_name AS FileName,
-                 display_name AS DisplayName,
-                 element_block_name AS ElementBlockName,
-                 layer_name AS LayerName,
-                 color_index AS ColorIndex,
-                 file_path AS FilePath,
-                 preview_image_name AS PreviewImageName,
-                 preview_image_path AS PreviewImagePath,
-                 file_size AS FileSize,
-                 created_at AS CreatedAt,
-                 updated_at AS UpdatedAt,
-             FROM cad_file_storage 
-             WHERE subcategory_id = @SubcategoryId 
-             ORDER BY file_name";
+SELECT 
+    id AS Id,
+    category_id AS CategoryId,
+    file_name AS FileName,
+    display_name AS DisplayName,
+    element_block_name AS ElementBlockName,
+    layer_name AS LayerName,
+    color_index AS ColorIndex,
+    file_path AS FilePath,
+    preview_image_name AS PreviewImageName,
+    preview_image_path AS PreviewImagePath,
+    file_size AS FileSize,
+    created_at AS CreatedAt,
+    updated_at AS UpdatedAt
+FROM cad_file_storage 
+WHERE category_id = @SubcategoryId AND category_type = 'sub'
+ORDER BY file_name";
             try
             {
-                using var connection = new MySqlConnection(_connectionString);
-                var parameters = new { SubcategoryId = subcategoryId };
-                var FileStorage = await connection.QueryAsync<FileStorage>(sql, new { parameters });
-                return FileStorage.AsList();
+                using var connection = new MySql.Data.MySqlClient.MySqlConnection(_connectionString);
+                var result = await connection.QueryAsync<FileStorage>(sql, new { SubcategoryId = subcategoryId }).ConfigureAwait(false);
+                return result.AsList();
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"获取子分类图元列表时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"获取子分类图元列表时出错: {ex.Message}");
                 return new List<FileStorage>();
             }
-
         }
         /// <summary>
         /// 根据ID获取图元属性
@@ -2012,7 +2027,7 @@ namespace GB_NewCadPlus_III
                  remarks AS Remarks,//备注
                  customize1 AS Customize1,//自定义字段1
                  customize2 AS Customize2,//自定义字段2
-                 customize3 AS Customize3,//自定义字段3
+                 customize3 AS Customize3
              FROM cad_file_attributes 
              WHERE file_storage_id = @FileStorageId";
             try
@@ -2086,7 +2101,7 @@ namespace GB_NewCadPlus_III
             return await connection.ExecuteAsync(sql, fileStorage);
         }
         /// <summary>
-        /// 删除CAD图元
+        /// 删除CAD图元  DeleteCadGraphicCascadeAsync AddFileAttributeAsync
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
@@ -2096,6 +2111,117 @@ namespace GB_NewCadPlus_III
             var sql = "DELETE FROM cad_file_storage WHERE id = @Id";
             return await connection.ExecuteAsync(sql, new { Id = id });
         }
+
+
+        /// <summary>
+        /// 删除文件（软删除）
+        /// </summary>
+        public async Task<int> DeleteFileAsync(int fileId, string deletedBy)
+        {
+            const string sql = @"
+                UPDATE file_storage 
+             SET is_active = 0, 
+                 updated_at = @UpdatedAt
+             WHERE id = @Id";
+
+            using var connection = new MySqlConnection(_connectionString);
+            return await connection.ExecuteAsync(sql, new { Id = fileId, UpdatedAt = DateTime.Now });
+        }
+
+        /// <summary>
+        /// 级联删除 CAD 图元（数据库所有关联 + 物理文件）
+        /// </summary>
+        /// <param name="fileId">文件主键ID</param>
+        /// <param name="physicalDelete">是否物理删除磁盘文件</param>
+        /// <returns>删除是否成功</returns>
+        public async Task<bool> DeleteCadGraphicCascadeAsync(int fileId, bool physicalDelete = true)
+        {
+            const string selectSql = @"
+             SELECT 
+                 id AS Id,
+                 category_id AS CategoryId,
+                 file_path AS FilePath,
+                 preview_image_path AS PreviewImagePath,
+                 category_type AS CategoryType
+             FROM cad_file_storage
+             WHERE id = @Id";
+
+            const string deleteTagsSql = @"DELETE FROM file_tags WHERE file_id = @FileId";//标签删除标签关联
+            const string deleteAccessLogsSql = @"DELETE FROM file_access_logs WHERE file_id = @FileId";//访问日志访问日志删除
+            const string deleteVersionHistorySql = @"DELETE FROM file_version_history WHERE file_id = @FileId";//版本历史删除
+            const string deleteAttributesByFileIdSql = @"DELETE FROM cad_file_attributes WHERE file_storage_id = @FileId";//删除属性关联图元
+            const string deleteMainSql = @"DELETE FROM cad_file_storage WHERE id = @FileId";
+
+            using var connection = new MySql.Data.MySqlClient.MySqlConnection(_connectionString);//创建数据库连接使用 MySqlConnection
+            await connection.OpenAsync().ConfigureAwait(false);//打开数据库连接
+            using var tx = await connection.BeginTransactionAsync().ConfigureAwait(false);//开启事务
+
+            try
+            {
+                // 查询文件信息
+                var fileRow = await connection.QuerySingleOrDefaultAsync<dynamic>(selectSql, new { Id = fileId }, tx).ConfigureAwait(false);
+                if (fileRow == null)
+                {
+                    await tx.RollbackAsync().ConfigureAwait(false);//回滚事务
+                    LogManager.Instance.LogInfo($"级联删除失败：未找到文件 Id={fileId}");//记录日志:文件不存在
+                    return false;
+                }
+
+                string filePath = (string)fileRow.FilePath;//获取文件路径
+                string previewPath = (string)fileRow.PreviewImagePath;//获取预览图片路径
+                int categoryId = (int)fileRow.CategoryId;//获取分类ID
+                string categoryType = (string)fileRow.CategoryType;//获取分类类型
+
+                // 删除附属数据
+                await connection.ExecuteAsync(deleteTagsSql, new { FileId = fileId }, tx).ConfigureAwait(false);//删除标签关联
+                await connection.ExecuteAsync(deleteAccessLogsSql, new { FileId = fileId }, tx).ConfigureAwait(false);//删除访问日志
+                await connection.ExecuteAsync(deleteVersionHistorySql, new { FileId = fileId }, tx).ConfigureAwait(false);//删除版本历史
+                await connection.ExecuteAsync(deleteAttributesByFileIdSql, new { FileId = fileId }, tx).ConfigureAwait(false);//删除属性关联图元
+                await connection.ExecuteAsync(deleteMainSql, new { FileId = fileId }, tx).ConfigureAwait(false);//删除主文件
+
+                // 提交事务
+                await tx.CommitAsync().ConfigureAwait(false);//提交事务
+
+                // 物理删除（在事务成功后）
+                if (physicalDelete)
+                {
+                    TryDeleteFileSafe(filePath);//删除主文件
+                    TryDeleteFileSafe(previewPath);//删除预览图片
+                }
+
+                // 更新分类统计（后台执行，忽略异常）
+                _ = UpdateCategoryStatisticsAsync(categoryId, categoryType);//更新分类统计
+
+                LogManager.Instance.LogInfo($"级联删除完成 Id={fileId}");//记录日志:级联删除完成
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync().ConfigureAwait(false);//回滚事务
+                LogManager.Instance.LogInfo($"级联删除失败 Id={fileId}，错误：{ex.Message}");//记录日志:级联删除失败
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 安全删除单个文件（忽略异常并记录日志）
+        /// </summary>
+        private void TryDeleteFileSafe(string path)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))//检查文件是否存在
+                {
+                    File.Delete(path);//删除文件
+                    LogManager.Instance.LogInfo($"物理文件已删除: {path}");//记录日志:物理文件已删除
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"物理文件删除失败: {path} - {ex.Message}");//记录日志:物理文件删除失败
+            }
+        }
+
 
         /// <summary>
         /// 根据文件ID获取文件信息
@@ -2108,17 +2234,29 @@ namespace GB_NewCadPlus_III
                  category_id AS CategoryId,
                  file_name AS FileName,
                  file_stored_name AS FileStoredName,
-                 file_path AS FilePath,
+                 display_name AS DisplayName,
                  file_type AS FileType,
-                 file_size AS FileSize,
                  file_hash AS FileHash,
-                 description AS Description,
-                 version AS Version,
+                 element_block_name AS ElementBlockName,
+                 layer_name AS LayerName,
+                 color_index AS ColorIndex,
+                 file_path AS FilePath,
+                 preview_image_name AS PreviewImageName,
+                 preview_image_path AS PreviewImagePath,
+                 file_size AS FileSize,
                  is_preview AS IsPreview,
-                 created_at AS CreatedAt,
-                 updated_at AS UpdatedAt,
+                 version AS Version,
+                 description AS Description,
+                 is_active AS IsActive,
                  created_by AS CreatedBy,
-                 is_active AS IsActive
+                 category_type AS CategoryType,
+                 title AS Title,
+                 keywords AS Keywords,
+                 is_public AS IsPublic,
+                 updated_by AS UpdatedBy,
+                 last_accessed_at AS LastAccessedAt,
+                 created_at AS CreatedAt,
+                 updated_at AS UpdatedAt
              FROM cad_file_storage 
              WHERE id = @fileId";
 
@@ -2143,55 +2281,40 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 删除文件（软删除）
-        /// </summary>
-        public async Task<int> DeleteFileAsync(int fileId, string deletedBy)
-        {
-            const string sql = @"
-                UPDATE file_storage 
-             SET is_active = 0, 
-                 updated_at = @UpdatedAt
-             WHERE id = @Id";
-
-            using var connection = new MySqlConnection(_connectionString);
-            return await connection.ExecuteAsync(sql, new { Id = fileId, UpdatedAt = DateTime.Now });
-        }
-
-        /// <summary>
         /// 根据文件哈希值检查文件是否已存在
         /// </summary>
         public async Task<FileStorage> GetFileByHashAsync(string fileHash)
         {
             const string sql = @"
-            SELECT 
-                id AS Id,
-                category_id AS CategoryId,
-                file_name AS FileName,
-                file_stored_name AS FileStoredName,
-                display_name AS DisplayName,
-                file_path AS FilePath,
-                file_type AS FileType,
-                file_size AS FileSize,
-                file_hash AS FileHash,
-                description AS Description,
-                version AS Version,
-                is_preview AS IsPreview,
-                created_at AS CreatedAt,
-                updated_at AS UpdatedAt,
-                created_by AS CreatedBy,
-                is_active AS IsActive
-            FROM cad_file_storage 
-            WHERE file_hash = @fileHash AND is_active = 1
-            LIMIT 1";
+             SELECT 
+                 id AS Id,
+                 category_id AS CategoryId,
+                 file_name AS FileName,
+                 file_stored_name AS FileStoredName,
+                 display_name AS DisplayName,
+                 file_path AS FilePath,
+                 file_type AS FileType,
+                 file_size AS FileSize,
+                 file_hash AS FileHash,
+                 description AS Description,
+                 version AS Version,
+                 is_preview AS IsPreview,
+                 created_at AS CreatedAt,
+                 updated_at AS UpdatedAt,
+                 created_by AS CreatedBy,
+                 is_active AS IsActive
+             FROM cad_file_storage 
+             WHERE file_hash = @fileHash AND is_active = 1
+             LIMIT 1";
             try
             {
-                using var connection = new MySqlConnection(_connectionString);
-                var result = await connection.QuerySingleOrDefaultAsync<FileStorage>(sql, fileHash);
+                using var connection = new MySql.Data.MySqlClient.MySqlConnection(_connectionString);
+                var result = await connection.QuerySingleOrDefaultAsync<FileStorage>(sql, new { fileHash }).ConfigureAwait(false);
                 return result;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("获取哈希值检查文件出错：", ex.Message);
+                LogManager.Instance.LogInfo($"获取哈希值检查文件出错: {ex.Message}");
                 return null;
             }
         }
@@ -2233,27 +2356,27 @@ namespace GB_NewCadPlus_III
         /// </summary>
         public async Task<int> AddFileStorageAsync(FileStorage file)
         {
-            //字段映射核与数据库字段对完毕
             const string sql = @"
-            INSERT INTO cad_file_storage 
-            (category_id, file_attribute_id, file_name, file_stored_name, display_name, file_type, file_hash,
-             element_block_name, layer_name, color_index, file_path, preview_image_name, preview_image_path,
-             file_size, is_preview, version, description, is_active, created_by, category_type, title, keywords,
-             is_public, updated_by, last_accessed_at, created_at, updated_at)
-            VALUES 
-            (@CategoryId, @FileAttributeId, @FileName, @FileStoredName, @DisplayName, @FileType, @FileHash,
-             @ElementBlockName, @LayerName, @ColorIndex, @FilePath,@PreviewImageName, @PreviewImagePath,
-             @FileSize, @IsPreview, @Version, @Description, @IsActive, @CreatedBy, @CategoryType, @Title, @Keywords,
-             @IsPublic, @UpdatedBy, @LastAccessedAt, @CreatedAt, @UpdatedAt)";
+             INSERT INTO cad_file_storage 
+             (category_id, file_attribute_id, file_name, file_stored_name, display_name, file_type, file_hash,
+              element_block_name, layer_name, color_index, file_path, preview_image_name, preview_image_path,
+              file_size, is_preview, version, description, is_active, created_by, category_type, title, keywords,
+              is_public, updated_by, last_accessed_at, created_at, updated_at)
+             VALUES 
+             (@CategoryId, @FileAttributeId, @FileName, @FileStoredName, @DisplayName, @FileType, @FileHash,
+              @ElementBlockName, @LayerName, @ColorIndex, @FilePath, @PreviewImageName, @PreviewImagePath,
+              @FileSize, @IsPreview, @Version, @Description, @IsActive, @CreatedBy, @CategoryType, @Title, @Keywords,
+              @IsPublic, @UpdatedBy, @LastAccessedAt, @CreatedAt, @UpdatedAt);
+             SELECT LAST_INSERT_ID();";
             try
             {
-                using var connection = new MySqlConnection(_connectionString);
-                var result = await connection.QuerySingleOrDefaultAsync<int>(sql, file);
-                return result;
+                using var connection = new MySql.Data.MySqlClient.MySqlConnection(_connectionString);
+                var newId = await connection.ExecuteScalarAsync<int>(sql, file).ConfigureAwait(false);
+                return newId;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("插入CAD文件属性失败", ex.Message);
+                LogManager.Instance.LogInfo($"插入CAD文件失败: {ex.Message}");
                 return 0;
             }
         }
@@ -2297,34 +2420,32 @@ namespace GB_NewCadPlus_III
         public async Task<int> UpdateFileStorageAsync(FileStorage file)
         {
             const string sql = @"
-        UPDATE cad_file_storage 
-        SET 
-            file_attribute_id = @FileAttributeId,
-            file_name = @FileName,
-            file_stored_name = @FileStoredName,
-            file_type = @FileType,
-            file_hash = @FileHash,
-            display_name = @DisplayName,
-            element_block_name = @ElementBlockName,
-            layer_name = @LayerName,
-            color_index = @ColorIndex,
-            file_path = @FilePath,
-            preview_image_name = @PreviewImageName,
-            preview_image_path = @PreviewImagePath,
-            file_size = @FileSize,
-            created_at = @CreatedAt,
-            updated_at = @UpdatedAt
-            is_preview = @IsPreview,
-            version = @Version,
-            description = @Description,
-            is_active = @IsActive,
-            created_by = @CreatedBy,
-            category_type = @CategoryType,
-            title = @Title,
-            keywords = @Keywords,
-            is_public = @IsPublic,
-            updated_by = @UpdatedBy,
-            last_accessed_at = @LastAccessedAt,
+             UPDATE cad_file_storage 
+             SET 
+                 file_attribute_id = @FileAttributeId,
+                 file_name = @FileName,
+                 file_stored_name = @FileStoredName,
+                 file_type = @FileType,
+                 file_hash = @FileHash,
+                 display_name = @DisplayName,
+                 element_block_name = @ElementBlockName,
+                 layer_name = @LayerName,
+                 color_index = @ColorIndex,
+                 file_path = @FilePath,
+                 preview_image_name = @PreviewImageName,
+                 preview_image_path = @PreviewImagePath,
+                 file_size = @FileSize,
+                 is_preview = @IsPreview,
+                 version = @Version,
+                 description = @Description,
+                 is_active = @IsActive,
+                 created_by = @CreatedBy,
+                 category_type = @CategoryType,
+                 title = @Title,
+                 keywords = @Keywords,
+                 is_public = @IsPublic,
+                 updated_by = @UpdatedBy,
+                 last_accessed_at = @LastAccessedAt,
         WHERE id = @Id";
             try
             {
@@ -2345,39 +2466,38 @@ namespace GB_NewCadPlus_III
         public async Task<int> UpdateFileAttributeAsync(FileAttribute attribute)
         {
             const string sql = @"
-        UPDATE cad_file_attributes 
-        SET 
-            file_storage_id = @FileStorageId,
-            file_name = @FileName,
-            length = @Length,
-            width = @Width,
-            height = @Height,
-            angle = @Angle,
-            base_point_x = @BasePointX,
-            base_point_y = @BasePointY,
-            base_point_z = @BasePointZ,
-            created_at = @CreatedAt,
-            updated_at = @UpdatedAt,
-            description = @Description,
-            medium_name = @MediumName,
-            specifications = @Specifications,
-            material = @Material,
-            standard_number = @StandardNumber,
-            power = @Power,
-            volume = @Volume,
-            pressure = @Pressure,
-            temperature = @Temperature,
-            diameter = @Diameter,
-            outer_diameter = @OuterDiameter,
-            inner_diameter = @InnerDiameter,
-            thickness = @Thickness,
-            weight = @Weight,
-            model = @Model,
-            remarks = @Remarks,
-            customize1 = @Customize1,
-            customize2 = @Customize2,
-            customize3 = @Customize3
-        WHERE id = @Id";
+             UPDATE cad_file_attributes 
+             SET 
+                 file_storage_id = @FileStorageId,
+                 file_name = @FileName,
+                 length = @Length,
+                 width = @Width,
+                 height = @Height,
+                 angle = @Angle,
+                 base_point_x = @BasePointX,
+                 base_point_y = @BasePointY,
+                 base_point_z = @BasePointZ,
+                 updated_at = @UpdatedAt,
+                 description = @Description,
+                 medium_name = @MediumName,
+                 specifications = @Specifications,
+                 material = @Material,
+                 standard_number = @StandardNumber,
+                 power = @Power,
+                 volume = @Volume,
+                 pressure = @Pressure,
+                 temperature = @Temperature,
+                 diameter = @Diameter,
+                 outer_diameter = @OuterDiameter,
+                 inner_diameter = @InnerDiameter,
+                 thickness = @Thickness,
+                 weight = @Weight,
+                 model = @Model,
+                 remarks = @Remarks,
+                 customize1 = @Customize1,
+                 customize2 = @Customize2,
+                 customize3 = @Customize3
+             WHERE id = @Id";
 
             try
             {
@@ -2387,7 +2507,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                MessageBox.Show("插入CAD文件属性失败", ex.Message);
+                LogManager.Instance.LogInfo($"更新CAD文件属性失败: {ex.Message}");
                 return 0;
             }
         }
@@ -2463,21 +2583,33 @@ namespace GB_NewCadPlus_III
         /// </summary>
         /// <param name="tag">文件标签对象</param>
         /// <returns>受影响的行数</returns>
-        public async Task<int> AddFileTagAsync(FileTag tag)
+        public async Task<bool> AddFileTagAsync(FileTag tag)
         {
-            const string sql = @"
-        INSERT INTO file_tags 
-        (file_id, tag_name, created_at)
-        VALUES 
-        (@FileId, @TagName, @CreatedAt)";
+            if (tag == null || string.IsNullOrWhiteSpace(tag.TagName))
+                return false;
 
-            using var connection = new MySqlConnection(_connectionString);
-            return await connection.ExecuteAsync(sql, new
+            const string sql = @"
+             INSERT INTO file_tags 
+                 (file_id, tag_name, created_at)
+             VALUES 
+                 (@FileId, @TagName, @CreatedAt)";
+
+            try
             {
-                FileId = tag.FileId,
-                TagName = tag.TagName,
-                CreatedAt = tag.CreatedAt
-            });
+                using var connection = new MySqlConnection(_connectionString);
+                var affected = await connection.ExecuteAsync(sql, new
+                {
+                    FileId = tag.FileId,
+                    TagName = tag.TagName,
+                    CreatedAt = tag.CreatedAt == default(DateTime) ? DateTime.Now : tag.CreatedAt
+                });
+                return affected > 0;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"添加文件标签失败: {ex.Message}");
+                return false;
+            }
         }
 
         /// <summary>
@@ -2560,7 +2692,5 @@ namespace GB_NewCadPlus_III
         #endregion
 
         #endregion
-
-
     }
 }

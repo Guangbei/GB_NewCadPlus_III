@@ -8,7 +8,7 @@ using Line = Autodesk.AutoCAD.DatabaseServices.Line;
 using Path = System.IO.Path;
 
 /// <summary>
-/// CAD远行时自动运行
+/// CAD远行时自动运行 在菜单内加入工具
 /// </summary>
 public class AutodeskRun : IExtensionApplication
 {

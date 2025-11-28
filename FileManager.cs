@@ -272,7 +272,7 @@ namespace GB_NewCadPlus_III
                 }
 
                 // 3. 如果数据库记录已创建，删除数据库记录
-                if (fileAttribute == null)
+                if (fileAttribute != null)
                 {
                     try
                     {
@@ -287,7 +287,7 @@ namespace GB_NewCadPlus_III
                 }
             
 
-                if (fileStorage != null && fileStorage.Id > 0)
+                if (fileStorage != null )
                 {
                     try
                     {

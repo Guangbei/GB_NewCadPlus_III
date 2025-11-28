@@ -7,7 +7,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
     xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
-  
     d:Margin="0"
     d:MaxWidth="350"
     d:MinHeight="800"
@@ -1077,7 +1076,7 @@
                                                                         Click="低压蒸汽_Btn_Click"
                                                                         Content="低压蒸汽"
                                                                         FontFamily="Microsoft YaHei UI"
-                                                                        FontWeight="Bold" />
+                                                                        FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="低温循环上水"
                                                                         Width="85"
@@ -2666,7 +2665,7 @@
                                         Margin="0,0,0,5"
                                         Style="{StaticResource WatermarkTextBoxStyle}"
                                         Tag="请输入服务器IP地址"
-                                        Text="localhost" />
+                                        Text="127.0.0.1" />
 
                                     <TextBlock Margin="0,5,0,2" Text="端口号：" />
                                     <TextBox
@@ -3144,6 +3143,7 @@
 
 
                         <Button
+                            x:Name="DeleteGraphic_Btn"
                             Width="NaN"
                             Height="22"
                             MaxWidth="200"
