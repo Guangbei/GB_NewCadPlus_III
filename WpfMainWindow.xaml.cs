@@ -1,13 +1,7 @@
-﻿using Microsoft.VisualBasic;
-using OfficeOpenXml;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Logical;
+﻿using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,7 +10,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using static TextBoxValueHelper;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using Border = System.Windows.Controls.Border;
 using Brushes = System.Windows.Media.Brushes;
@@ -32,7 +25,6 @@ using Pen = System.Windows.Media.Pen;
 using Point = System.Windows.Point;
 using TabControl = System.Windows.Controls.TabControl;
 using TextBox = System.Windows.Controls.TextBox;
-using TreeView = System.Windows.Controls.TreeView;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace GB_NewCadPlus_III
@@ -45,51 +37,73 @@ namespace GB_NewCadPlus_III
         #region  私有字段和属性
 
         #region 服务器端字段和属性
-        private string _serverIP = "localhost";
-        private int _serverPort = 3306;
-        private string _databaseName = "cad_sw_library";
-        private string _username = "root";
-        private string _password = "root";
-        private string _storagePath = "D:\\GB_Tools\\Cad_Sw_Library";
-        private bool _useDPath = true;
-        private bool _autoSync = true;
-        private int _syncInterval = 30;
+        private string _serverIP;
+        private int _serverPort;
+        private string _databaseName;
+        private string _username;
+        private string _password;
+        private string _storagePath;
+        private bool _useDPath;
+        private bool _autoSync;
+        private int _syncInterval;
         ServerSyncManager _serverSyncManager;
         #endregion
-        private string _selectedFilePath; // 选中的文件路径
-        private string _selectedPreviewImagePath; // 选中的预览图片路径
-        private FileStorage _currentFileStorage; // 当前文件存储信息
-        private FileAttribute _currentFileAttribute; // 当前文件属性信息
-                                                     // 添加预览图片缓存相关字段和方法
+        /// <summary>
+        /// 选中的预览图片路径
+        /// </summary>
+        private string _selectedPreviewImagePath; 
+        /// <summary>
+        /// 当前文件存储信息
+        /// </summary>
+        private FileStorage _currentFileStorage; 
+        /// <summary>
+        /// 当前文件属性信息
+        /// </summary>
+        private FileAttribute _currentFileAttribute;
+        /// <summary>
+        /// 数据库连接字符串
+        /// </summary>
+        private string _connectionString;
+        /// <summary>
+        /// 图片缓存
+        /// </summary>
         private readonly Dictionary<string, BitmapImage> _imageCache = new Dictionary<string, BitmapImage>();
+        /// <summary>
+        /// 预览图片缓存路径
+        /// </summary>
         private readonly string _previewCachePath;
-
-
+        /// <summary>
+        /// 文件路径
+        /// </summary>
+        private string _selectedFilePath; 
+        /// <summary>
+        /// 文件属性信息
+        /// </summary>
+        private FileAttribute _selectedFileAttribute;       
+        /// <summary>
+        /// 文件管理器
+        /// </summary>
+        private FileManager _fileManager;
+        /// <summary>
+        /// 分类管理器
+        /// </summary>
+        private CategoryManager _categoryManager;
         /// <summary>
         /// 在WpfMainWindow类中添加以下字段和属性
         /// </summary>
         private ManagementOperationType _currentOperation = ManagementOperationType.None;
-
         /// <summary>
         /// 创建结构树节点
         /// </summary>
         private List<CategoryTreeNode> _categoryTreeNodes = new List<CategoryTreeNode>();
-
         /// <summary>
         /// 添加数据库管理器
         /// </summary>
         private DatabaseManager _databaseManager;
-
         /// <summary>
         /// 在WpfMainWindow类中添加字段
         /// </summary>
         private CategoryTreeNode _selectedCategoryNode; // 在分类架构树的当前选中的分类节点
-
-        /// <summary>
-        /// 添加字段
-        /// </summary>
-        private FileManager _fileManager;
-
         /// <summary>
         /// 添加枚举类型
         /// </summary>
@@ -99,82 +113,46 @@ namespace GB_NewCadPlus_III
             AddCategory,
             AddSubcategory
         }
-
-        /// <summary>
-        /// 数据库连接字符串（应该从配置文件读取）
-        /// </summary>
-        private string _connectionString = "Server=localhost;Database=cad_sw_library;Uid=root;Pwd=root;";
-
         /// <summary>
         /// 是否使用数据库模式
         /// </summary>
         private bool _useDatabaseMode = true;
-
-        /// <summary>
-        /// 排序顺序
-        /// </summary>
-        private int _sort_order = 0;
-
         /// <summary>
         /// 当前选中的数据库类型（CAD或SW）
         /// </summary>
         private string _currentDatabaseType = "";
-
-        /// <summary>
-        /// 当前选中的节点类型（分类、子分类、图元）
-        /// </summary>
-        private string _currentNodeType = "";
-
         /// <summary>
         /// 当前选中的节点ID
         /// </summary>
         private int _currentNodeId = 0;
-
         /// <summary>
         /// CAD文件存储路径
         /// </summary>
         private string _cadStoragePath = "";
-
         /// <summary>
         /// SW文件存储路径
         /// </summary>
         private string _swStoragePath = "";
-
-        /// <summary>
-        /// 当前选中的节点对象（用于修改操作）
-        /// </summary>
-        private object? _currentSelectedNode = null;
-
         /// <summary>
         /// 用于显示分类树的TreeView控件
         /// </summary>
         private System.Windows.Controls.TreeView _categoryTreeView;
-
         /// <summary>
         /// 添加预览图片显示的Viewbox引用
         /// </summary>
         private Viewbox previewViewbox;
-
         /// <summary>
         /// 拿到本app的local的路径，并创建GB_CADPLUS文件夹
         /// </summary>
         public static string AppPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GB_CADPLUS");
-
         /// <summary>
         /// 文件路径与名称  resourcesFile
         /// </summary>
         public static string? filePathAndName = null;
-
         /// <summary>
         /// 引用文件referenceFile文件夹  
         /// </summary>
         public static string referenceFile = System.IO.Path.Combine(AppPath, "ReferenceFile");
-
-        /// <summary>
-        /// 添加一个字典来跟踪哪些TabItem已经加载过
-        /// </summary>
-        private Dictionary<string, bool> loadedTabItems = new Dictionary<string, bool>();
-
         #endregion
 
         /// <summary>
@@ -189,6 +167,8 @@ namespace GB_NewCadPlus_III
             Loaded += WpfMainWindow_Loaded;//加载按钮
             // 初始化预览图片缓存路径
             _previewCachePath = Path.Combine(AppPath, "PreviewCache");
+            _fileManager = new FileManager(_databaseManager);
+            _categoryManager = new CategoryManager(_databaseManager);
             if (!Directory.Exists(_previewCachePath))
             {
                 Directory.CreateDirectory(_previewCachePath);
@@ -204,9 +184,6 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // 获取预览Viewbox的引用
-                previewViewbox = FindVisualChild<Viewbox>(this, "预览Viewbox") ??
-                                 FindVisualChild<Viewbox>(this, "Viewbox");
                 // 直接通过名称查找TabControl
                 var mainTabControl = FindVisualChild<TabControl>(this, "MainTabControl");
                 if (mainTabControl != null)
@@ -218,6 +195,27 @@ namespace GB_NewCadPlus_III
                 {
                     LogManager.Instance.LogWarning("未找到名称为MainTabControl的控件");
                 }
+                // 停止同步
+                _serverSyncManager?.StopSync();
+                _serverIP = TextBox_Set_ServiceIP.Text; // 获取新的服务器IP
+                _serverPort = int.Parse(TextBox_Set_ServicePort.Text);// 获取新的服务端口
+                _databaseName = TextBox_Set_DatabaseName.Text;// 获取新的数据库名称
+                _username = TextBox_Set_Username.Text;// 获取新的用户名
+                _password = PasswordBox_Set_Password.Text;// 获取新的密码
+                // 获取新的连接字符串
+                string newConnectionString = $"Server={_serverIP};Port={_serverPort};Database={_databaseName};Uid={_username};Pwd={_password};";
+
+                // 更新连接字符串
+                _connectionString = newConnectionString;
+
+                // 重新初始化数据库管理器
+                _databaseManager = new DatabaseManager(_connectionString);
+
+                // 重新初始化文件管理器
+                _fileManager = new FileManager(_databaseManager);
+
+                // 重新初始化同步管理器
+                _serverSyncManager = new ServerSyncManager(_databaseManager, _fileManager);
                 //初始化数据库 第一步
                 ReinitializeDatabase();
 
@@ -250,24 +248,6 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // 停止同步
-                _serverSyncManager?.StopSync();
-
-                // 获取新的连接字符串
-                string newConnectionString = $"Server={_serverIP};Port={_serverPort};Database={_databaseName};Uid={_username};Pwd={_password};";
-
-                // 更新连接字符串
-                _connectionString = newConnectionString;
-
-                // 重新初始化数据库管理器
-                _databaseManager = new DatabaseManager(_connectionString);
-
-                // 重新初始化文件管理器
-                _fileManager = new FileManager(_databaseManager);
-
-                // 重新初始化同步管理器
-                _serverSyncManager = new ServerSyncManager(_databaseManager, _fileManager);
-
                 // 如果启用自动同步，开始同步
                 if (_autoSync)
                 {
@@ -275,7 +255,7 @@ namespace GB_NewCadPlus_III
                 }
 
                 // 刷新分类树 第二步
-                await RefreshCategoryTreeAsync();
+                await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, _categoryTreeView, _categoryTreeNodes, _databaseManager);
 
                 LogManager.Instance.LogInfo("数据库连接已重新初始化");
             }
@@ -311,6 +291,70 @@ namespace GB_NewCadPlus_III
 
             CategoryPropertiesDataGrid.ItemsSource = initialRows;
             LogManager.Instance.LogInfo("初始化分类属性编辑网格成功:InitializeCategoryPropertyGrid()");
+        }
+
+        /// <summary>
+        /// 初始化属性编辑网格
+        /// </summary>
+        private void AddFileInitializeFilePropertiesGrid()
+        {
+            try
+            {
+                var properties = new List<CategoryPropertyEditModel>
+                  {
+                  // 文件存储表(cad_file_storage)相关属性
+                  new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = Path.GetFileNameWithoutExtension(_selectedFilePath), PropertyName2 = "元素块名", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "层名", PropertyValue1 = "TJ(  专业  )", PropertyName2 = "颜色索引", PropertyValue2 = "40" },
+                  new CategoryPropertyEditModel { PropertyName1 = "描述", PropertyValue1 = "", PropertyName2 = "版本", PropertyValue2 = "1" },
+                  new CategoryPropertyEditModel { PropertyName1 = "是否公开", PropertyValue1 = "是", PropertyName2 = "创建者", PropertyValue2 = Environment.UserName },
+                  new CategoryPropertyEditModel { PropertyName1 = "是否天正", PropertyValue1 = "否" },
+                  // 文件属性表(cad_file_attributes)相关属性
+                  new CategoryPropertyEditModel { PropertyName1 = "长度", PropertyValue1 = "", PropertyName2 = "宽度", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "高度", PropertyValue1 = "", PropertyName2 = "角度", PropertyValue2 = "0" },
+                  new CategoryPropertyEditModel { PropertyName1 = "基点X", PropertyValue1 = "0", PropertyName2 = "基点Y", PropertyValue2 = "0" },
+                  new CategoryPropertyEditModel { PropertyName1 = "基点Z", PropertyValue1 = "0", PropertyName2 = "介质", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "规格", PropertyValue1 = "", PropertyName2 = "材质", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "标准编号", PropertyValue1 = "", PropertyName2 = "功率", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "容积", PropertyValue1 = "", PropertyName2 = "压力", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "温度", PropertyValue1 = "", PropertyName2 = "直径", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "外径", PropertyValue1 = "", PropertyName2 = "内径", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "厚度", PropertyValue1 = "", PropertyName2 = "重量", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "型号", PropertyValue1 = "", PropertyName2 = "备注", PropertyValue2 = "" },
+                  
+                  // 文件标签表(file_tags)相关属性（可以添加多个标签）
+                  new CategoryPropertyEditModel { PropertyName1 = "标签1", PropertyValue1 = "", PropertyName2 = "标签2", PropertyValue2 = "" },
+                  new CategoryPropertyEditModel { PropertyName1 = "标签3", PropertyValue1 = "", PropertyName2 = "", PropertyValue2 = "" }
+                  };
+
+                CategoryPropertiesDataGrid.ItemsSource = properties;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"初始化属性编辑失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 初始化文件属性编辑网格
+        /// </summary>
+        private void InitializeFilePropertiesGrid()
+        {
+            try
+            {
+                var initialRows = new List<CategoryPropertyEditModel>
+        {
+            new CategoryPropertyEditModel(),
+            new CategoryPropertyEditModel(),
+            new CategoryPropertyEditModel()
+        };
+
+                CategoryPropertiesDataGrid.ItemsSource = initialRows;
+                LogManager.Instance.LogInfo("初始化文件属性编辑网格成功:InitializeFilePropertiesGrid()");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"初始化文件属性编辑网格失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -1021,6 +1065,74 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
+        /// 显示文件信息
+        /// </summary>
+        /// <param name="filePath"></param>
+        private void DisplayFileInfo(string filePath)
+        {
+            try
+            {
+                var fileInfo = new FileInfo(filePath);
+
+                // 显示文件信息
+                file_Path.Text = filePath;
+                File_Name.Text = fileInfo.Name;
+                File_Size.Text = $"{fileInfo.Length / 1024.0:F2} KB";
+                File_Type.Text = fileInfo.Extension.ToLower();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"显示文件信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 添加显示文件存储信息的方法
+        /// </summary>
+        /// <param name="fileStorage"></param>
+        public void DisplayFileStorageInfo(FileStorage fileStorage)
+        {
+            try
+            {
+                // 显示文件信息
+                file_Path.Text = fileStorage.FilePath ?? "";
+                File_Name.Text = fileStorage.DisplayName ?? fileStorage.FileName ?? "";
+                File_Name.Text = FormatFileNameForDisplay(fileStorage.DisplayName ?? fileStorage.FileName ?? "");
+                File_Size.Text = fileStorage.FileSize > 0 ? $"{fileStorage.FileSize / 1024.0:F2} KB" : "";
+                File_Type.Text = fileStorage.FileType ?? "";
+                view_File_Path.Text = fileStorage.PreviewImagePath ?? "无预览图片";
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"显示文件信息失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 显示预览图片
+        /// </summary>
+        /// <param name="imagePath"></param>
+        private void DisplayPreviewImage(string imagePath)
+        {
+            try
+            {
+                view_File_Path.Text = imagePath;
+
+                // 显示预览图片
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(imagePath);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                ViewImage.Source = bitmap;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"显示预览图片失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
         /// 显示无文件消息
         /// </summary>
         private void ShowNoFilesMessage(Panel panel, string message)
@@ -1034,6 +1146,33 @@ namespace GB_NewCadPlus_III
             };
             panel.Children.Add(noFilesText);
         }
+
+        /// <summary>
+        /// 清空文件上传界面
+        /// </summary>
+        private void ClearFileUploadInterface()
+        {
+            // 清空所有输入框和显示
+            file_Path.Text = "";
+            File_Name.Text = "";
+            File_Size.Text = "";
+            File_Type.Text = "";
+            view_File_Path.Text = "";
+            ViewImage.Source = null;
+
+            // 清空属性编辑网格
+            CategoryPropertiesDataGrid.ItemsSource = null;
+
+            // 重置字段
+            _selectedFilePath = null;
+            _selectedPreviewImagePath = null;
+            _currentFileStorage = null;
+            _currentFileAttribute = null;
+            _selectedCategoryNode = null;
+        }
+
+
+
 
         /// <summary>
         /// 查找TabItem的父级TabItem
@@ -2527,8 +2666,9 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                await LoadCategoryTreeAsync();
-                DisplayCategoryTree();
+                await _categoryManager.LoadCategoryTreeAsync(_categoryTreeNodes,  _databaseManager);
+                _categoryTreeView = CategoryTreeView;//赋值给全局变量
+                _categoryManager.DisplayCategoryTree(_categoryTreeView, _categoryTreeNodes);
             }
             catch (Exception ex)
             {
@@ -2536,142 +2676,6 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 加载架构树数据
-        /// </summary>
-        /// <returns></returns>
-        private async Task LoadCategoryTreeAsync()
-        {
-            try
-            {
-                _categoryTreeNodes.Clear();
-
-                // 获取所有分类和子分类
-                var categories = await _databaseManager.GetAllCadCategoriesAsync();
-                var subcategories = await _databaseManager.GetAllCadSubcategoriesAsync();
-
-                // 构建树结构
-                BuildCategoryTree(categories, subcategories);
-
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"加载架构树数据失败: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 构建分类树结构
-        /// </summary>
-        /// <param name="categories"></param>
-        /// <param name="subcategories"></param>
-        private void BuildCategoryTree(List<CadCategory> categories, List<CadSubcategory> subcategories)
-        {
-            // 清空现有节点
-            _categoryTreeNodes.Clear();
-
-            // 1. 创建主分类节点
-            var mainCategoryNodes = categories
-                .OrderBy(c => c.SortOrder)
-                .Select(c => new CategoryTreeNode(c.Id, c.Name, c.DisplayName, 0, 0, c))
-                .ToList();
-
-            // 2. 创建子分类节点字典，便于快速查找
-            var subcategoryDict = subcategories
-                .ToDictionary(s => s.Id, s => new CategoryTreeNode(
-                    s.Id, s.Name, s.DisplayName, s.Level, s.ParentId, s));
-
-            // 3. 构建父子关系
-            BuildTreeRelationships(mainCategoryNodes, subcategoryDict);
-
-            // 4. 将根节点添加到树节点列表
-            _categoryTreeNodes.AddRange(mainCategoryNodes);
-
-        }
-
-        /// <summary>
-        /// 构建树的父子关系
-        /// </summary>
-        /// <param name="mainNodes"></param>
-        /// <param name="subcategoryDict"></param>
-        private void BuildTreeRelationships(List<CategoryTreeNode> mainNodes, Dictionary<int, CategoryTreeNode> subcategoryDict)
-        {
-            // 创建所有节点的查找字典
-            var allNodesDict = new Dictionary<int, CategoryTreeNode>();
-
-            // 添加主分类节点
-            foreach (var node in mainNodes)
-            {
-                allNodesDict[node.Id] = node;
-            }
-
-            // 添加子分类节点
-            foreach (var kvp in subcategoryDict)
-            {
-                allNodesDict[kvp.Key] = kvp.Value;
-            }
-
-            // 建立父子关系
-            foreach (var node in subcategoryDict.Values)
-            {
-                if (allNodesDict.ContainsKey(node.ParentId))
-                {
-                    var parentNode = allNodesDict[node.ParentId];
-                    parentNode.Children.Add(node);
-                }
-                else if (node.Level == 1)
-                {
-                    // 二级子分类，父级是主分类
-                    var mainCategoryNode = mainNodes.FirstOrDefault(n => n.Id == node.ParentId);
-                    if (mainCategoryNode != null)
-                    {
-                        mainCategoryNode.Children.Add(node);
-                    }
-                }
-            }
-
-            // 对所有节点的子节点按排序序号排序
-            foreach (var node in allNodesDict.Values)
-            {
-                node.Children = node.Children.OrderBy(child => GetSortOrder(child)).ToList();
-            }
-        }
-
-        /// <summary>
-        /// 获取节点的排序序号
-        /// </summary>
-        /// <param name="node"></param>
-        /// <returns></returns>
-        private int GetSortOrder(CategoryTreeNode node)
-        {
-            if (node.Data is CadCategory category)
-                return category.SortOrder;
-            else if (node.Data is CadSubcategory subcategory)
-                return subcategory.SortOrder;
-            return 0;
-        }
-
-        /// <summary>
-        /// 显示架构树
-        /// </summary>
-        private void DisplayCategoryTree()
-        {
-            try
-            {
-                if (CategoryTreeView != null)
-                {
-                    CategoryTreeView.ItemsSource = null;
-                    CategoryTreeView.ItemsSource = _categoryTreeNodes;
-                    // 添加TreeView的选择事件
-                    //CategoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"显示架构树失败: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// 获取TreeViewItem的辅助方法（增强版）
@@ -2993,282 +2997,8 @@ namespace GB_NewCadPlus_III
             CategoryPropertiesDataGrid.ItemsSource = categoryProperties;
         }
 
-        /// <summary>
-        /// 应用分类属性（返回bool值）
-        /// </summary>
-        /// <returns></returns>
-        private async Task<bool> ApplyCategoryPropertiesAsync()
-        {
-            try
-            {
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-                if (properties == null || properties.Count == 0)
-                {
-                    throw new Exception("没有可应用的属性");
-                }
-
-                // 解析属性数据
-                var (name, displayName, sortOrder) = ParseCategoryProperties(properties);
-
-                if (string.IsNullOrEmpty(name))
-                {
-                    throw new Exception("分类名称不能为空");
-                }
-
-                // 自动生成排序序号（如果未提供或为0）
-                if (sortOrder <= 0)
-                {
-                    sortOrder = await _databaseManager.GetMaxCadCategorySortOrderAsync() + 1;
-                }
-
-                // 生成主分类ID
-                int categoryId = await CategoryIdGenerator.GenerateMainCategoryIdAsync(_databaseManager);
-
-                // 创建分类对象
-                var category = new CadCategory
-                {
-                    Id = categoryId,
-                    Name = name,
-                    DisplayName = displayName ?? name,
-                    SortOrder = sortOrder,
-                    SubcategoryIds = "", // 新建时为空
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-
-                // 添加到数据库
-                int result = await _databaseManager.AddCadCategoryAsync(category);
-
-                // 验证数据库操作是否成功
-                return result > 0;
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"应用分类属性时出错: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 应用子分类属性（返回bool值）
-        /// </summary>
-        /// <returns></returns>
-        private async Task<bool> ApplySubcategoryPropertiesAsync()
-        {
-            try
-            {
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-                if (properties == null || properties.Count == 0)
-                {
-                    throw new Exception("没有可应用的属性");
-                }
-
-                // 解析属性数据
-                var (parentId, name, displayName, sortOrder) = ParseSubcategoryProperties(properties);
-
-                if (parentId <= 0)
-                {
-                    throw new Exception("父分类ID必须大于0");
-                }
-
-                if (string.IsNullOrEmpty(name))
-                {
-                    throw new Exception("子分类名称不能为空");
-                }
-
-                // 自动生成排序序号（如果未提供或为0）
-                if (sortOrder <= 0)
-                {
-                    sortOrder = await _databaseManager.GetMaxCadSubcategorySortOrderAsync(parentId) + 1;
-                }
-
-                // 生成子分类ID
-                int subcategoryId = await CategoryIdGenerator.GenerateSubcategoryIdAsync(_databaseManager, parentId);
-
-                // 确定层级
-                int level = await DetermineCategoryLevelAsync(parentId);
-
-                // 创建子分类对象
-                var subcategory = new CadSubcategory
-                {
-                    Id = subcategoryId,
-                    ParentId = parentId,
-                    Name = name,
-                    DisplayName = displayName ?? name,
-                    SortOrder = sortOrder,
-                    Level = level,
-                    SubcategoryIds = "", // 新建时为空
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-
-                // 添加到数据库
-                int result = await _databaseManager.AddCadSubcategoryAsync(subcategory);
-
-                if (result > 0)
-                {
-                    // 更新父级的子分类列表
-                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, subcategoryId);
-                    return true;
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"应用子分类属性时出错: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 确定分类层级
-        /// </summary>
-        /// <param name="parentId"></param>
-        /// <returns></returns>
-        private async Task<int> DetermineCategoryLevelAsync(int parentId)
-        {
-            if (parentId < 10000)
-            {
-                // 父级是主分类（4位），这是二级子分类
-                return 1;
-            }
-            else
-            {
-                // 父级是子分类，需要确定是几级子分类
-                var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
-                if (parentSubcategory != null)
-                {
-                    return parentSubcategory.Level + 1;
-                }
-                else
-                {
-                    // 默认为二级分类
-                    return 1;
-                }
-            }
-        }
-
-        /// <summary>
-        /// 解析分类属性数据
-        /// </summary>
-        /// <param name="properties"></param>
-        /// <returns></returns>
-        private (string Name, string DisplayName, int SortOrder) ParseCategoryProperties(List<CategoryPropertyEditModel> properties)
-        {
-            string name = "";
-            string displayName = "";
-            int sortOrder = 0; // 默认排序序号
-
-            foreach (var property in properties)
-            {
-                // 处理第一列
-                ProcessCategoryProperty(property.PropertyName1, property.PropertyValue1, ref name, ref displayName, ref sortOrder);
-
-                // 处理第二列
-                ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
-            }
-
-            return (name, displayName, sortOrder);
-        }
-
-        /// <summary>
-        /// 处理单个分类属性
-        /// </summary>
-        /// <param name="propertyName">分类名</param>
-        /// <param name="propertyValue">分类名对应的值</param>
-        /// <param name="name">返回的名称</param>
-        /// <param name="displayName">返回的显示名称</param>
-        /// <param name="sortOrder">返回的排列顺序</param>
-        private void ProcessCategoryProperty(string propertyName, string propertyValue, ref string name, ref string displayName, ref int sortOrder)
-        {
-            if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue))
-                return;
-
-            switch (propertyName.ToLower().Trim())
-            {
-                case "名称":
-                case "name":
-                    name = propertyValue.Trim();
-                    break;
-                case "显示名称":
-                case "displayname":
-                case "显示名":
-                    displayName = propertyValue.Trim();
-                    break;
-                case "排序序号":
-                case "sortorder":
-                    // 排序序号现在是可选的，如果提供了就使用，否则自动生成
-                    if (int.TryParse(propertyValue.Trim(), out int sort))
-                        sortOrder = sort;
-                    break;
-            }
-        }
-
-        /// <summary>
-        /// 解析子分类属性数据
-        /// </summary>
-        /// <param name="properties"></param>
-        /// <returns></returns>
-        private (int ParentId, string Name, string DisplayName, int SortOrder) ParseSubcategoryProperties(List<CategoryPropertyEditModel> properties)
-        {
-            int parentId = 0;
-            string name = "";
-            string displayName = "";
-            int sortOrder = 0; // 默认排序序号
-
-            foreach (var property in properties)
-            {
-                // 处理第一列
-                ProcessSubcategoryProperty(property.PropertyName1, property.PropertyValue1, ref parentId, ref name, ref displayName, ref sortOrder);
-
-                // 处理第二列
-                ProcessSubcategoryProperty(property.PropertyName2, property.PropertyValue2, ref parentId, ref name, ref displayName, ref sortOrder);
-            }
-
-            return (parentId, name, displayName, sortOrder);
-        }
-
-        /// <summary>
-        /// 处理单个子分类属性
-        /// </summary>
-        /// <param name="propertyName"></param>
-        /// <param name="propertyValue"></param>
-        /// <param name="parentId"></param>
-        /// <param name="name"></param>
-        /// <param name="displayName"></param>
-        /// <param name="sortOrder"></param>
-        private void ProcessSubcategoryProperty(string propertyName, string propertyValue, ref int parentId, ref string name, ref string displayName, ref int sortOrder)
-        {
-            if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue))
-                return;
-
-            switch (propertyName.ToLower().Trim())
-            {
-                case "父分类id":
-                case "parentid":
-                case "父id":
-                    if (int.TryParse(propertyValue.Trim(), out int pid))
-                        parentId = pid;
-                    break;
-                case "名称":
-                case "name":
-                    name = propertyValue.Trim();
-                    break;
-                case "显示名称":
-                case "displayname":
-                case "显示名":
-                    displayName = propertyValue.Trim();
-                    break;
-                case "排序序号":
-                case "sortorder":
-                    // 排序序号现在是可选的
-                    if (int.TryParse(propertyValue.Trim(), out int sort))
-                        sortOrder = sort;
-                    break;
-            }
-        }
-
+       
+       
         /// <summary>
         /// 加载分类下的文件
         /// </summary>
@@ -3675,177 +3405,13 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 删除主分类
-        /// </summary>
-        /// <param name="categoryNode"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private async Task<bool> DeleteMainCategoryAsync(CategoryTreeNode categoryNode)
-        {
-            try
-            {
-                // 检查是否有子分类
-                if (categoryNode.Children.Count > 0)
-                {
-                    if (MessageBox.Show("该主分类下还有子分类，确定要全部删除吗？",
-                                      "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                    {
-                        return false;
-                    }
-                }
-
-                // 从数据库删除主分类
-                int result = await _databaseManager.DeleteCadCategoryAsync(categoryNode.Id);
-                return result > 0;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除主分类失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 删除子分类
-        /// </summary>
-        /// <param name="subcategoryNode"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        private async Task<bool> DeleteSubcategoryAsync(CategoryTreeNode subcategoryNode)
-        {
-            try
-            {
-                // 检查是否有子分类
-                if (subcategoryNode.Children.Count > 0)
-                {
-                    if (MessageBox.Show("该子分类下还有子分类，确定要全部删除吗？",
-                                      "警告", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-                    {
-                        return false;
-                    }
-                }
-
-                // 从数据库删除子分类
-                int result = await _databaseManager.DeleteCadSubcategoryAsync(subcategoryNode.Id);
-                if (result > 0)
-                {
-                    // 更新父级的子分类列表
-                    await UpdateParentSubcategoryListAfterDeleteAsync(subcategoryNode.ParentId, subcategoryNode.Id);
-                    return true;
-                }
-                return false;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"删除子分类失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 删除后更新父级子分类列表
-        /// </summary>
-        /// <param name="parentId"></param>
-        /// <param name="deletedSubcategoryId"></param>
-        /// <returns></returns>
-        private async Task UpdateParentSubcategoryListAfterDeleteAsync(int parentId, int deletedSubcategoryId)
-        {
-            try
-            {
-                // 获取父级记录
-                string currentSubcategoryIds = "";
-                if (parentId >= 10000)
-                {
-                    // 父级是子分类
-                    var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
-                    currentSubcategoryIds = parentSubcategory?.SubcategoryIds ?? "";
-                }
-                else
-                {
-                    // 父级是主分类
-                    var categories = await _databaseManager.GetAllCadCategoriesAsync();
-                    var parentCategory = categories.FirstOrDefault(c => c.Id == parentId);
-                    currentSubcategoryIds = parentCategory?.SubcategoryIds ?? "";
-                }
-
-                // 更新子分类列表（移除已删除的ID）
-                if (!string.IsNullOrEmpty(currentSubcategoryIds))
-                {
-                    var ids = currentSubcategoryIds.Split(',').Select(id => id.Trim()).ToList();
-                    ids.Remove(deletedSubcategoryId.ToString());
-                    string newSubcategoryIds = string.Join(",", ids);
-
-                    // 更新数据库
-                    await _databaseManager.UpdateParentSubcategoryListAsync(parentId, newSubcategoryIds);
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"更新父级子分类列表失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 更新分类属性（编辑功能）
-        /// </summary>
-        /// <returns></returns>
-        private async Task<bool> UpdateCategoryPropertiesAsync()
-        {
-            try
-            {
-                if (_selectedCategoryNode == null)
-                    throw new Exception("没有选中的分类");
-
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-                if (properties == null || properties.Count == 0)
-                    throw new Exception("没有可更新的属性");
-
-                // 解析更新的属性
-                var (name, displayName, sortOrder) = ParseUpdatedCategoryProperties(properties);
-
-                if (string.IsNullOrEmpty(name))
-                    throw new Exception("分类名称不能为空");
-
-                // 根据节点类型更新相应的记录
-                if (_selectedCategoryNode.Level == 0 && _selectedCategoryNode.Data is CadCategory category)
-                {
-                    // 更新主分类
-                    category.Name = name;
-                    category.DisplayName = displayName ?? name;
-                    category.SortOrder = sortOrder;
-                    category.UpdatedAt = DateTime.Now;
-
-                    int result = await _databaseManager.UpdateCadCategoryAsync(category);
-                    return result > 0;
-                }
-                else if (_selectedCategoryNode.Data is CadSubcategory subcategory)
-                {
-                    // 更新子分类
-                    subcategory.Name = name;
-                    subcategory.DisplayName = displayName ?? name;
-                    subcategory.SortOrder = sortOrder;
-                    subcategory.UpdatedAt = DateTime.Now;
-
-                    int result = await _databaseManager.UpdateCadSubcategoryAsync(subcategory);
-                    return result > 0;
-                }
-                else
-                {
-                    throw new Exception("不支持的分类类型");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"更新分类属性时出错: {ex.Message}");
-                throw;
-            }
-        }
-
+       
         /// <summary>
         /// 解析更新的分类属性
         /// </summary>
         /// <param name="properties"></param>
         /// <returns></returns>
-        private (string Name, string DisplayName, int SortOrder) ParseUpdatedCategoryProperties(List<CategoryPropertyEditModel> properties)
+        public static (string Name, string DisplayName, int SortOrder) ParseUpdatedCategoryProperties(List<CategoryPropertyEditModel> properties)
         {
             string name = "";
             string displayName = "";
@@ -3853,8 +3419,8 @@ namespace GB_NewCadPlus_III
 
             foreach (var property in properties)
             {
-                ProcessCategoryProperty(property.PropertyName1, property.PropertyValue1, ref name, ref displayName, ref sortOrder);
-                ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
+                CategoryManager.ProcessCategoryProperty(property.PropertyName1, property.PropertyValue1, ref name, ref displayName, ref sortOrder);
+                CategoryManager.ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
             }
 
             return (name, displayName, sortOrder);
@@ -4140,6 +3706,7 @@ namespace GB_NewCadPlus_III
                 if (!_useDatabaseMode || _databaseManager == null || !_databaseManager.IsDatabaseAvailable)
                 {
                     System.Windows.MessageBox.Show("数据库不可用，请检查数据库连接配置");
+                    LogManager.Instance.LogInfo("数据库不可用，请检查数据库连接配置");
                     return;
                 }
                 _cadStoragePath = await _databaseManager.GetConfigValueAsync("cad_storage_path");  // 获取CAD存储路径
@@ -4332,7 +3899,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 删除分类节点方法
+        /// 删除分类节点方法 
         /// </summary>
         /// <param name="nodeToDelete"></param>
         /// <returns></returns>
@@ -4348,18 +3915,18 @@ namespace GB_NewCadPlus_III
                 if (nodeToDelete.Level == 0)
                 {
                     // 删除主分类
-                    success = await DeleteMainCategoryAsync(nodeToDelete);
+                    success = await _categoryManager.DeleteMainCategoryAsync(nodeToDelete);
                 }
                 else
                 {
                     // 删除子分类
-                    success = await DeleteSubcategoryAsync(nodeToDelete);
+                    success = await _categoryManager.DeleteSubcategoryAsync(nodeToDelete);
                 }
 
                 if (success)
                 {
                     // 刷新架构树
-                    await RefreshCategoryTreeAsync();
+                    await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes,_databaseManager);
                     _selectedCategoryNode = null; // 清除选中节点
                     InitializeCategoryPropertyGrid(); // 清空属性编辑区
 
@@ -4385,7 +3952,7 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                await RefreshCategoryTreeAsync();
+                await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes,_databaseManager);
                 MessageBox.Show("架构树刷新成功", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
@@ -4624,16 +4191,16 @@ namespace GB_NewCadPlus_III
                 switch (_currentOperation)
                 {
                     case ManagementOperationType.AddCategory:
-                        success = await ApplyCategoryPropertiesAsync();
+                        success = await _categoryManager.ApplyCategoryPropertiesAsync(CategoryPropertiesDataGrid);
                         break;
                     case ManagementOperationType.AddSubcategory:
-                        success = await ApplySubcategoryPropertiesAsync();
+                        success = await _categoryManager.ApplySubcategoryPropertiesAsync(CategoryPropertiesDataGrid);
                         break;
                     case ManagementOperationType.None:
                         // 如果没有明确的操作类型，可能是编辑操作
                         if (_selectedCategoryNode != null)
                         {
-                            success = await UpdateCategoryPropertiesAsync();
+                            success = await _categoryManager.UpdateCategoryPropertiesAsync(CategoryPropertiesDataGrid, _selectedCategoryNode);
                         }
                         else
                         {
@@ -4653,7 +4220,7 @@ namespace GB_NewCadPlus_III
                     InitializeCategoryPropertyGrid();
 
                     // 刷新架构树显示
-                    await RefreshCategoryTreeAsync();
+                    await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes,_databaseManager);
 
                     MessageBox.Show("操作成功，架构树已更新", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -4678,9 +4245,10 @@ namespace GB_NewCadPlus_III
             try
             {
                 // 执行文件上传
+                //      _fileManager.UploadFileAndSaveToDatabase(_selectedFilePath, _currentFileStorage, _currentFileAttribute, categoryId, categoryType, filePath,
+                //previewImagePath, _selectedCategoryNode, _selectedPreviewImagePath, properties, createdBy,
+                // CategoryPropertiesDataGrid,new WpfMainWindow());
                 UploadFileAndSaveToDatabase();
-
-                LoadFilesForCategoryAsync(_selectedCategoryNode);// 重新加载文件列表
             }
             catch (Exception ex)
             {
@@ -4688,168 +4256,13 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        #endregion
 
-        #region 文件处理
-
-        /// <summary>
-        /// 辅助方法
-        /// </summary>
-        private void InitializeFileUploadInterface()
-        {
-            // 清空所有输入框
-            file_Path.Text = "";
-            File_Name.Text = "";
-            File_Size.Text = "";
-            view_File_Path.Text = "";
-            ViewImage.Source = null;
-
-            // 清空属性编辑网格
-            CategoryPropertiesDataGrid.ItemsSource = null;
-
-            // 重置字段
-            _selectedFilePath = null;
-            _selectedPreviewImagePath = null;
-            _currentFileStorage = null;
-            _currentFileAttribute = null;
-        }
-
-        /// <summary>
-        /// 显示文件信息
-        /// </summary>
-        /// <param name="filePath"></param>
-        private void DisplayFileInfo(string filePath)
-        {
-            try
-            {
-                var fileInfo = new FileInfo(filePath);
-
-                // 显示文件信息
-                file_Path.Text = filePath;
-                File_Name.Text = fileInfo.Name;
-                File_Size.Text = $"{fileInfo.Length / 1024.0:F2} KB";
-                File_Type.Text = fileInfo.Extension.ToLower();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"显示文件信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 添加显示文件存储信息的方法
-        /// </summary>
-        /// <param name="fileStorage"></param>
-        private void DisplayFileStorageInfo(FileStorage fileStorage)
-        {
-            try
-            {
-                // 显示文件信息
-                file_Path.Text = fileStorage.FilePath ?? "";
-                File_Name.Text = fileStorage.DisplayName ?? fileStorage.FileName ?? "";
-                File_Name.Text = FormatFileNameForDisplay(fileStorage.DisplayName ?? fileStorage.FileName ?? "");
-                File_Size.Text = fileStorage.FileSize > 0 ? $"{fileStorage.FileSize / 1024.0:F2} KB" : "";
-                File_Type.Text = fileStorage.FileType ?? "";
-                view_File_Path.Text = fileStorage.PreviewImagePath ?? "无预览图片";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"显示文件信息失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 显示预览图片
-        /// </summary>
-        /// <param name="imagePath"></param>
-        private void DisplayPreviewImage(string imagePath)
-        {
-            try
-            {
-                view_File_Path.Text = imagePath;
-
-                // 显示预览图片
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri(imagePath);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                ViewImage.Source = bitmap;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"显示预览图片失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 初始化属性编辑网格
-        /// </summary>
-        private void AddFileInitializeFilePropertiesGrid()
-        {
-            try
-            {
-                var properties = new List<CategoryPropertyEditModel>
-                  {
-                  // 文件存储表(cad_file_storage)相关属性
-                  new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = Path.GetFileNameWithoutExtension(_selectedFilePath), PropertyName2 = "元素块名", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "层名", PropertyValue1 = "TJ(工艺专业GY)", PropertyName2 = "颜色索引", PropertyValue2 = "40" },
-                  new CategoryPropertyEditModel { PropertyName1 = "描述", PropertyValue1 = "", PropertyName2 = "版本", PropertyValue2 = "1" },
-                  new CategoryPropertyEditModel { PropertyName1 = "是否公开", PropertyValue1 = "是", PropertyName2 = "创建者", PropertyValue2 = Environment.UserName },
-                  
-                  // 文件属性表(cad_file_attributes)相关属性
-                  new CategoryPropertyEditModel { PropertyName1 = "长度", PropertyValue1 = "", PropertyName2 = "宽度", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "高度", PropertyValue1 = "", PropertyName2 = "角度", PropertyValue2 = "0" },
-                  new CategoryPropertyEditModel { PropertyName1 = "基点X", PropertyValue1 = "0", PropertyName2 = "基点Y", PropertyValue2 = "0" },
-                  new CategoryPropertyEditModel { PropertyName1 = "基点Z", PropertyValue1 = "0", PropertyName2 = "介质", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "规格", PropertyValue1 = "", PropertyName2 = "材质", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "标准编号", PropertyValue1 = "", PropertyName2 = "功率", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "容积", PropertyValue1 = "", PropertyName2 = "压力", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "温度", PropertyValue1 = "", PropertyName2 = "直径", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "外径", PropertyValue1 = "", PropertyName2 = "内径", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "厚度", PropertyValue1 = "", PropertyName2 = "重量", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "型号", PropertyValue1 = "", PropertyName2 = "备注", PropertyValue2 = "" },
-                  
-                  // 文件标签表(file_tags)相关属性（可以添加多个标签）
-                  new CategoryPropertyEditModel { PropertyName1 = "标签1", PropertyValue1 = "", PropertyName2 = "标签2", PropertyValue2 = "" },
-                  new CategoryPropertyEditModel { PropertyName1 = "标签3", PropertyValue1 = "", PropertyName2 = "", PropertyValue2 = "" }
-                  };
-
-                CategoryPropertiesDataGrid.ItemsSource = properties;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"初始化属性编辑失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-        /// <summary>
-        /// 初始化文件属性编辑网格
-        /// </summary>
-        private void InitializeFilePropertiesGrid()
-        {
-            try
-            {
-                var initialRows = new List<CategoryPropertyEditModel>
-        {
-            new CategoryPropertyEditModel(),
-            new CategoryPropertyEditModel(),
-            new CategoryPropertyEditModel()
-        };
-
-                CategoryPropertiesDataGrid.ItemsSource = initialRows;
-                LogManager.Instance.LogInfo("初始化文件属性编辑网格成功:InitializeFilePropertiesGrid()");
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"初始化文件属性编辑网格失败: {ex.Message}");
-            }
-        }
         /// <summary>
         /// 上传文件并保存到数据库
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        private async Task UploadFileAndSaveToDatabase()
+        public async Task UploadFileAndSaveToDatabase()
         {
             List<string> uploadedFiles = new List<string>(); // 记录已上传的文件路径，用于回滚
             FileStorage savedFileStorage = null; // 记录已保存的文件记录
@@ -4861,11 +4274,6 @@ namespace GB_NewCadPlus_III
                 if (string.IsNullOrEmpty(_selectedFilePath) || _selectedCategoryNode == null)
                 {
                     throw new Exception("文件路径或分类节点为空");
-                }
-
-                if (_fileManager == null)
-                {
-                    throw new Exception("文件管理器未初始化");
                 }
 
                 // 1. 获取文件信息
@@ -4926,11 +4334,12 @@ namespace GB_NewCadPlus_III
                 };
 
                 // 5. 从属性编辑网格中获取属性值
-                var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
-                if (properties != null)
+                var gridProperties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
+                if (gridProperties != null)
                 {
-                    foreach (var property in properties)
+                    foreach (var property in gridProperties)
                     {
+                        // 使用实例调用
                         SetFileAttributeProperty(_currentFileAttribute, property.PropertyName1, property.PropertyValue1);
                         SetFileAttributeProperty(_currentFileAttribute, property.PropertyName2, property.PropertyValue2);
                     }
@@ -4982,7 +4391,7 @@ namespace GB_NewCadPlus_III
 
                 await _databaseManager.UpdateFileAttributeAsync(_currentFileAttribute);//更新文件属性
                 // 8. 处理标签信息
-                await ProcessFileTags(_currentFileStorage.Id, properties);
+                // await FileManager.ProcessFileTags(_currentFileStorage.Id, properties);
 
                 // 9. 更新分类统计
                 var updateBool = await _databaseManager.UpdateCategoryStatisticsAsync(
@@ -5014,13 +4423,42 @@ namespace GB_NewCadPlus_III
             }
         }
 
+
+        #endregion
+
+        #region 文件处理
+
+        /// <summary>
+        /// 辅助方法
+        /// </summary>
+        private void InitializeFileUploadInterface()
+        {
+            // 清空所有输入框
+            file_Path.Text = "";
+            File_Name.Text = "";
+            File_Size.Text = "";
+            view_File_Path.Text = "";
+            ViewImage.Source = null;
+
+            // 清空属性编辑网格
+            CategoryPropertiesDataGrid.ItemsSource = null;
+
+            // 重置字段
+            _selectedFilePath = null;
+            _selectedPreviewImagePath = null;
+            _currentFileStorage = null;
+            _currentFileAttribute = null;
+        }
+
+        
+
         /// <summary>
         /// 设置文件属性
         /// </summary>
         /// <param name="attribute"></param>
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
-        private void SetFileAttributeProperty(FileAttribute attribute, string propertyName, string propertyValue)
+        public void SetFileAttributeProperty(FileAttribute attribute, string propertyName, string propertyValue)
         {
             if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue))
                 return;
@@ -5130,88 +4568,9 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 处理文件标签
-        /// </summary>
-        /// <param name="fileId"></param>
-        /// <param name="properties"></param>
-        /// <returns></returns>
-        private async Task ProcessFileTags(int fileId, List<CategoryPropertyEditModel> properties)
-        {
-            try
-            {
-                // 查找标签属性并添加到数据库
-                foreach (var property in properties)
-                {
-                    // 处理标签1
-                    if (property.PropertyName1?.StartsWith("标签") == true && !string.IsNullOrEmpty(property.PropertyValue1))
-                    {
-                        var tag = new FileTag
-                        {
-                            FileId = fileId,
-                            TagName = property.PropertyValue1,
-                            CreatedAt = DateTime.Now
-                        };
-                        // 这里需要在DatabaseManager中添加添加标签的方法
-                        var addFileTagBool = await _databaseManager.AddFileTagAsync(tag);
-                        if (addFileTagBool)
-                        {
-                            LogManager.Instance.LogInfo($"添加标签 {tag.TagName} 成功");
-                        }
-                        
-                    }
-
-                    // 处理标签2
-                    if (property.PropertyName2?.StartsWith("标签") == true && !string.IsNullOrEmpty(property.PropertyValue2))
-                    {
-                        var tag = new FileTag
-                        {
-                            FileId = fileId,
-                            TagName = property.PropertyValue2,
-                            CreatedAt = DateTime.Now
-                        };
-                        var addFileTagBool = await _databaseManager.AddFileTagAsync(tag);
-                        if (addFileTagBool)
-                        {
-                            LogManager.Instance.LogInfo($"添加标签 {tag.TagName} 成功");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"处理文件标签时出错: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 清空文件上传界面
-        /// </summary>
-        private void ClearFileUploadInterface()
-        {
-            // 清空所有输入框和显示
-            file_Path.Text = "";
-            File_Name.Text = "";
-            File_Size.Text = "";
-            File_Type.Text = "";
-            view_File_Path.Text = "";
-            ViewImage.Source = null;
-
-            // 清空属性编辑网格
-            CategoryPropertiesDataGrid.ItemsSource = null;
-
-            // 重置字段
-            _selectedFilePath = null;
-            _selectedPreviewImagePath = null;
-            _currentFileStorage = null;
-            _currentFileAttribute = null;
-            _selectedCategoryNode = null;
-        }
-
-        /// <summary>
         /// 添加文件选择相关字段
         /// </summary>
         private FileStorage _selectedFileStorage;
-        private FileAttribute _selectedFileAttribute;
 
         /// <summary>
         /// DataGrid选中事件
@@ -5514,130 +4873,7 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 更新选中文件
-        /// </summary>
-        /// <returns></returns>
-        private async Task UpdateSelectedFileAsync()
-        {
-            try
-            {
-                if (_selectedFileStorage == null || _databaseManager == null)
-                    return;
-
-                bool fileUpdated = false;
-                bool previewUpdated = false;
-
-                // 更新文件
-                if (!string.IsNullOrEmpty(file_Path.Text) && File.Exists(file_Path.Text))
-                {
-                    // 复制新文件到存储位置
-                    string newStoredFileName = $"{Guid.NewGuid()}{Path.GetExtension(file_Path.Text)}";
-                    string newStoredFilePath = Path.Combine(
-                        Path.GetDirectoryName(_selectedFileStorage.FilePath),
-                        newStoredFileName);
-
-                    File.Copy(file_Path.Text, newStoredFilePath, true);
-
-                    // 更新数据库记录
-                    _selectedFileStorage.FilePath = newStoredFilePath;
-                    _selectedFileStorage.FileName = Path.GetFileName(file_Path.Text);
-                    _selectedFileStorage.FileSize = new FileInfo(newStoredFilePath).Length;
-                    _selectedFileStorage.Version += 1; // 增加版本号
-                    _selectedFileStorage.UpdatedAt = DateTime.Now;
-
-                    fileUpdated = true;
-                }
-
-                // 更新预览图片
-                if (!string.IsNullOrEmpty(view_File_Path.Text) && File.Exists(view_File_Path.Text))
-                {
-                    // 复制新预览图片到存储位置
-                    string newPreviewFileName = $"{Guid.NewGuid()}{Path.GetExtension(view_File_Path.Text)}";
-                    string newPreviewFilePath = Path.Combine(
-                        Path.GetDirectoryName(_selectedFileStorage.PreviewImagePath ?? _selectedFileStorage.FilePath),
-                        newPreviewFileName);
-
-                    File.Copy(view_File_Path.Text, newPreviewFilePath, true);
-
-                    // 更新数据库记录
-                    _selectedFileStorage.PreviewImagePath = newPreviewFilePath;
-                    _selectedFileStorage.PreviewImageName = newPreviewFileName;
-
-                    previewUpdated = true;
-                }
-
-                // 保存到数据库
-                if (fileUpdated || previewUpdated)
-                {
-                    await _databaseManager.UpdateFileStorageAsync(_selectedFileStorage);
-                }
-
-                // 清空输入框
-                //new_File_Path.Text = "";
-                //new_Preview_Path.Text = "";
-                //version_Description.Text = "";
-
-                LogManager.Instance.LogInfo($"文件更新完成: 文件={fileUpdated}, 预览={previewUpdated}");
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"更新文件时出错: {ex.Message}");
-                throw;
-            }
-        }
-
-
-        /// <summary>
-        /// 更新文件属性
-        /// </summary>
-        /// <param name="fileAttribute"></param>
-        /// <param name="propertyName"></param>
-        /// <param name="propertyValue"></param>
-        private void UpdateFileAttributeProperty(FileAttribute fileAttribute, string propertyName, string propertyValue)
-        {
-            if (string.IsNullOrEmpty(propertyName) || fileAttribute == null)
-                return;
-
-            try
-            {
-                var property = fileAttribute.GetType().GetProperty(propertyName);
-                if (property != null && property.CanWrite)
-                {
-                    // 根据属性类型进行转换
-                    if (property.PropertyType == typeof(string))
-                    {
-                        property.SetValue(fileAttribute, propertyValue);
-                    }
-                    else if (property.PropertyType == typeof(int?) || property.PropertyType == typeof(int))
-                    {
-                        if (int.TryParse(propertyValue, out int intValue))
-                        {
-                            property.SetValue(fileAttribute, intValue);
-                        }
-                    }
-                    else if (property.PropertyType == typeof(double?) || property.PropertyType == typeof(double))
-                    {
-                        if (double.TryParse(propertyValue, out double doubleValue))
-                        {
-                            property.SetValue(fileAttribute, doubleValue);
-                        }
-                    }
-                    else if (property.PropertyType == typeof(DateTime?) || property.PropertyType == typeof(DateTime))
-                    {
-                        if (DateTime.TryParse(propertyValue, out DateTime dateTimeValue))
-                        {
-                            property.SetValue(fileAttribute, dateTimeValue);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"更新属性 {propertyName} 时出错: {ex.Message}");
-            }
-        }
-
+        
         /// <summary>
         /// 直接刷新当前选中分类的文件显示
         /// </summary>
@@ -5673,7 +4909,7 @@ namespace GB_NewCadPlus_III
         /// 刷新当前分类的显示
         /// </summary>
         /// <param name="categoryNode">分类节点</param>
-        private async Task RefreshCurrentCategoryDisplayAsync(CategoryTreeNode categoryNode)
+        public async Task RefreshCurrentCategoryDisplayAsync(CategoryTreeNode categoryNode)
         {
             try
             {
@@ -5762,59 +4998,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 刷新架构树显示（修正版）
-        /// </summary>
-        /// <returns></returns>
-        private async Task RefreshCategoryTreeAsync()
-        {
-            try
-            {
-                // 重新加载分类和子分类数据
-                await LoadCategoryTreeAsync();
-
-                // 更新UI显示
-                DisplayCategoryTree();
-
-                // 展开当前选中的节点
-                if (_selectedCategoryNode != null && CategoryTreeView != null)
-                {
-                    ExpandTreeNodeToSelectedNode(_selectedCategoryNode);
-                }
-
-                LogManager.Instance.LogInfo("架构树刷新完成");
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"刷新架构树时出错: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 展开树节点到选中的节点
-        /// </summary>
-        /// <param name="selectedNode">选中的节点</param>
-        private void ExpandTreeNodeToSelectedNode(CategoryTreeNode selectedNode)
-        {
-            try
-            {
-                // 这里可以实现展开树节点到指定节点的逻辑
-                // 例如：展开父节点，选中指定节点等
-                if (CategoryTreeView != null && CategoryTreeView.Items.Count > 0)
-                {
-                    // 可以通过遍历TreeViewItem来展开到指定节点
-                    // 这里简化处理，实际可以根据需要完善
-                    CategoryTreeView.UpdateLayout();
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"展开树节点时出错: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 获取当前选中的TabItem标题
+        /// 获取当前选中的TabItem标题  _selectedCategoryNode  RefreshCategoryTreeAsync
         /// </summary>
         /// <returns>TabItem标题</returns>
         private string GetCurrentSelectedTabHeader()
@@ -6473,7 +5657,7 @@ namespace GB_NewCadPlus_III
                     return;
 
                 // 开始批量导入
-                BatchImportGraphicsAsync(file_Path.Text);
+                _fileManager.BatchImportGraphicsAsync(file_Path.Text, _selectedCategoryNode, CategoryPropertiesDataGrid, _categoryTreeNodes);
             }
             catch (Exception ex)
             {
@@ -6641,399 +5825,7 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 批量导入图元
-        /// </summary>
-        private async Task BatchImportGraphicsAsync(string excelFilePath)
-        {
-            try
-            {
-                LogManager.Instance.LogInfo($"开始批量导入图元: {excelFilePath}");
-
-                // 读取Excel文件
-                DataTable dataTable = ReadExcelToDataTable(excelFilePath);
-
-                if (dataTable == null || dataTable.Rows.Count == 0)
-                {
-                    MessageBox.Show("Excel文件中没有数据", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-
-                int successCount = 0;
-                int failCount = 0;
-
-                // 遍历每一行数据
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    try
-                    {
-                        // 创建FileStorage对象
-                        var fileStorage = CreateFileStorageFromRow(row);
-
-                        if (fileStorage != null)
-                        {
-                            // 保存到数据库
-                            int fileId = await _databaseManager.AddFileStorageAsync(fileStorage);
-
-                            if (fileId > 0)
-                            {
-                                // 创建FileAttribute对象
-                                var fileAttribute = CreateFileAttributeFromRow(row, fileId);
-
-                                if (fileAttribute != null)
-                                {
-                                    // 保存文件属性
-                                    await _databaseManager.AddFileAttributeAsync(fileAttribute);
-                                }
-
-                                successCount++;
-                                LogManager.Instance.LogInfo($"成功导入图元: {fileStorage.DisplayName}");
-                            }
-                            else
-                            {
-                                failCount++;
-                                LogManager.Instance.LogWarning($"导入图元失败: {fileStorage?.DisplayName}");
-                            }
-                        }
-                        else
-                        {
-                            failCount++;
-                            LogManager.Instance.LogWarning("创建FileStorage对象失败");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        failCount++;
-                        LogManager.Instance.LogError($"导入单个图元时出错: {ex.Message}");
-                    }
-                }
-
-                // 显示结果
-                MessageBox.Show($"批量导入完成\n成功: {successCount} 个\n失败: {failCount} 个",
-                    "完成", MessageBoxButton.OK, MessageBoxImage.Information);
-
-                LogManager.Instance.LogInfo($"批量导入完成 - 成功: {successCount}, 失败: {failCount}");
-
-                // 刷新分类树
-                await RefreshCategoryTreeAsync();
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"批量导入图元时出错: {ex.Message}");
-                MessageBox.Show($"批量导入图元时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 从Excel行数据创建FileStorage对象
-        /// </summary>
-        private FileStorage CreateFileStorageFromRow(DataRow row)
-        {
-            try
-            {
-                var fileStorage = new FileStorage
-                {
-                    /*
-                        CategoryId("分类ID", typeof(int));
-                        CategoryType("分类类型", typeof(string));
-                       FileName ("文件名", typeof(string));
-                       DisplayName ("显示名称", typeof(string));
-                        FilePath("文件路径", typeof(string));
-                        FileType("文件类型", typeof(string));
-                        FileSize("文件大小", typeof(long));
-                        ElementBlockName("元素块名", typeof(string));
-                        LayerName("图层名称", typeof(string));
-                        ColorIndex("颜色索引", typeof(int));
-                        PreviewImageName("预览图片名称", typeof(string));
-                        PreviewImagePath("预览图片路径", typeof(string));
-                        IsPreview("是否预览", typeof(int));
-                        CreatedBy("创建者", typeof(string));
-                        Title("标题", typeof(string));
-                        Keywords("关键字", typeof(string));
-                        UpdatedBy("更新者", typeof(string));
-                        Version("版本号", typeof(int));
-                        IsActive("是否激活", typeof(int));
-                        IsPublic("是否公开", typeof(int));
-                        Description("描述", typeof(string));
-       
-                     */
-                    CategoryId = GetIntValue(row, "分类ID"),
-                    CategoryType = "sub", // 默认为主分类
-                    FileName = GetStringValue(row, "文件名"),
-                    DisplayName = GetStringValue(row, "显示名称"),
-                    FilePath = GetStringValue(row, "文件路径"),
-                    FileType = GetStringValue(row, "文件类型"),
-                    FileSize = GetLongValue(row, "文件大小"),
-                    ElementBlockName = GetStringValue(row, "元素块名"),
-                    LayerName = GetStringValue(row, "图层名称"),
-                    ColorIndex = GetIntValue(row, "颜色索引"),
-                    PreviewImageName = GetStringValue(row, "预览图片名称"),
-                    PreviewImagePath = GetStringValue(row, "预览图片路径"),
-                    IsPreview = GetIntValue(row, "是否预览", 0),
-                    CreatedBy = GetStringValue(row, "创建者"),
-                    Title = GetStringValue(row, "标题"),
-                    Version = GetIntValue(row, "版本号", 1),
-                    IsActive = GetIntValue(row, "是否激活", 1),
-                    IsPublic = GetIntValue(row, "是否公开", 1),
-                    Description = GetStringValue(row, "描述"),
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-
-                return fileStorage;
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"创建FileStorage对象时出错: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 从Excel行数据创建FileAttribute对象
-        /// </summary>
-        private FileAttribute CreateFileAttributeFromRow(DataRow row, int storageFileId)
-        {
-            try
-            {
-                var fileAttribute = new FileAttribute
-                {
-                    /*
-                      { "FileStorageId", "存储文件ID" },
-                      { "Length", "长度" },
-                      { "Width", "宽度" },
-                      { "Height", "高度" },
-                      { "Angle", "角度" },
-                      { "BasePointX", "基点X" },
-                      { "BasePointY", "基点Y" },
-                      { "BasePointZ", "基点Z" },
-                      { "MediumName", "介质" },
-                      { "Specifications", "规格" },
-                      { "Material", "材质" },
-                      { "StandardNumber", "标准编号" },
-                      { "Power", "功率" },
-                      { "Volume", "容积" },
-                      { "Pressure", "压力" },
-                      { "Temperature", "温度" },
-                      { "Diameter", "直径" },
-                      { "OuterDiameter", "外径" },
-                      { "InnerDiameter", "内径" },
-                      { "Thickness", "厚度" },
-                      { "Weight", "重量" },
-                      { "Model", "型号" },
-                      { "Remarks", "备注" },
-                      { "Customize1", "自定义1" },
-                      { "Customize2", "自定义2" },
-                      { "Customize3", "自定义3" }
-                     */
-                    FileStorageId = storageFileId,
-                    Width = (decimal?)GetDoubleValue(row, "宽度"),
-                    Height = (decimal?)GetDoubleValue(row, "高度"),
-                    Length = (decimal?)GetDoubleValue(row, "长度"),
-                    Angle = (decimal?)GetDoubleValue(row, "角度"),
-                    BasePointX = (decimal?)GetDoubleValue(row, "基点X"),
-                    BasePointZ = (decimal?)GetDoubleValue(row, "基点Y"),
-                    BasePointY = (decimal?)GetDoubleValue(row, "基点Z"),
-                    MediumName = GetStringValue(row, "介质"),
-                    Specifications = GetStringValue(row, "规格"),
-                    Material = GetStringValue(row, "材质"),
-                    StandardNumber = GetStringValue(row, "标准编号"),
-                    Power = GetStringValue(row, "功率"),
-                    Volume = GetStringValue(row, "容积"),
-                    Pressure = GetStringValue(row, "压力"),
-                    Temperature = GetStringValue(row, "温度"),
-                    Diameter = GetStringValue(row, "直径"),
-                    OuterDiameter = GetStringValue(row, "外径"),
-                    InnerDiameter = GetStringValue(row, "内径"),
-                    Thickness = GetStringValue(row, "厚度"),
-                    Weight = GetStringValue(row, "重量"),
-                    Model = GetStringValue(row, "型号"),
-                    Remarks = GetStringValue(row, "备注"),
-                    Customize1 = GetStringValue(row, "自定义1"),
-                    Customize2 = GetStringValue(row, "自定义2"),
-                    Customize3 = GetStringValue(row, "自定义3"),
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-
-                return fileAttribute;
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"创建FileAttribute对象时出错: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 读取Excel文件到DataTable
-        /// </summary>
-        private DataTable ReadExcelToDataTable(string filePath)
-        {
-            try
-            {
-                DataTable dataTable = new DataTable();
-
-                // 使用EPPlus读取Excel
-                using (var package = new OfficeOpenXml.ExcelPackage(new FileInfo(filePath)))
-                {
-                    var worksheet = package.Workbook.Worksheets[0]; // 读取第一个工作表
-
-                    // 读取标题行
-                    for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
-                    {
-                        var cellValue = worksheet.Cells[1, col].Value?.ToString() ?? "";
-                        dataTable.Columns.Add(cellValue);
-                    }
-
-                    // 读取数据行
-                    for (int row = 2; row <= worksheet.Dimension.End.Row; row++)
-                    {
-                        var dataRow = dataTable.NewRow();
-                        for (int col = 1; col <= worksheet.Dimension.End.Column; col++)
-                        {
-                            dataRow[col - 1] = worksheet.Cells[row, col].Value ?? DBNull.Value;
-                        }
-                        dataTable.Rows.Add(dataRow);
-                    }
-                }
-
-                return dataTable;
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"读取Excel文件时出错: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// 辅助方法
-        /// </summary>
-        /// <param name="row">行</param>
-        /// <param name="columnName">列</param>
-        /// <returns></returns>
-        private string GetStringValue(DataRow row, string columnName)
-        {
-            try
-            {
-                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
-                {
-                    return row[columnName].ToString();
-                }
-                return string.Empty;
-            }
-            catch
-            {
-                return string.Empty;
-            }
-        }
-        /// <summary>
-        /// 获取整型值
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="columnName"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        private int GetIntValue(DataRow row, string columnName, int defaultValue = 0)
-        {
-            try
-            {
-                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
-                {
-                    if (int.TryParse(row[columnName].ToString(), out int result))
-                    {
-                        return result;
-                    }
-                }
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
-        /// <summary>
-        /// 获取长整型值
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="columnName"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        private long GetLongValue(DataRow row, string columnName, long defaultValue = 0)
-        {
-            try
-            {
-                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
-                {
-                    if (long.TryParse(row[columnName].ToString(), out long result))
-                    {
-                        return result;
-                    }
-                }
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
-        /// <summary>
-        /// 获取双精度值
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="columnName"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        private double GetDoubleValue(DataRow row, string columnName, double defaultValue = 0.0)
-        {
-            try
-            {
-                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
-                {
-                    if (double.TryParse(row[columnName].ToString(), out double result))
-                    {
-                        return result;
-                    }
-                }
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
-        /// <summary>
-        /// 获取布尔值
-        /// </summary>
-        /// <param name="row"></param>
-        /// <param name="columnName"></param>
-        /// <param name="defaultValue"></param>
-        /// <returns></returns>
-        private bool GetBoolValue(DataRow row, string columnName, bool defaultValue = false)
-        {
-            try
-            {
-                if (row.Table.Columns.Contains(columnName) && row[columnName] != DBNull.Value)
-                {
-                    if (bool.TryParse(row[columnName].ToString(), out bool result))
-                    {
-                        return result;
-                    }
-                    // 处理"是"/"否"等中文表示
-                    string value = row[columnName].ToString().ToLower();
-                    if (value == "是" || value == "true" || value == "1")
-                        return true;
-                    if (value == "否" || value == "false" || value == "0")
-                        return false;
-                }
-                return defaultValue;
-            }
-            catch
-            {
-                return defaultValue;
-            }
-        }
+        
         #endregion
 
     }
