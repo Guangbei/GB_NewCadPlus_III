@@ -39,9 +39,17 @@
 
 	<ItemGroup>
 	  <Compile Remove="FakesAssemblies\**" />
+	  <Compile Remove="Fakes\**" />
+	  <Compile Remove="packages\**" />
 	  <EmbeddedResource Remove="FakesAssemblies\**" />
+	  <EmbeddedResource Remove="Fakes\**" />
+	  <EmbeddedResource Remove="packages\**" />
 	  <None Remove="FakesAssemblies\**" />
+	  <None Remove="Fakes\**" />
+	  <None Remove="packages\**" />
 	  <Page Remove="FakesAssemblies\**" />
+	  <Page Remove="Fakes\**" />
+	  <Page Remove="packages\**" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -85,8 +93,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Fakes\" />
-	  <Folder Include="packages\" />
 	  <Folder Include="Resources\暖通\02-设备\" />
 	  <Folder Include="Resources\暖通\01-风路\" />
 	</ItemGroup>

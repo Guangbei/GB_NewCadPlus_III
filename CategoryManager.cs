@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,17 +6,26 @@ using MessageBox = System.Windows.MessageBox;
 
 namespace GB_NewCadPlus_III
 {
+    /// <summary>
+    /// åˆ†ç±»ç®¡ç†å™¨
+    /// </summary>
     public class CategoryManager
     {
+        /// <summary>
+        /// æ•°æ®åº“ç®¡ç†å™¨
+        /// </summary>
         private readonly DatabaseManager _databaseManager;
-
+        /// <summary>
+        /// æ•°æ®åº“ç®¡ç†å™¨
+        /// </summary>
+        /// <param name="databaseManager"></param>
         public CategoryManager(DatabaseManager databaseManager)
         {
             _databaseManager = databaseManager;
         }
 
         /// <summary>
-        /// Ó¦ÓÃ·ÖÀàÊôĞÔ£¨·µ»ØboolÖµ£©
+        /// åº”ç”¨åˆ†ç±»å±æ€§ï¼ˆè¿”å›boolå€¼ï¼‰
         /// </summary>
         /// <returns></returns>
         public async Task<bool> ApplyCategoryPropertiesAsync(ItemsControl categoryPropertiesDataGrid)
@@ -28,53 +35,53 @@ namespace GB_NewCadPlus_III
                 var properties = categoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
                 if (properties == null || properties.Count == 0)
                 {
-                    throw new Exception("Ã»ÓĞ¿ÉÓ¦ÓÃµÄÊôĞÔ");
+                    throw new Exception("æ²¡æœ‰å¯åº”ç”¨çš„å±æ€§");
                 }
 
-                // ½âÎöÊôĞÔÊı¾İ
+                // è§£æå±æ€§æ•°æ®
                 var (name, displayName, sortOrder) = ParseCategoryProperties(properties);
 
                 if (string.IsNullOrEmpty(name))
                 {
-                    throw new Exception("·ÖÀàÃû³Æ²»ÄÜÎª¿Õ");
+                    throw new Exception("åˆ†ç±»åç§°ä¸èƒ½ä¸ºç©º");
                 }
 
-                // ×Ô¶¯Éú³ÉÅÅĞòĞòºÅ£¨Èç¹ûÎ´Ìá¹©»òÎª0£©
+                // è‡ªåŠ¨ç”Ÿæˆæ’åºåºå·ï¼ˆå¦‚æœæœªæä¾›æˆ–ä¸º0ï¼‰
                 if (sortOrder <= 0)
                 {
                     sortOrder = await _databaseManager.GetMaxCadCategorySortOrderAsync() + 1;
                 }
 
-                // Éú³ÉÖ÷·ÖÀàID
+                // ç”Ÿæˆä¸»åˆ†ç±»ID
                 int categoryId = await CategoryIdGenerator.GenerateMainCategoryIdAsync(_databaseManager);
 
-                // ´´½¨·ÖÀà¶ÔÏó
+                // åˆ›å»ºåˆ†ç±»å¯¹è±¡
                 var category = new CadCategory
                 {
                     Id = categoryId,
                     Name = name,
                     DisplayName = displayName ?? name,
                     SortOrder = sortOrder,
-                    SubcategoryIds = "", // ĞÂ½¨Ê±Îª¿Õ
+                    SubcategoryIds = "", // æ–°å»ºæ—¶ä¸ºç©º
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
 
-                // Ìí¼Óµ½Êı¾İ¿â
+                // æ·»åŠ åˆ°æ•°æ®åº“
                 int result = await _databaseManager.AddCadCategoryAsync(category);
 
-                // ÑéÖ¤Êı¾İ¿â²Ù×÷ÊÇ·ñ³É¹¦
+                // éªŒè¯æ•°æ®åº“æ“ä½œæ˜¯å¦æˆåŠŸ
                 return result > 0;
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"Ó¦ÓÃ·ÖÀàÊôĞÔÊ±³ö´í: {ex.Message}");
+                LogManager.Instance.LogInfo($"åº”ç”¨åˆ†ç±»å±æ€§æ—¶å‡ºé”™: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// Ó¦ÓÃ×Ó·ÖÀàÊôĞÔ£¨·µ»ØboolÖµ£©
+        /// åº”ç”¨å­åˆ†ç±»å±æ€§ï¼ˆè¿”å›boolå€¼ï¼‰
         /// </summary>
         /// <returns></returns>
         public async Task<bool> ApplySubcategoryPropertiesAsync( ItemsControl CategoryPropertiesDataGrid)
@@ -84,35 +91,35 @@ namespace GB_NewCadPlus_III
                 var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
                 if (properties == null || properties.Count == 0)
                 {
-                    throw new Exception("Ã»ÓĞ¿ÉÓ¦ÓÃµÄÊôĞÔ");
+                    throw new Exception("æ²¡æœ‰å¯åº”ç”¨çš„å±æ€§");
                 }
 
-                // ½âÎöÊôĞÔÊı¾İ
+                // è§£æå±æ€§æ•°æ®
                 var (parentId, name, displayName, sortOrder) = ParseSubcategoryProperties(properties);
 
                 if (parentId <= 0)
                 {
-                    throw new Exception("¸¸·ÖÀàID±ØĞë´óÓÚ0");
+                    throw new Exception("çˆ¶åˆ†ç±»IDå¿…é¡»å¤§äº0");
                 }
 
                 if (string.IsNullOrEmpty(name))
                 {
-                    throw new Exception("×Ó·ÖÀàÃû³Æ²»ÄÜÎª¿Õ");
+                    throw new Exception("å­åˆ†ç±»åç§°ä¸èƒ½ä¸ºç©º");
                 }
 
-                // ×Ô¶¯Éú³ÉÅÅĞòĞòºÅ£¨Èç¹ûÎ´Ìá¹©»òÎª0£©
+                // è‡ªåŠ¨ç”Ÿæˆæ’åºåºå·ï¼ˆå¦‚æœæœªæä¾›æˆ–ä¸º0ï¼‰
                 if (sortOrder <= 0)
                 {
                     sortOrder = await _databaseManager.GetMaxCadSubcategorySortOrderAsync(parentId) + 1;
                 }
 
-                // Éú³É×Ó·ÖÀàID
+                // ç”Ÿæˆå­åˆ†ç±»ID
                 int subcategoryId = await CategoryIdGenerator.GenerateSubcategoryIdAsync(_databaseManager, parentId);
 
-                // È·¶¨²ã¼¶
+                // ç¡®å®šå±‚çº§
                 int level = await DetermineCategoryLevelAsync(parentId);
 
-                // ´´½¨×Ó·ÖÀà¶ÔÏó
+                // åˆ›å»ºå­åˆ†ç±»å¯¹è±¡
                 var subcategory = new CadSubcategory
                 {
                     Id = subcategoryId,
@@ -121,17 +128,17 @@ namespace GB_NewCadPlus_III
                     DisplayName = displayName ?? name,
                     SortOrder = sortOrder,
                     Level = level,
-                    SubcategoryIds = "", // ĞÂ½¨Ê±Îª¿Õ
+                    SubcategoryIds = "", // æ–°å»ºæ—¶ä¸ºç©º
                     CreatedAt = DateTime.Now,
                     UpdatedAt = DateTime.Now
                 };
 
-                // Ìí¼Óµ½Êı¾İ¿â
+                // æ·»åŠ åˆ°æ•°æ®åº“
                 int result = await _databaseManager.AddCadSubcategoryAsync(subcategory);
 
                 if (result > 0)
                 {
-                    // ¸üĞÂ¸¸¼¶µÄ×Ó·ÖÀàÁĞ±í
+                    // æ›´æ–°çˆ¶çº§çš„å­åˆ†ç±»åˆ—è¡¨
                     await _databaseManager.UpdateParentSubcategoryListAsync(parentId, subcategoryId);
                     return true;
                 }
@@ -140,13 +147,13 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"Ó¦ÓÃ×Ó·ÖÀàÊôĞÔÊ±³ö´í: {ex.Message}");
+                LogManager.Instance.LogInfo($"åº”ç”¨å­åˆ†ç±»å±æ€§æ—¶å‡ºé”™: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// ¸üĞÂ·ÖÀàÊôĞÔ£¨±à¼­¹¦ÄÜ£©
+        /// æ›´æ–°åˆ†ç±»å±æ€§ï¼ˆç¼–è¾‘åŠŸèƒ½ï¼‰
         /// </summary>
         /// <returns></returns>
         public async Task<bool> UpdateCategoryPropertiesAsync( ItemsControl CategoryPropertiesDataGrid, CategoryTreeNode _selectedCategoryNode)
@@ -154,22 +161,22 @@ namespace GB_NewCadPlus_III
             try
             {
                 if (_selectedCategoryNode == null)
-                    throw new Exception("Ã»ÓĞÑ¡ÖĞµÄ·ÖÀà");
+                    throw new Exception("æ²¡æœ‰é€‰ä¸­çš„åˆ†ç±»");
 
                 var properties = CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>;
                 if (properties == null || properties.Count == 0)
-                    throw new Exception("Ã»ÓĞ¿É¸üĞÂµÄÊôĞÔ");
+                    throw new Exception("æ²¡æœ‰å¯æ›´æ–°çš„å±æ€§");
 
-                // ½âÎö¸üĞÂµÄÊôĞÔ
+                // è§£ææ›´æ–°çš„å±æ€§
                 var (name, displayName, sortOrder) = WpfMainWindow.ParseUpdatedCategoryProperties(properties);
 
                 if (string.IsNullOrEmpty(name))
-                    throw new Exception("·ÖÀàÃû³Æ²»ÄÜÎª¿Õ");
+                    throw new Exception("åˆ†ç±»åç§°ä¸èƒ½ä¸ºç©º");
 
-                // ¸ù¾İ½ÚµãÀàĞÍ¸üĞÂÏàÓ¦µÄ¼ÇÂ¼
+                // æ ¹æ®èŠ‚ç‚¹ç±»å‹æ›´æ–°ç›¸åº”çš„è®°å½•
                 if (_selectedCategoryNode.Level == 0 && _selectedCategoryNode.Data is CadCategory category)
                 {
-                    // ¸üĞÂÖ÷·ÖÀà
+                    // æ›´æ–°ä¸»åˆ†ç±»
                     category.Name = name;
                     category.DisplayName = displayName ?? name;
                     category.SortOrder = sortOrder;
@@ -180,7 +187,7 @@ namespace GB_NewCadPlus_III
                 }
                 else if (_selectedCategoryNode.Data is CadSubcategory subcategory)
                 {
-                    // ¸üĞÂ×Ó·ÖÀà
+                    // æ›´æ–°å­åˆ†ç±»
                     subcategory.Name = name;
                     subcategory.DisplayName = displayName ?? name;
                     subcategory.SortOrder = sortOrder;
@@ -191,18 +198,18 @@ namespace GB_NewCadPlus_III
                 }
                 else
                 {
-                    throw new Exception("²»Ö§³ÖµÄ·ÖÀàÀàĞÍ");
+                    throw new Exception("ä¸æ”¯æŒçš„åˆ†ç±»ç±»å‹");
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"¸üĞÂ·ÖÀàÊôĞÔÊ±³ö´í: {ex.Message}");
+                LogManager.Instance.LogInfo($"æ›´æ–°åˆ†ç±»å±æ€§æ—¶å‡ºé”™: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// ½âÎö·ÖÀàÊôĞÔÊı¾İ
+        /// è§£æåˆ†ç±»å±æ€§æ•°æ®
         /// </summary>
         /// <param name="properties"></param>
         /// <returns></returns>
@@ -210,14 +217,14 @@ namespace GB_NewCadPlus_III
         {
             string name = "";
             string displayName = "";
-            int sortOrder = 0; // Ä¬ÈÏÅÅĞòĞòºÅ
+            int sortOrder = 0; // é»˜è®¤æ’åºåºå·
 
             foreach (var property in properties)
             {
-                // ´¦ÀíµÚÒ»ÁĞ
+                // å¤„ç†ç¬¬ä¸€åˆ—
                 ProcessCategoryProperty(property.PropertyName1, property.PropertyValue1, ref name, ref displayName, ref sortOrder);
 
-                // ´¦ÀíµÚ¶şÁĞ
+                // å¤„ç†ç¬¬äºŒåˆ—
                 ProcessCategoryProperty(property.PropertyName2, property.PropertyValue2, ref name, ref displayName, ref sortOrder);
             }
 
@@ -225,13 +232,13 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ´¦Àíµ¥¸ö·ÖÀàÊôĞÔ
+        /// å¤„ç†å•ä¸ªåˆ†ç±»å±æ€§
         /// </summary>
-        /// <param name="propertyName">·ÖÀàÃû</param>
-        /// <param name="propertyValue">·ÖÀàÃû¶ÔÓ¦µÄÖµ</param>
-        /// <param name="name">·µ»ØµÄÃû³Æ</param>
-        /// <param name="displayName">·µ»ØµÄÏÔÊ¾Ãû³Æ</param>
-        /// <param name="sortOrder">·µ»ØµÄÅÅÁĞË³Ğò</param>
+        /// <param name="propertyName">åˆ†ç±»å</param>
+        /// <param name="propertyValue">åˆ†ç±»åå¯¹åº”çš„å€¼</param>
+        /// <param name="name">è¿”å›çš„åç§°</param>
+        /// <param name="displayName">è¿”å›çš„æ˜¾ç¤ºåç§°</param>
+        /// <param name="sortOrder">è¿”å›çš„æ’åˆ—é¡ºåº</param>
         public static void ProcessCategoryProperty(string propertyName, string propertyValue, ref string name, ref string displayName, ref int sortOrder)
         {
             if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue))
@@ -239,18 +246,18 @@ namespace GB_NewCadPlus_III
 
             switch (propertyName.ToLower().Trim())
             {
-                case "Ãû³Æ":
+                case "åç§°":
                 case "name":
                     name = propertyValue.Trim();
                     break;
-                case "ÏÔÊ¾Ãû³Æ":
+                case "æ˜¾ç¤ºåç§°":
                 case "displayname":
-                case "ÏÔÊ¾Ãû":
+                case "æ˜¾ç¤ºå":
                     displayName = propertyValue.Trim();
                     break;
-                case "ÅÅĞòĞòºÅ":
+                case "æ’åºåºå·":
                 case "sortorder":
-                    // ÅÅĞòĞòºÅÏÖÔÚÊÇ¿ÉÑ¡µÄ£¬Èç¹ûÌá¹©ÁË¾ÍÊ¹ÓÃ£¬·ñÔò×Ô¶¯Éú³É
+                    // æ’åºåºå·ç°åœ¨æ˜¯å¯é€‰çš„ï¼Œå¦‚æœæä¾›äº†å°±ä½¿ç”¨ï¼Œå¦åˆ™è‡ªåŠ¨ç”Ÿæˆ
                     if (int.TryParse(propertyValue.Trim(), out int sort))
                         sortOrder = sort;
                     break;
@@ -258,7 +265,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ½âÎö×Ó·ÖÀàÊôĞÔÊı¾İ
+        /// è§£æå­åˆ†ç±»å±æ€§æ•°æ®
         /// </summary>
         /// <param name="properties"></param>
         /// <returns></returns>
@@ -267,14 +274,14 @@ namespace GB_NewCadPlus_III
             int parentId = 0;
             string name = "";
             string displayName = "";
-            int sortOrder = 0; // Ä¬ÈÏÅÅĞòĞòºÅ
+            int sortOrder = 0; // é»˜è®¤æ’åºåºå·
 
             foreach (var property in properties)
             {
-                // ´¦ÀíµÚÒ»ÁĞ
+                // å¤„ç†ç¬¬ä¸€åˆ—
                 ProcessSubcategoryProperty(property.PropertyName1, property.PropertyValue1, ref parentId, ref name, ref displayName, ref sortOrder);
 
-                // ´¦ÀíµÚ¶şÁĞ
+                // å¤„ç†ç¬¬äºŒåˆ—
                 ProcessSubcategoryProperty(property.PropertyName2, property.PropertyValue2, ref parentId, ref name, ref displayName, ref sortOrder);
             }
 
@@ -282,7 +289,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ´¦Àíµ¥¸ö×Ó·ÖÀàÊôĞÔ
+        /// å¤„ç†å•ä¸ªå­åˆ†ç±»å±æ€§
         /// </summary>
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
@@ -297,24 +304,24 @@ namespace GB_NewCadPlus_III
 
             switch (propertyName.ToLower().Trim())
             {
-                case "¸¸·ÖÀàid":
+                case "çˆ¶åˆ†ç±»id":
                 case "parentid":
-                case "¸¸id":
+                case "çˆ¶id":
                     if (int.TryParse(propertyValue.Trim(), out int pid))
                         parentId = pid;
                     break;
-                case "Ãû³Æ":
+                case "åç§°":
                 case "name":
                     name = propertyValue.Trim();
                     break;
-                case "ÏÔÊ¾Ãû³Æ":
+                case "æ˜¾ç¤ºåç§°":
                 case "displayname":
-                case "ÏÔÊ¾Ãû":
+                case "æ˜¾ç¤ºå":
                     displayName = propertyValue.Trim();
                     break;
-                case "ÅÅĞòĞòºÅ":
+                case "æ’åºåºå·":
                 case "sortorder":
-                    // ÅÅĞòĞòºÅÏÖÔÚÊÇ¿ÉÑ¡µÄ
+                    // æ’åºåºå·ç°åœ¨æ˜¯å¯é€‰çš„
                     if (int.TryParse(propertyValue.Trim(), out int sort))
                         sortOrder = sort;
                     break;
@@ -322,7 +329,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// É¾³ıÖ÷·ÖÀà
+        /// åˆ é™¤ä¸»åˆ†ç±»
         /// </summary>
         /// <param name="categoryNode"></param>
         /// <returns></returns>
@@ -331,28 +338,28 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // ¼ì²éÊÇ·ñÓĞ×Ó·ÖÀà
+                // æ£€æŸ¥æ˜¯å¦æœ‰å­åˆ†ç±»
                 if (categoryNode.Children.Count > 0)
                 {
-                    if (MessageBox.Show("¸ÃÖ÷·ÖÀàÏÂ»¹ÓĞ×Ó·ÖÀà£¬È·¶¨ÒªÈ«²¿É¾³ıÂğ£¿",
-                                      "¾¯¸æ", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    if (MessageBox.Show("è¯¥ä¸»åˆ†ç±»ä¸‹è¿˜æœ‰å­åˆ†ç±»ï¼Œç¡®å®šè¦å…¨éƒ¨åˆ é™¤å—ï¼Ÿ",
+                                      "è­¦å‘Š", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     {
                         return false;
                     }
                 }
 
-                // ´ÓÊı¾İ¿âÉ¾³ıÖ÷·ÖÀà
+                // ä»æ•°æ®åº“åˆ é™¤ä¸»åˆ†ç±»
                 int result = await _databaseManager.DeleteCadCategoryAsync(categoryNode.Id);
                 return result > 0;
             }
             catch (Exception ex)
             {
-                throw new Exception($"É¾³ıÖ÷·ÖÀàÊ§°Ü: {ex.Message}");
+                throw new Exception($"åˆ é™¤ä¸»åˆ†ç±»å¤±è´¥: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// É¾³ı×Ó·ÖÀà
+        /// åˆ é™¤å­åˆ†ç±»
         /// </summary>
         /// <param name="subcategoryNode"></param>
         /// <returns></returns>
@@ -361,21 +368,21 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // ¼ì²éÊÇ·ñÓĞ×Ó·ÖÀà
+                // æ£€æŸ¥æ˜¯å¦æœ‰å­åˆ†ç±»
                 if (subcategoryNode.Children.Count > 0)
                 {
-                    if (MessageBox.Show("¸Ã×Ó·ÖÀàÏÂ»¹ÓĞ×Ó·ÖÀà£¬È·¶¨ÒªÈ«²¿É¾³ıÂğ£¿",
-                                      "¾¯¸æ", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    if (MessageBox.Show("è¯¥å­åˆ†ç±»ä¸‹è¿˜æœ‰å­åˆ†ç±»ï¼Œç¡®å®šè¦å…¨éƒ¨åˆ é™¤å—ï¼Ÿ",
+                                      "è­¦å‘Š", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                     {
                         return false;
                     }
                 }
 
-                // ´ÓÊı¾İ¿âÉ¾³ı×Ó·ÖÀà
+                // ä»æ•°æ®åº“åˆ é™¤å­åˆ†ç±»
                 int result = await _databaseManager.DeleteCadSubcategoryAsync(subcategoryNode.Id);
                 if (result > 0)
                 {
-                    // ¸üĞÂ¸¸¼¶µÄ×Ó·ÖÀàÁĞ±í
+                    // æ›´æ–°çˆ¶çº§çš„å­åˆ†ç±»åˆ—è¡¨
                     await UpdateParentSubcategoryListAfterDeleteAsync(subcategoryNode.ParentId, subcategoryNode.Id);
                     return true;
                 }
@@ -383,12 +390,12 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                throw new Exception($"É¾³ı×Ó·ÖÀàÊ§°Ü: {ex.Message}");
+                throw new Exception($"åˆ é™¤å­åˆ†ç±»å¤±è´¥: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// É¾³ıºó¸üĞÂ¸¸¼¶×Ó·ÖÀàÁĞ±í
+        /// åˆ é™¤åæ›´æ–°çˆ¶çº§å­åˆ†ç±»åˆ—è¡¨
         /// </summary>
         /// <param name="parentId"></param>
         /// <param name="deletedSubcategoryId"></param>
@@ -397,41 +404,41 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // »ñÈ¡¸¸¼¶¼ÇÂ¼
+                // è·å–çˆ¶çº§è®°å½•
                 string currentSubcategoryIds = "";
                 if (parentId >= 10000)
                 {
-                    // ¸¸¼¶ÊÇ×Ó·ÖÀà
+                    // çˆ¶çº§æ˜¯å­åˆ†ç±»
                     var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
                     currentSubcategoryIds = parentSubcategory?.SubcategoryIds ?? "";
                 }
                 else
                 {
-                    // ¸¸¼¶ÊÇÖ÷·ÖÀà
+                    // çˆ¶çº§æ˜¯ä¸»åˆ†ç±»
                     var categories = await _databaseManager.GetAllCadCategoriesAsync();
                     var parentCategory = categories.FirstOrDefault(c => c.Id == parentId);
                     currentSubcategoryIds = parentCategory?.SubcategoryIds ?? "";
                 }
 
-                // ¸üĞÂ×Ó·ÖÀàÁĞ±í£¨ÒÆ³ıÒÑÉ¾³ıµÄID£©
+                // æ›´æ–°å­åˆ†ç±»åˆ—è¡¨ï¼ˆç§»é™¤å·²åˆ é™¤çš„IDï¼‰
                 if (!string.IsNullOrEmpty(currentSubcategoryIds))
                 {
                     var ids = currentSubcategoryIds.Split(',').Select(id => id.Trim()).ToList();
                     ids.Remove(deletedSubcategoryId.ToString());
                     string newSubcategoryIds = string.Join(",", ids);
 
-                    // ¸üĞÂÊı¾İ¿â
+                    // æ›´æ–°æ•°æ®åº“
                     await _databaseManager.UpdateParentSubcategoryListAsync(parentId, newSubcategoryIds);
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"¸üĞÂ¸¸¼¶×Ó·ÖÀàÁĞ±íÊ§°Ü: {ex.Message}");
+                LogManager.Instance.LogInfo($"æ›´æ–°çˆ¶çº§å­åˆ†ç±»åˆ—è¡¨å¤±è´¥: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Ë¢ĞÂ¼Ü¹¹Ê÷ÏÔÊ¾£¨ĞŞÕı°æ£© RefreshCategoryTreeAsync
+        /// åˆ·æ–°æ¶æ„æ ‘æ˜¾ç¤ºï¼ˆä¿®æ­£ç‰ˆï¼‰ RefreshCategoryTreeAsync
         /// </summary>
         /// <returns></returns>
         public async Task RefreshCategoryTreeAsync(CategoryTreeNode _selectedCategoryNode,ItemsControl _categoryTreeView,
@@ -439,29 +446,29 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                // ÖØĞÂ¼ÓÔØ·ÖÀàºÍ×Ó·ÖÀàÊı¾İ LoadCategoryTreeAsync
+                // é‡æ–°åŠ è½½åˆ†ç±»å’Œå­åˆ†ç±»æ•°æ® LoadCategoryTreeAsync
                 await LoadCategoryTreeAsync(_categoryTreeNodes, databaseManager);
 
-                // ¸üĞÂUIÏÔÊ¾
+                // æ›´æ–°UIæ˜¾ç¤º
                 DisplayCategoryTree(_categoryTreeView, _categoryTreeNodes);
 
-                // Õ¹¿ªµ±Ç°Ñ¡ÖĞµÄ½Úµã
+                // å±•å¼€å½“å‰é€‰ä¸­çš„èŠ‚ç‚¹
                 if (_selectedCategoryNode != null && _categoryTreeView != null)
                 {
                     ExpandTreeNodeToSelectedNode(_categoryTreeView, _selectedCategoryNode);
                 }
 
-                LogManager.Instance.LogInfo("¼Ü¹¹Ê÷Ë¢ĞÂÍê³É");
+                LogManager.Instance.LogInfo("æ¶æ„æ ‘åˆ·æ–°å®Œæˆ");
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"Ë¢ĞÂ¼Ü¹¹Ê÷Ê±³ö´í: {ex.Message}");
+                LogManager.Instance.LogInfo($"åˆ·æ–°æ¶æ„æ ‘æ—¶å‡ºé”™: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// ¼ÓÔØ¼Ü¹¹Ê÷Êı¾İ
+        /// åŠ è½½æ¶æ„æ ‘æ•°æ®
         /// </summary>
         /// <returns></returns>
         public async Task LoadCategoryTreeAsync(List<CategoryTreeNode> _categoryTreeNodes, DatabaseManager databaseManager)
@@ -470,73 +477,73 @@ namespace GB_NewCadPlus_III
             {
                 _categoryTreeNodes.Clear();
 
-                // »ñÈ¡ËùÓĞ·ÖÀàºÍ×Ó·ÖÀà
+                // è·å–æ‰€æœ‰åˆ†ç±»å’Œå­åˆ†ç±»
                 var categories = await databaseManager.GetAllCadCategoriesAsync();
                 var subcategories = await databaseManager.GetAllCadSubcategoriesAsync();
 
-                // ¹¹½¨Ê÷½á¹¹
+                // æ„å»ºæ ‘ç»“æ„
                 BuildCategoryTree(categories, subcategories, _categoryTreeNodes);
 
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"¼ÓÔØ¼Ü¹¹Ê÷Êı¾İÊ§°Ü: {ex.Message}");
+                LogManager.Instance.LogInfo($"åŠ è½½æ¶æ„æ ‘æ•°æ®å¤±è´¥: {ex.Message}");
                 throw;
             }
         }
 
         /// <summary>
-        /// ¹¹½¨·ÖÀàÊ÷½á¹¹
+        /// æ„å»ºåˆ†ç±»æ ‘ç»“æ„
         /// </summary>
         /// <param name="categories"></param>
         /// <param name="subcategories"></param>
         private static void BuildCategoryTree(List<CadCategory> categories, List<CadSubcategory> subcategories,List<CategoryTreeNode> _categoryTreeNodes)
         {
-            // Çå¿ÕÏÖÓĞ½Úµã
+            // æ¸…ç©ºç°æœ‰èŠ‚ç‚¹
             _categoryTreeNodes.Clear();
 
-            // 1. ´´½¨Ö÷·ÖÀà½Úµã
+            // 1. åˆ›å»ºä¸»åˆ†ç±»èŠ‚ç‚¹
             var mainCategoryNodes = categories
                 .OrderBy(c => c.SortOrder)
                 .Select(c => new CategoryTreeNode(c.Id, c.Name, c.DisplayName, 0, 0, c))
                 .ToList();
 
-            // 2. ´´½¨×Ó·ÖÀà½Úµã×Öµä£¬±ãÓÚ¿ìËÙ²éÕÒ
+            // 2. åˆ›å»ºå­åˆ†ç±»èŠ‚ç‚¹å­—å…¸ï¼Œä¾¿äºå¿«é€ŸæŸ¥æ‰¾
             var subcategoryDict = subcategories
                 .ToDictionary(s => s.Id, s => new CategoryTreeNode(
                     s.Id, s.Name, s.DisplayName, s.Level, s.ParentId, s));
 
-            // 3. ¹¹½¨¸¸×Ó¹ØÏµ
+            // 3. æ„å»ºçˆ¶å­å…³ç³»
             BuildTreeRelationships(mainCategoryNodes, subcategoryDict);
 
-            // 4. ½«¸ù½ÚµãÌí¼Óµ½Ê÷½ÚµãÁĞ±í
+            // 4. å°†æ ¹èŠ‚ç‚¹æ·»åŠ åˆ°æ ‘èŠ‚ç‚¹åˆ—è¡¨
             _categoryTreeNodes.AddRange(mainCategoryNodes);
 
         }
 
         /// <summary>
-        /// ¹¹½¨Ê÷µÄ¸¸×Ó¹ØÏµ
+        /// æ„å»ºæ ‘çš„çˆ¶å­å…³ç³»
         /// </summary>
         /// <param name="mainNodes"></param>
         /// <param name="subcategoryDict"></param>
         private static void BuildTreeRelationships(List<CategoryTreeNode> mainNodes, Dictionary<int, CategoryTreeNode> subcategoryDict)
         {
-            // ´´½¨ËùÓĞ½ÚµãµÄ²éÕÒ×Öµä
+            // åˆ›å»ºæ‰€æœ‰èŠ‚ç‚¹çš„æŸ¥æ‰¾å­—å…¸
             var allNodesDict = new Dictionary<int, CategoryTreeNode>();
 
-            // Ìí¼ÓÖ÷·ÖÀà½Úµã
+            // æ·»åŠ ä¸»åˆ†ç±»èŠ‚ç‚¹
             foreach (var node in mainNodes)
             {
                 allNodesDict[node.Id] = node;
             }
 
-            // Ìí¼Ó×Ó·ÖÀà½Úµã
+            // æ·»åŠ å­åˆ†ç±»èŠ‚ç‚¹
             foreach (var kvp in subcategoryDict)
             {
                 allNodesDict[kvp.Key] = kvp.Value;
             }
 
-            // ½¨Á¢¸¸×Ó¹ØÏµ
+            // å»ºç«‹çˆ¶å­å…³ç³»
             foreach (var node in subcategoryDict.Values)
             {
                 if (allNodesDict.ContainsKey(node.ParentId))
@@ -546,7 +553,7 @@ namespace GB_NewCadPlus_III
                 }
                 else if (node.Level == 1)
                 {
-                    // ¶ş¼¶×Ó·ÖÀà£¬¸¸¼¶ÊÇÖ÷·ÖÀà
+                    // äºŒçº§å­åˆ†ç±»ï¼Œçˆ¶çº§æ˜¯ä¸»åˆ†ç±»
                     var mainCategoryNode = mainNodes.FirstOrDefault(n => n.Id == node.ParentId);
                     if (mainCategoryNode != null)
                     {
@@ -555,7 +562,7 @@ namespace GB_NewCadPlus_III
                 }
             }
 
-            // ¶ÔËùÓĞ½ÚµãµÄ×Ó½Úµã°´ÅÅĞòĞòºÅÅÅĞò
+            // å¯¹æ‰€æœ‰èŠ‚ç‚¹çš„å­èŠ‚ç‚¹æŒ‰æ’åºåºå·æ’åº
             foreach (var node in allNodesDict.Values)
             {
                 node.Children = node.Children.OrderBy(child => GetSortOrder(child)).ToList();
@@ -563,7 +570,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// »ñÈ¡½ÚµãµÄÅÅĞòĞòºÅ
+        /// è·å–èŠ‚ç‚¹çš„æ’åºåºå·
         /// </summary>
         /// <param name="node"></param>
         /// <returns></returns>
@@ -577,7 +584,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ÏÔÊ¾¼Ü¹¹Ê÷
+        /// æ˜¾ç¤ºæ¶æ„æ ‘
         /// </summary>
         public  void DisplayCategoryTree(ItemsControl CategoryTreeView, List<CategoryTreeNode> _categoryTreeNodes)
         {
@@ -587,41 +594,41 @@ namespace GB_NewCadPlus_III
                 {
                     CategoryTreeView.ItemsSource = null;
                     CategoryTreeView.ItemsSource = _categoryTreeNodes;
-                    // Ìí¼ÓTreeViewµÄÑ¡ÔñÊÂ¼ş
+                    // æ·»åŠ TreeViewçš„é€‰æ‹©äº‹ä»¶
                     //CategoryTreeView.SelectedItemChanged += CategoryTreeView_SelectedItemChanged;
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"ÏÔÊ¾¼Ü¹¹Ê÷Ê§°Ü: {ex.Message}");
+                LogManager.Instance.LogInfo($"æ˜¾ç¤ºæ¶æ„æ ‘å¤±è´¥: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Õ¹¿ªÊ÷½Úµãµ½Ñ¡ÖĞµÄ½Úµã
+        /// å±•å¼€æ ‘èŠ‚ç‚¹åˆ°é€‰ä¸­çš„èŠ‚ç‚¹
         /// </summary>
-        /// <param name="selectedNode">Ñ¡ÖĞµÄ½Úµã</param>
+        /// <param name="selectedNode">é€‰ä¸­çš„èŠ‚ç‚¹</param>
         private static void ExpandTreeNodeToSelectedNode(ItemsControl _categoryTreeView,CategoryTreeNode selectedNode)
         {
             try
             {
-                // ÕâÀï¿ÉÒÔÊµÏÖÕ¹¿ªÊ÷½Úµãµ½Ö¸¶¨½ÚµãµÄÂß¼­
-                // ÀıÈç£ºÕ¹¿ª¸¸½Úµã£¬Ñ¡ÖĞÖ¸¶¨½ÚµãµÈ
+                // è¿™é‡Œå¯ä»¥å®ç°å±•å¼€æ ‘èŠ‚ç‚¹åˆ°æŒ‡å®šèŠ‚ç‚¹çš„é€»è¾‘
+                // ä¾‹å¦‚ï¼šå±•å¼€çˆ¶èŠ‚ç‚¹ï¼Œé€‰ä¸­æŒ‡å®šèŠ‚ç‚¹ç­‰
                 if (_categoryTreeView != null && _categoryTreeView.Items.Count > 0)
                 {
-                    // ¿ÉÒÔÍ¨¹ı±éÀúTreeViewItemÀ´Õ¹¿ªµ½Ö¸¶¨½Úµã
-                    // ÕâÀï¼ò»¯´¦Àí£¬Êµ¼Ê¿ÉÒÔ¸ù¾İĞèÒªÍêÉÆ
+                    // å¯ä»¥é€šè¿‡éå†TreeViewItemæ¥å±•å¼€åˆ°æŒ‡å®šèŠ‚ç‚¹
+                    // è¿™é‡Œç®€åŒ–å¤„ç†ï¼Œå®é™…å¯ä»¥æ ¹æ®éœ€è¦å®Œå–„
                     _categoryTreeView.UpdateLayout();
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"Õ¹¿ªÊ÷½ÚµãÊ±³ö´í: {ex.Message}");
+                LogManager.Instance.LogInfo($"å±•å¼€æ ‘èŠ‚ç‚¹æ—¶å‡ºé”™: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// µİ¹éÕ¹¿ªËùÓĞ×Ó½Úµã
+        /// é€’å½’å±•å¼€æ‰€æœ‰å­èŠ‚ç‚¹
         /// </summary>
         /// <param name="item"></param>
         private void ExpandAllChildren(TreeViewItem item)
@@ -640,7 +647,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// »ñÈ¡TreeViewItemµÄ¸¨Öú·½·¨£¨ÔöÇ¿°æ£©
+        /// è·å–TreeViewItemçš„è¾…åŠ©æ–¹æ³•ï¼ˆå¢å¼ºç‰ˆï¼‰
         /// </summary>
         /// <param name="container"></param>
         /// <param name="item"></param>
@@ -649,12 +656,12 @@ namespace GB_NewCadPlus_III
         {
             if (container == null) return null;
 
-            // Ê×ÏÈ³¢ÊÔÖ±½Ó»ñÈ¡
+            // é¦–å…ˆå°è¯•ç›´æ¥è·å–
             var directlyFound = container.ItemContainerGenerator.ContainerFromItem(item) as TreeViewItem;
             if (directlyFound != null)
                 return directlyFound;
 
-            // Èç¹ûÖ±½Ó»ñÈ¡Ê§°Ü£¬±éÀúËùÓĞ×ÓÏî
+            // å¦‚æœç›´æ¥è·å–å¤±è´¥ï¼Œéå†æ‰€æœ‰å­é¡¹
             if (container.Items != null)
             {
                 foreach (var containerItem in container.Items)
@@ -667,7 +674,7 @@ namespace GB_NewCadPlus_III
                             return treeViewItem;
                         }
 
-                        // µİ¹é²éÕÒ×ÓÏî
+                        // é€’å½’æŸ¥æ‰¾å­é¡¹
                         var child = GetTreeViewItem(treeViewItem, item);
                         if (child != null)
                         {
@@ -680,7 +687,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ³õÊ¼»¯·ÖÀàÊôĞÔ±à¼­Íø¸ñ
+        /// åˆå§‹åŒ–åˆ†ç±»å±æ€§ç¼–è¾‘ç½‘æ ¼
         /// </summary>
         private void InitializeCategoryPropertyGrid(ItemsControl categoryPropertiesDataGrid)
         {
@@ -692,31 +699,31 @@ namespace GB_NewCadPlus_III
                 };
 
             categoryPropertiesDataGrid.ItemsSource = initialRows;
-            LogManager.Instance.LogInfo("³õÊ¼»¯·ÖÀàÊôĞÔ±à¼­Íø¸ñ³É¹¦:InitializeCategoryPropertyGrid()");
+            LogManager.Instance.LogInfo("åˆå§‹åŒ–åˆ†ç±»å±æ€§ç¼–è¾‘ç½‘æ ¼æˆåŠŸ:InitializeCategoryPropertyGrid()");
         }
 
         /// <summary>
-        /// ³õÊ¼»¯×Ó·ÖÀàÊôĞÔ±à¼­½çÃæ
+        /// åˆå§‹åŒ–å­åˆ†ç±»å±æ€§ç¼–è¾‘ç•Œé¢
         /// </summary>
         /// <param name="parentNode"></param>
         private void InitializeSubcategoryPropertiesForEditing(CategoryTreeNode parentNode,ItemsControl categoryPropertiesDataGrid)
         {
             var subcategoryProperties = new List<CategoryPropertyEditModel>
             {
-                new CategoryPropertyEditModel { PropertyName1 = "¸¸·ÖÀàID", PropertyValue1 = parentNode.Id.ToString(), PropertyName2 = "Ãû³Æ", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "ÏÔÊ¾Ãû³Æ", PropertyValue1 = "", PropertyName2 = "ÅÅĞòĞòºÅ", PropertyValue2 = "×Ô¶¯Éú³É" } // Áô¿Õ£¬±íÊ¾×Ô¶¯Éú³É
+                new CategoryPropertyEditModel { PropertyName1 = "çˆ¶åˆ†ç±»ID", PropertyValue1 = parentNode.Id.ToString(), PropertyName2 = "åç§°", PropertyValue2 = "" },
+                new CategoryPropertyEditModel { PropertyName1 = "æ˜¾ç¤ºåç§°", PropertyValue1 = "", PropertyName2 = "æ’åºåºå·", PropertyValue2 = "è‡ªåŠ¨ç”Ÿæˆ" } // ç•™ç©ºï¼Œè¡¨ç¤ºè‡ªåŠ¨ç”Ÿæˆ
             };
 
-            // Ìí¼Ó²Î¿¼ĞÅÏ¢
+            // æ·»åŠ å‚è€ƒä¿¡æ¯
             subcategoryProperties.Add(new CategoryPropertyEditModel
             {
-                PropertyName1 = "¸¸¼¶Ãû³Æ",
+                PropertyName1 = "çˆ¶çº§åç§°",
                 PropertyValue1 = parentNode.DisplayText,
                 PropertyName2 = "",
                 PropertyValue2 = ""
             });
 
-            // Ìí¼Ó¿ÕĞĞÓÃÓÚÓÃ»§ÊäÈë
+            // æ·»åŠ ç©ºè¡Œç”¨äºç”¨æˆ·è¾“å…¥
             subcategoryProperties.Add(new CategoryPropertyEditModel());
             subcategoryProperties.Add(new CategoryPropertyEditModel());
 
@@ -724,17 +731,17 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ³õÊ¼»¯Ö÷·ÖÀàÊôĞÔ±à¼­½çÃæ
+        /// åˆå§‹åŒ–ä¸»åˆ†ç±»å±æ€§ç¼–è¾‘ç•Œé¢
         /// </summary>
         private void InitializeCategoryPropertiesForCategory(ItemsControl categoryPropertiesDataGrid)
         {
             var categoryProperties = new List<CategoryPropertyEditModel>
             {
-                new CategoryPropertyEditModel { PropertyName1 = "Ãû³Æ", PropertyValue1 = "", PropertyName2 = "ÏÔÊ¾Ãû³Æ", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "ÅÅĞòĞòºÅ", PropertyValue1 = "×Ô¶¯Éú³É", PropertyName2 = "", PropertyValue2 = "" } // Áô¿Õ£¬±íÊ¾×Ô¶¯Éú³É
+                new CategoryPropertyEditModel { PropertyName1 = "åç§°", PropertyValue1 = "", PropertyName2 = "æ˜¾ç¤ºåç§°", PropertyValue2 = "" },
+                new CategoryPropertyEditModel { PropertyName1 = "æ’åºåºå·", PropertyValue1 = "è‡ªåŠ¨ç”Ÿæˆ", PropertyName2 = "", PropertyValue2 = "" } // ç•™ç©ºï¼Œè¡¨ç¤ºè‡ªåŠ¨ç”Ÿæˆ
             };
 
-            // Ìí¼Ó¿ÕĞĞÓÃÓÚÓÃ»§ÊäÈë
+            // æ·»åŠ ç©ºè¡Œç”¨äºç”¨æˆ·è¾“å…¥
             categoryProperties.Add(new CategoryPropertyEditModel());
             categoryProperties.Add(new CategoryPropertyEditModel());
 
@@ -742,7 +749,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// ÏÔÊ¾½ÚµãÊôĞÔÓÃÓÚ±à¼­
+        /// æ˜¾ç¤ºèŠ‚ç‚¹å±æ€§ç”¨äºç¼–è¾‘
         /// </summary>
         /// <param name="node"></param>
         private void DisplayNodePropertiesForEditing(CategoryTreeNode node,ItemsControl categoryPropertiesDataGrid)
@@ -753,24 +760,24 @@ namespace GB_NewCadPlus_III
 
                 if (node.Level == 0 && node.Data is CadCategory category)
                 {
-                    // Ö÷·ÖÀà
+                    // ä¸»åˆ†ç±»
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
                         PropertyName1 = "ID",
                         PropertyValue1 = category.Id.ToString(),
-                        PropertyName2 = "Ãû³Æ",
+                        PropertyName2 = "åç§°",
                         PropertyValue2 = category.Name
                     });
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
-                        PropertyName1 = "ÏÔÊ¾Ãû³Æ",
+                        PropertyName1 = "æ˜¾ç¤ºåç§°",
                         PropertyValue1 = category.DisplayName,
-                        PropertyName2 = "ÅÅĞòĞòºÅ",
+                        PropertyName2 = "æ’åºåºå·",
                         PropertyValue2 = category.SortOrder.ToString()
                     });
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
-                        PropertyName1 = "×Ó·ÖÀàÊı",
+                        PropertyName1 = "å­åˆ†ç±»æ•°",
                         PropertyValue1 = GetSubcategoryCount(category).ToString(),
                         PropertyName2 = "",
                         PropertyValue2 = ""
@@ -778,38 +785,38 @@ namespace GB_NewCadPlus_III
                 }
                 else if (node.Data is CadSubcategory subcategory)
                 {
-                    // ×Ó·ÖÀà
+                    // å­åˆ†ç±»
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
                         PropertyName1 = "ID",
                         PropertyValue1 = subcategory.Id.ToString(),
-                        PropertyName2 = "¸¸ID",
+                        PropertyName2 = "çˆ¶ID",
                         PropertyValue2 = subcategory.ParentId.ToString()
                     });
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
-                        PropertyName1 = "Ãû³Æ",
+                        PropertyName1 = "åç§°",
                         PropertyValue1 = subcategory.Name,
-                        PropertyName2 = "ÏÔÊ¾Ãû³Æ",
+                        PropertyName2 = "æ˜¾ç¤ºåç§°",
                         PropertyValue2 = subcategory.DisplayName
                     });
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
-                        PropertyName1 = "ÅÅĞòĞòºÅ",
+                        PropertyName1 = "æ’åºåºå·",
                         PropertyValue1 = subcategory.SortOrder.ToString(),
-                        PropertyName2 = "²ã¼¶",
+                        PropertyName2 = "å±‚çº§",
                         PropertyValue2 = subcategory.Level.ToString()
                     });
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
-                        PropertyName1 = "×Ó·ÖÀàÊı",
+                        PropertyName1 = "å­åˆ†ç±»æ•°",
                         PropertyValue1 = subcategory.SubcategoryIds.Split(',').Length.ToString(),
                         PropertyName2 = "",
                         PropertyValue2 = ""
                     });
                 }
 
-                // Ìí¼Ó¿ÕĞĞÓÃÓÚ±à¼­
+                // æ·»åŠ ç©ºè¡Œç”¨äºç¼–è¾‘
                 propertyRows.Add(new CategoryPropertyEditModel());
                 propertyRows.Add(new CategoryPropertyEditModel());
 
@@ -817,12 +824,12 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"ÏÔÊ¾½ÚµãÊôĞÔÊ§°Ü: {ex.Message}");
+                LogManager.Instance.LogInfo($"æ˜¾ç¤ºèŠ‚ç‚¹å±æ€§å¤±è´¥: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// »ñÈ¡·ÖÀàÊıÁ¿
+        /// è·å–åˆ†ç±»æ•°é‡
         /// </summary>
         /// <param name="category"></param>
         /// <returns></returns>
@@ -835,7 +842,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// È·¶¨·ÖÀà²ã¼¶
+        /// ç¡®å®šåˆ†ç±»å±‚çº§
         /// </summary>
         /// <param name="parentId"></param>
         /// <returns></returns>
@@ -843,12 +850,12 @@ namespace GB_NewCadPlus_III
         {
             if (parentId < 10000)
             {
-                // ¸¸¼¶ÊÇÖ÷·ÖÀà£¨4Î»£©£¬ÕâÊÇ¶ş¼¶×Ó·ÖÀà
+                // çˆ¶çº§æ˜¯ä¸»åˆ†ç±»ï¼ˆ4ä½ï¼‰ï¼Œè¿™æ˜¯äºŒçº§å­åˆ†ç±»
                 return 1;
             }
             else
             {
-                // ¸¸¼¶ÊÇ×Ó·ÖÀà£¬ĞèÒªÈ·¶¨ÊÇ¼¸¼¶×Ó·ÖÀà
+                // çˆ¶çº§æ˜¯å­åˆ†ç±»ï¼Œéœ€è¦ç¡®å®šæ˜¯å‡ çº§å­åˆ†ç±»
                 var parentSubcategory = await _databaseManager.GetCadSubcategoryByIdAsync(parentId);
                 if (parentSubcategory != null)
                 {
@@ -856,7 +863,7 @@ namespace GB_NewCadPlus_III
                 }
                 else
                 {
-                    // Ä¬ÈÏÎª¶ş¼¶·ÖÀà
+                    // é»˜è®¤ä¸ºäºŒçº§åˆ†ç±»
                     return 1;
                 }
             }

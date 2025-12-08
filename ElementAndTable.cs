@@ -1892,7 +1892,7 @@ namespace GB_NewCadPlus_III
                     for (int i = 0; i < dynProps.Count; i++)
                     {
                         DynamicBlockReferenceProperty dynProp = dynProps[i];
-                        ed.WriteMessage($"\n属性 {i + 1}:");
+                        ed.WriteMessage($"\n  属性 {i + 1}:");
                         ed.WriteMessage($"\n  名称: {dynProp.PropertyName}");
                         ed.WriteMessage($"\n  描述: {dynProp.Description}");
                         ed.WriteMessage($"\n  参数类型: {dynProp.Value.GetType().Name}");

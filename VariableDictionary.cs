@@ -6,8 +6,22 @@ using System.Threading.Tasks;
 
 namespace GB_NewCadPlus_III
 {
+    /// <summary>
+    /// 变量
+    /// </summary>
     internal class VariableDictionary
     {
+        #region 服务器端字段和属性
+        public static string _serverIP;//服务器IP地址
+        public static int _serverPort;//服务器端口号
+        public static string _dataBaseName= "cad_sw_library";//数据库名称
+        public static string _userName;//用户名
+        public static string _passWord;//密码
+        public static string _storagePath;//数据库存储路径
+        public static bool _useDPath;//是否使用DPath
+        public static bool _autoSync;//是否自动同步
+        public static int _syncInterval;//同步间隔
+        #endregion
         #region 变量
         /// <summary>
         /// 洁净区层颜色索引
@@ -156,7 +170,7 @@ namespace GB_NewCadPlus_III
         /// </summary>
         public static byte[]? resourcesFile = null;
         /// <summary>
-        /// 园元园块比例
+        /// 图元、图块比例
         /// </summary>
         public static double blockScale = 1;
         /// <summary>

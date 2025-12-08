@@ -1,7 +1,11 @@
-﻿using Autodesk.AutoCAD.PlottingServices;
+﻿using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.GraphicsInterface;
+using Autodesk.AutoCAD.PlottingServices;
 using Autodesk.AutoCAD.Windows;
+using IFoxCAD.Cad;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using Org.BouncyCastle.Utilities;
 using System.Windows.Forms.Integration;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 using Line = Autodesk.AutoCAD.DatabaseServices.Line;
@@ -36,7 +40,7 @@ public class PsetArgs
     /// 构造函数
     /// </summary>
     public PsetArgs() { }
-   
+
 }
 namespace GB_NewCadPlus_III
 {
@@ -52,7 +56,9 @@ namespace GB_NewCadPlus_III
         public static Point3d PolarPoint(this Point3d center, double angle, double distance)
         {
             double radians = angle * Math.PI / 180; // 将角度转换为弧度
+            // 计算极坐标下的点
             double x = center.X + distance * Math.Cos(radians);
+            // 计算极坐标下的点
             double y = center.Y + distance * Math.Sin(radians);
             return new Point3d(x, y, center.Z);
         }
@@ -83,11 +89,14 @@ namespace GB_NewCadPlus_III
             DateTime setDate = new DateTime(2026, 12, 30);
             if (DateTime.Now < setDate)
             {
-                //FormMain.GB_CadToolsForm.ShowToolsPanel();
+
+                var login = new LoginWindow();
+                if (login.ShowDialog() != true) { return; }
+                //FormMain.GB_CadToolsForm.ShowToolsPanel();//启动winForm图库管理窗体；
 
                 if (Wpf_Cad_PaletteSet is null)
                 {
-
+                    //创建窗体容器
                     Wpf_Cad_PaletteSet = new PaletteSet("GB_CADTools");  //初始化窗体容器；
                     Wpf_Cad_PaletteSet.MinimumSize = new System.Drawing.Size(350, 800);//初始化窗体容器最小的尺寸
 
@@ -98,7 +107,7 @@ namespace GB_NewCadPlus_III
                         Dock = DockStyle.Fill,//子面板整体覆盖
                         Child = wpfWindows//设置子面板的子项为wpfWindows
                     };
-                    Wpf_Cad_PaletteSet.Add("abc", host);//添加子面板
+                    Wpf_Cad_PaletteSet.Add("GB_CADTools", host);//添加子面板
                     Wpf_Cad_PaletteSet.Visible = true;//显示窗体容器
                     Wpf_Cad_PaletteSet.Dock = DockSides.Left;//窗体容器的停靠位置
 
@@ -110,7 +119,8 @@ namespace GB_NewCadPlus_III
             {
                 System.Windows.Forms.MessageBox.Show("试用时间过期！");
                 return;
-            };
+            }
+            ;
         }
 
         /// <summary>
@@ -118,7 +128,7 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private static List<Point3d> pointS = new List<Point3d>();
 
-       /// <summary>
+        /// <summary>
         /// 块统计
         /// </summary>
         public void BlockCountStatistics()
@@ -162,7 +172,7 @@ namespace GB_NewCadPlus_III
             //        Entity nestedEntity = .GetObject(nestedId, OpenMode.ForRead) as Entity;
             //        if (nestedEntity == null)
             //        {
-            //            Env.Editor.WriteMessage("\n错误：选中的对象不是图元。");
+            //            LogManager.Instance.LogInfo("\n错误：选中的对象不是图元。");
             //            return;
             //        }
 
@@ -189,18 +199,21 @@ namespace GB_NewCadPlus_III
             //        第八步：刷新界面
             //        Env.Editor.Redraw();
 
-            //        Env.Editor.WriteMessage("\n成功复制图元到当前位置！");
+            //        LogManager.Instance.LogInfo("\n成功复制图元到当前位置！");
             //    }
             //}
             //catch (Autodesk.AutoCAD.Runtime.Exception ex)
             //{
-            //    Env.Editor.WriteMessage($"\n错误: {ex.Message}");
+            //    LogManager.Instance.LogInfo($"\n错误: {ex.Message}");
             //}
         }
         #endregion
 
 
         #region   通过拿到外参中的图元id后台打开外参中的图元再插入到当前文档中
+        /// <summary>
+        /// 通过拿到外参中的图元id后台打开外参中的图元再插入到当前文档中
+        /// </summary>
         [CommandMethod("CopyXrefEntity")]
         public void CopyXrefEntity()
         {
@@ -224,13 +237,13 @@ namespace GB_NewCadPlus_III
                     string classId = selectedEnt.ClassID.ToString();
                     if (classId == null)
                     {
-                        Env.Editor.WriteMessage("\n未找到ClassID。");
+                        LogManager.Instance.LogInfo("\n未找到ClassID。");
                         return;
                     }
                     string bounds = selectedEnt.Bounds.ToString();
                     if (bounds == null)
                     {
-                        Env.Editor.WriteMessage("\n未找到Bounds。");
+                        LogManager.Instance.LogInfo("\n未找到Bounds。");
                         return;
                     }
                     // 获取嵌套容器（父块参照链）
@@ -238,7 +251,7 @@ namespace GB_NewCadPlus_III
 
                     if (containers.Length == 0)
                     {
-                        Env.Editor.WriteMessage("\n未找到父块参照。");
+                        LogManager.Instance.LogInfo("\n未找到父块参照。");
                         return;
                     }
                     #region 父级块
@@ -247,17 +260,17 @@ namespace GB_NewCadPlus_III
                     BlockReference parentBlockRef = tr.GetObject(parentBlockRefId, OpenMode.ForRead) as BlockReference;
                     if (parentBlockRef == null)
                     {
-                        Env.Editor.WriteMessage("\n父块参照无效。");
+                        LogManager.Instance.LogInfo("\n父块参照无效。");
                         return;
                     }
                     // 获取父块参照（文件）的名称
                     string parentBlockName = parentBlockRef.Name;
-                    Env.Editor.WriteMessage($"\n父块参照名称: {parentBlockName}");
+                    LogManager.Instance.LogInfo($"\n父块参照名称: {parentBlockName}");
                     // 获取父级块表记录
                     BlockTableRecord btr = tr.GetObject(parentBlockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
                     if (btr == null)
                     {
-                        Env.Editor.WriteMessage("\n块表记录无效。");
+                        LogManager.Instance.LogInfo("\n块表记录无效。");
                         return;
                     }
                     // 判断是否为外部参照
@@ -268,16 +281,16 @@ namespace GB_NewCadPlus_III
                         if (xrefDb != null)
                         {
                             // 获取外部参照文件路径
-                            Env.Editor.WriteMessage($"\n外部参照文件路径: {xrefDb.Filename}");
+                            LogManager.Instance.LogInfo($"\n外部参照文件路径: {xrefDb.Filename}");
                         }
                         else
                         {
-                            Env.Editor.WriteMessage("\n无法获取外部参照数据库。");
+                            LogManager.Instance.LogInfo("\n无法获取外部参照数据库。");
                         }
                     }
                     else
                     {
-                        Env.Editor.WriteMessage("\n该块不是外部参照。");
+                        LogManager.Instance.LogInfo("\n该块不是外部参照。");
                     }
                     #endregion
                     // 获取外部参照路径信息
@@ -285,7 +298,7 @@ namespace GB_NewCadPlus_III
                     string fileName = System.IO.Path.GetFileName(xrefPath);
                     if (CopyEntityByClassIdFromDwg(xrefPath, classId, bounds))
                     {
-                        Env.Editor.WriteMessage("\n已复制外部参照：", fileName);
+                        LogManager.Instance.LogInfo($"\n已复制外部参照：{fileName}");
                     }
                     else
                     {
@@ -295,15 +308,15 @@ namespace GB_NewCadPlus_III
                         blockName = blockName.Split('|').Last();
                         if (GB_XrefInsertBlock(xrefPath, blockName))
                         {
-                            Env.Editor.WriteMessage("\n已复制外部参照中的（天正）图元：", fileName);
+                            LogManager.Instance.LogInfo($"\n已复制外部参照中的（天正）图元：{fileName}");
                         }
                         else if (GB_XrefInsertBlock(xrefPath, blockName, "1"))
                         {
-                            Env.Editor.WriteMessage("\n已复制外部参照中的（块）图元：", fileName);
+                            LogManager.Instance.LogInfo($"\n已复制外部参照中的（块）图元：{fileName}");
                         }
                         else
                         {
-                            Env.Editor.WriteMessage("\n未复制外部参照中的（任何）图元：", fileName);
+                            LogManager.Instance.LogInfo($"\n未复制外部参照中的（任何）图元：{fileName}");
                         }
 
                     }
@@ -315,7 +328,9 @@ namespace GB_NewCadPlus_III
                 }
             }
         }
-
+        /// <summary>
+        /// 复制外部参照中的所有图元
+        /// </summary>
         [CommandMethod("CopyXrefAllEntity")]
         public void CopyXrefAllEntity()
         {
@@ -342,7 +357,7 @@ namespace GB_NewCadPlus_III
                     ObjectId[] containers = per.GetContainers();
                     if (containers.Length == 0)
                     {
-                        Env.Editor.WriteMessage("\n未找到父块参照。");
+                        LogManager.Instance.LogInfo("\n未找到父块参照。");
                         return;
                     }
                     // 一般我们取最后一个或倒数第二个
@@ -350,17 +365,17 @@ namespace GB_NewCadPlus_III
                     BlockReference parentBlockRef = tr.GetObject(parentBlockRefId, OpenMode.ForRead) as BlockReference;
                     if (parentBlockRef == null)
                     {
-                        Env.Editor.WriteMessage("\n父块参照无效。");
+                        LogManager.Instance.LogInfo("\n父块参照无效。");
                         return;
                     }
                     // 获取父块参照（文件）的名称
                     string parentBlockName = parentBlockRef.Name;
-                    Env.Editor.WriteMessage($"\n父块参照名称: {parentBlockName}");
+                    LogManager.Instance.LogInfo($"\n父块参照名称: {parentBlockName}");
                     // 获取父级块表记录
                     BlockTableRecord btr = tr.GetObject(parentBlockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
                     if (btr == null)
                     {
-                        Env.Editor.WriteMessage("\n块表记录无效。");
+                        LogManager.Instance.LogInfo("\n块表记录无效。");
                         return;
                     }
                     // 判断是否为外部参照
@@ -371,16 +386,16 @@ namespace GB_NewCadPlus_III
                         if (xrefDb != null)
                         {
                             // 获取外部参照文件路径
-                            Env.Editor.WriteMessage($"\n外部参照文件路径: {xrefDb.Filename}");
+                            LogManager.Instance.LogInfo($"\n外部参照文件路径: {xrefDb.Filename}");
                         }
                         else
                         {
-                            Env.Editor.WriteMessage("\n无法获取外部参照数据库。");
+                            LogManager.Instance.LogInfo("\n无法获取外部参照数据库。");
                         }
                     }
                     else
                     {
-                        Env.Editor.WriteMessage("\n该块不是外部参照。");
+                        LogManager.Instance.LogInfo("\n该块不是外部参照。");
                     }
                     #endregion
                     // 获取外部参照路径信息
@@ -392,17 +407,17 @@ namespace GB_NewCadPlus_III
                     blockName = blockName.Split('|').Last();
                     if (GB_XrefInsertAllBlock(xrefPath, blockName))
                     {
-                        Env.Editor.WriteMessage("\n已复制外部参照：", fileName);
+                        LogManager.Instance.LogInfo("\n已复制外部参照：");
                     }
                     else
                     {
-                        Env.Editor.WriteMessage("\n复制外部参照失败：", fileName);
+                        LogManager.Instance.LogInfo("\n复制外部参照失败：");
                     }
                     tr.Commit();
                 }
                 catch (Autodesk.AutoCAD.Runtime.Exception ex)
                 {
-                    ed.WriteMessage($"\n错误: {ex.Message}");
+                    LogManager.Instance.LogInfo($"\n错误: {ex.Message}");
                 }
             }
         }
@@ -453,7 +468,7 @@ namespace GB_NewCadPlus_III
                     {
                         // 未找到时弹出提示对话框
                         //Autodesk.AutoCAD.ApplicationServices.Application.ShowAlertDialog("未找到图元。");
-                        Env.Editor.WriteMessage("\n未找到天正图元。");
+                        LogManager.Instance.LogInfo("\n未找到天正图元。");
                         return false; // 结束方法
                     }
 
@@ -598,8 +613,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("选择图元复制到当前空间内失败！");
-                Env.Editor.WriteMessage($"\n错误: {ex.Message}");
+                LogManager.Instance.LogInfo("选择图元复制到当前空间内失败！");
+                LogManager.Instance.LogInfo($"\n错误: {ex.Message}");
             }
             try
             {
@@ -705,7 +720,7 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("选择图元复制到当前空间内失败！");
+                LogManager.Instance.LogInfo("选择图元复制到当前空间内失败！");
             }
         }
 
@@ -730,7 +745,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
 
@@ -791,8 +806,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("选择图元复制到当前空间内失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("选择图元复制到当前空间内失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
 
@@ -826,10 +841,10 @@ namespace GB_NewCadPlus_III
             return true;
         }
 
-        #endregion 
+        #endregion
 
         #region 插入图元
-       
+
 
         /// <summary>
         /// 当前图纸空间的ObjectId
@@ -927,13 +942,13 @@ namespace GB_NewCadPlus_III
                         if (endPoint.Status != PromptStatus.OK)
                             return false;
                         Env.Editor.Redraw();
-                        Env.Editor.WriteMessage("\n块操作完成。");
+                        LogManager.Instance.LogInfo("\n块操作完成。");
                         tr.Commit();
                         return true;
                     }
                     else
                     {
-                        Env.Editor.WriteMessage("\n未选择任何块。");
+                        LogManager.Instance.LogInfo("\n未选择任何块。");
                         tr.Commit();
                         return false;
                     }
@@ -944,15 +959,15 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n插入图元失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
                 return false;
             }
             #endregion
         }
 
         /// <summary>
-        /// 插入外部条件图元
+        /// 插入外部参照单个条件图元
         /// </summary>
         /// <param name="tr"></param>
         /// <param name="resourcePath">源文件路径</param>
@@ -1055,7 +1070,7 @@ namespace GB_NewCadPlus_III
                 }
                 tr.Commit();
                 Env.Editor.Redraw();
-                Env.Editor.WriteMessage($"\n共插入{blockNames.Count}个块。");
+                LogManager.Instance.LogInfo($"\n共插入{blockNames.Count}个块。");
 
                 //“blockNames存的是要插入块的块名”这段代码是循环的把变量中blockNames，的块名称，插入到当前图纸空间中，可这个blockNames变量中，有很多相同的块名称，只不过是这个块的Position、Rotation、ScaleFactors等属性不同，有不有更好的方法，让这些块插入到当前图纸空间的速度更快，方法更简单
                 return true;
@@ -1063,27 +1078,26 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n插入图元失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
                 return false;
             }
             #endregion
         }
 
         /// <summary>
-        /// 插入外部条件图元
+        /// 插入外部参照所有条件图元
         /// </summary>
         /// <param name="tr"></param>
         /// <param name="resourcePath">源文件路径</param>
-        /// <param name="blockName">块名</param>
-        /// <param name="point">坐标点</param>
+        /// <param name="resourceBlockName">块名</param>
         public static bool GB_XrefInsertAllBlock(string resourcePath, string resourceBlockName)
         {
             #region 方法：进一步完善版本   功能基本完成
             try
             {
-                string layerName = "0";
-                List<BlockReferenceInfo> blockNames = new List<BlockReferenceInfo>();
+                string layerName = "0";//设置图层名称
+                List<BlockReferenceInfo> blockNames = new List<BlockReferenceInfo>();//创建一个列表，用于存储块名称
                 //创建源DWG文件的数据库对象（不自动打开事务，不保留事务日志）
                 using (var sourceDb = new Autodesk.AutoCAD.DatabaseServices.Database(false, true))
                 {
@@ -1096,9 +1110,8 @@ namespace GB_NewCadPlus_III
                     {
                         // 获取源数据库的块表（存储所有块定义，如模型空间、图纸空间）
                         BlockTable sourceBlockTable = sourceTr.GetObject(sourceDb.BlockTableId, OpenMode.ForRead) as BlockTable;
-                        // 获取目标数据库中的块表
-                        //BlockTableRecord targetBlock = null;
-                        if (sourceBlockTable != null)
+
+                        if (sourceBlockTable != null)//源数据库的块表非空
                             if (sourceBlockTable.Has(resourceBlockName))
                             {
                                 //原文件块表记录
@@ -1149,54 +1162,7 @@ namespace GB_NewCadPlus_III
                     }
                 }
                 var tr = new DBTrans();
-                #region 基本方法，外插块太多时，很慢
-                //foreach (var blockRefItem in blockNames)
-                //{
-                //    //获取源文件块的objectid
-                //    var resourBlockOBJid = tr.BlockTable.GetBlockFormA(resourcePath, blockRefItem.Name, true);
-                //    if (!resourBlockOBJid.IsNull)
-                //    {
-                //        //把块插入到当前空间
-                //        var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, resourBlockOBJid);
-                //        if (!referenceFileBlock.IsNull)
-                //        {
-                //            //尝试转换为实体
-                //            if (tr.GetObject(referenceFileBlock) is not BlockReference referenceFileEntity) return false;
-                //            //块的图层名称
-                //            referenceFileEntity.Layer = blockRefItem.Layer;
-                //            //块的图层索引
-                //            referenceFileEntity.ColorIndex = blockRefItem.ColorIndex;
-                //            //块的色
-                //            referenceFileEntity.Color = blockRefItem.Color;
-                //            //块的旋转角度
-                //            referenceFileEntity.Rotation = blockRefItem.Rotation;
-                //            //块的坐标点
-                //            referenceFileEntity.Position = blockRefItem.Position;
-                //            //块的缩放因子
-                //            referenceFileEntity.ScaleFactors = blockRefItem.ScaleFactors;
-                //            //块的线型缩放因子
-                //            referenceFileEntity.LinetypeScale = blockRefItem.LinetypeScale;
-                //            //块的法向量
-                //            referenceFileEntity.Normal = blockRefItem.Normal;
 
-
-                //            Env.Editor.Redraw();
-                //            Env.Editor.WriteMessage("\n块操作完成。");
-
-                //        }
-                //        else
-                //        {
-                //            Env.Editor.WriteMessage("\n未选择任何块。");
-                //            tr.Commit();
-                //            return false;
-                //        }
-                //    }
-                //}
-                //tr.Commit();
-                #endregion
-
-
-                // var tr = new DBTrans();
                 // 1. 先缓存所有需要的块定义 ObjectId
                 var blockIdDict = new Dictionary<string, ObjectId>();
                 foreach (var blockRefItem in blockNames)
@@ -1233,7 +1199,7 @@ namespace GB_NewCadPlus_III
                 }
                 tr.Commit();
                 Env.Editor.Redraw();
-                Env.Editor.WriteMessage($"\n共插入{blockNames.Count}个块。");
+                LogManager.Instance.LogInfo($"\n共插入{blockNames.Count}个块。");
 
                 //“blockNames存的是要插入块的块名”这段代码是循环的把变量中blockNames，的块名称，插入到当前图纸空间中，可这个blockNames变量中，有很多相同的块名称，只不过是这个块的Position、Rotation、ScaleFactors等属性不同，有不有更好的方法，让这些块插入到当前图纸空间的速度更快，方法更简单
                 return true;
@@ -1241,12 +1207,643 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n插入图元失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
                 return false;
             }
             #endregion
         }
+
+
+        #region 通用插入文件块的方法
+
+        /// <summary>
+        /// 统一的从本地 DWG 资源（或缓存路径）插入块的方法。
+        /// </summary>
+        /// <param name="souerFilePath">本地 DWG 文件路径（必须存在）</param>
+        /// <param name="souerFileName">要插入的块名（或块记录名）</param>
+        /// <param name="souerBlockName">可选块记录名（当块名与记录名不一致时传入）</param>
+        /// <param name="layerName">插入后实体要设置的图层；若为空则使用 VariableDictionary.btnBlockLayer</param>
+        /// <param name="layerColorIndex">插入后实体要设置的图层颜色索引</param>
+        /// <param name="scale">插入时的缩放因子（默认 1）</param>
+        /// <param name="interactive">是否以拖拽交互方式让用户指定插入点（true）或直接放在原点（false）</param>
+        /// <returns>插入成功返回 true，否则 false。</returns>
+        //public static void InsertBlockFromResource(string? souerFilePath = null, string souerFileName = null, string? souerBlockName = null, string? layerName = null, int layerColorIndex = 0, double scale = 1.0, bool interactive = true)
+        //{
+        //    #region 方法：进一步完善版本   功能基本完成
+        //    try
+        //    {
+        //        #region 拿到源文件
+        //        using var tr = new DBTrans();
+        //        if (currentSpaceObjectId.Count == 0 || !currentSpaceObjectId.Contains(tr.CurrentSpace.ObjectId))
+        //        {
+        //            currentSpaceObjectId.Add(tr.CurrentSpace.ObjectId);
+        //        }
+        //        // 检查文件是否存在  
+        //        if (!File.Exists(souerFilePath))
+        //        {
+        //            LogManager.Instance.LogInfo($"\n无法找到资源文件: {souerFileName}.dwg");
+        //            return;
+        //        }
+        //        LogManager.Instance.LogInfo($"\n使用资源文件: {souerFilePath}");
+        //        #endregion
+        //        // 打开源数据库  
+        //        var sourceDb = new Database(false, true);
+        //        sourceDb.ReadDwgFile(souerFilePath, FileOpenMode.OpenForReadAndAllShare, false, "");
+        //        // 获取源数据库中的块表  
+        //        var sourceFileObjectId = AutoCadHelper.ImportBlockDefinitionToCurrentDatabase(souerFilePath, souerFileName, tr);
+        //        //原文件块表
+        //        //BlockTable sourceBlockTable = tr.GetObject(sourceDb.BlockTableId, OpenMode.ForRead) as BlockTable;
+
+        //        using (var sourceTr = sourceDb.TransactionManager.StartTransaction())
+        //        {
+        //            BlockTable sourceBlockTable = sourceTr.GetObject(sourceDb.BlockTableId, OpenMode.ForRead) as BlockTable;
+        //            // 获取目标数据库中的块表  
+        //            BlockTable destBlockTable = tr.GetObject(tr.Database.BlockTableId, OpenMode.ForRead) as BlockTable;
+        //            // 存储源文件中的块集合  
+        //            Dictionary<string, ObjectId> sourceBlocks = new Dictionary<string, ObjectId>();
+        //            // 存储块定义的推荐图层信息  
+        //            Dictionary<string, string> blockLayerInfo = new Dictionary<string, string>();
+        //            // 收集源文件中的块 (排除"YQTICK"块)  
+        //            foreach (ObjectId blockId in sourceBlockTable)
+        //            {
+        //                //原文件块表记录
+        //                BlockTableRecord blockDef = sourceTr.GetObject(blockId, OpenMode.ForRead) as BlockTableRecord;
+        //                if (!blockDef.IsLayout)//排除布局块
+        //                {
+        //                    if (blockDef.Name.Contains($"{souerBlockName}", StringComparison.OrdinalIgnoreCase))//块名一致
+        //                    {
+        //                        //加入到块表集合
+        //                        sourceBlocks.Add(blockDef.Name, blockId);
+        //                        blockLayerInfo.Add(blockDef.Name, layerName);
+        //                        LogManager.Instance.LogInfo($"\n源文件中找到块: {blockDef.Name}，推荐图层: {layerName}" + (layerName != null ? " (来自块内实体)" : " (默认图层)"));
+        //                        //break;
+        //                    }
+        //                }
+        //            }
+        //            // 查找当前空间中的同名块引用并记录它们的信息  
+        //            Dictionary<string, List<BlockReferenceInfo>> existingBlocks = new Dictionary<string, List<BlockReferenceInfo>>();
+        //            // 存储每种块类型的最常用比例  
+        //            Dictionary<string, Scale3d> commonScales = new Dictionary<string, Scale3d>();
+        //            // 临时存储每种块类型所有的比例  
+        //            Dictionary<string, List<Scale3d>> allBlockScales = new Dictionary<string, List<Scale3d>>();
+        //            //判断是不是220插座
+        //            if (!souerFileName.Contains("单相插座"))
+        //                //循环当前空间内的ObjectId
+        //                foreach (ObjectId objId in tr.CurrentSpace)
+        //                {
+        //                    Entity entity = tr.GetObject(objId, OpenMode.ForRead) as Entity;//循环的objectid是不是实体
+        //                    if (entity is BlockReference blockRef)//这个实体是不是可以转换为块参照（块引用）的对象，如果是则转换
+        //                    {
+        //                        //拿到这个块表记录
+        //                        BlockTableRecord btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
+        //                        string blockName = btr.Name;
+        //                        if (sourceBlocks.ContainsKey(blockName))//源文件中有这个块
+        //                        {
+        //                            if (!existingBlocks.ContainsKey(blockName))//当前空间中没有这个块
+        //                            {
+        //                                existingBlocks[blockName] = new List<BlockReferenceInfo>();//创建一个块表记录
+        //                                allBlockScales[blockName] = new List<Scale3d>();//创建一个比例表
+        //                            }
+        //                            // 收集块引用的所有属性值（如果有）  
+        //                            Dictionary<string, object> attributeValues = new Dictionary<string, object>();
+        //                            if (blockRef.AttributeCollection != null && blockRef.AttributeCollection.Count > 0)
+        //                            {
+        //                                foreach (ObjectId attId in blockRef.AttributeCollection)
+        //                                {
+        //                                    AttributeReference att = (AttributeReference)tr.GetObject(attId, OpenMode.ForRead);
+        //                                    attributeValues[att.Tag] = att.TextString;
+        //                                }
+        //                            }
+        //                            // 记录这个块引用的比例  
+        //                            Scale3d blockScale = blockRef.ScaleFactors;
+        //                            allBlockScales[blockName].Add(blockScale);
+        //                            existingBlocks[blockName].Add(new BlockReferenceInfo
+        //                            {
+        //                                Id = objId,
+        //                                Position = blockRef.Position,
+        //                                Scale = blockScale,
+        //                                Rotation = blockRef.Rotation,
+        //                                Layer = blockRef.Layer,
+        //                                LinetypeScale = blockRef.LinetypeScale,
+        //                                Lineweight = blockRef.LineWeight,
+        //                                Color = blockRef.Color,
+        //                                AttributeValues = attributeValues,
+        //                                Visibility = blockRef.Visible
+        //                            });
+        //                            LogManager.Instance.LogInfo($"\n找到需要替换的块引用: {blockName}，比例: X={blockScale.X:F2}, Y={blockScale.Y:F2}, Z={blockScale.Z:F2}");
+        //                        }
+        //                    }
+        //                }
+        //            destBlockTable.UpgradeOpen();// 升级块表以进行写入
+        //            IdMapping mapping = new IdMapping();// 创建一个ID映射
+        //            ObjectIdCollection blockIds = [.. sourceBlocks.Values];// 创建一个块ID集合                    
+        //            sourceDb.WblockCloneObjects(blockIds, tr.Database.BlockTableId, mapping, DuplicateRecordCloning.Replace, false);// 克隆块
+        //                                                                                                                            // 处理每个块：替换现有块并插入新块  
+        //            foreach (var kvp in sourceBlocks)
+        //            {
+        //                string blockName = kvp.Key;
+        //                ObjectId sourceBlockId = kvp.Value;
+        //                if (mapping.Contains(sourceBlockId))
+        //                {
+        //                    ObjectId newBlockId = mapping[sourceBlockId].Value;
+        //                    // 获取块的推荐图层  
+        //                    string blockLayer = blockLayerInfo[blockName];
+        //                    // 获取推荐的比例（如果有）  
+        //                    Scale3d recommendedScale = new Scale3d(100, 100, 100); // 默认比例为1:100  
+        //                    if (souerFileName.Contains("两点互锁") || souerFileName.Contains("三点互锁"))
+        //                    {
+        //                        recommendedScale = new Scale3d(0.8, 0.8, 0.8); // 默认比例为1:1
+        //                    }
+        //                    if (commonScales.ContainsKey(blockName))
+        //                    {
+        //                        recommendedScale = commonScales[blockName];
+        //                    }
+        //                    if (souerFileName.Contains("PTJ"))
+        //                    {
+        //                        // 获取推荐的比例（如果有）  
+        //                        recommendedScale = new Scale3d(1, 1, 1); // 默认比例为1:1
+        //                        if (commonScales.ContainsKey(blockName))
+        //                        {
+        //                            recommendedScale = commonScales[blockName];
+        //                        }
+        //                    }
+        //                    else if (layerName.Contains("EQUIP-通讯") || layerName.Contains("EQUIP-安防"))
+        //                    {
+        //                        // 获取推荐的比例（如果有）  
+        //                        recommendedScale = new Scale3d(500, 500, 500); // 默认比例为1:100  
+        //                        if (commonScales.ContainsKey(blockName))
+        //                        {
+        //                            recommendedScale = commonScales[blockName];
+        //                        }
+        //                    }
+        //                    else if (souerFileName.Contains("设备点"))
+        //                    {
+        //                        recommendedScale = new Scale3d(1, 1, 1);
+        //                    }
+        //                    // 确保块定义的图层确实存在  
+        //                    LayerTable layerTable = tr.GetObject(tr.Database.LayerTableId, OpenMode.ForRead) as LayerTable;
+        //                    if (!layerTable.Has(blockLayer))
+        //                    {
+        //                        // 如果图层不存在，就创建该图层  
+        //                        layerTable.UpgradeOpen();
+        //                        LayerTableRecord newLayer = new LayerTableRecord();
+        //                        newLayer.Name = blockLayer;
+        //                        ObjectId layerId = layerTable.Add(newLayer);
+        //                        LogManager.Instance.LogInfo($"\n创建新图层: {blockLayer}");
+        //                    }
+        //                    // 1. 如果有同名块引用，替换它们  
+        //                    if (!souerFileName.Contains("单相插座") && existingBlocks.ContainsKey(blockName) && existingBlocks[blockName].Count > 0)
+        //                    {
+        //                        foreach (var blockInfo in existingBlocks[blockName])
+        //                        {
+        //                            // 删除原有块引用  
+        //                            Entity oldEntity = tr.GetObject(blockInfo.Id, OpenMode.ForWrite) as Entity;
+        //                            oldEntity.Erase();
+
+        //                            // 创建新块引用，保持原位置和属性  
+        //                            BlockReference newBlockRef = new BlockReference(blockInfo.Position, newBlockId);
+
+        //                            // 保留原有块的所有属性  
+        //                            newBlockRef.ScaleFactors = blockInfo.Scale; // 使用原有块的比例  
+        //                            newBlockRef.Rotation = blockInfo.Rotation;
+        //                            // 使用块的推荐图层  
+        //                            newBlockRef.Layer = blockLayer;
+        //                            // 其他属性沿用原有块的设置  
+        //                            newBlockRef.LinetypeScale = blockInfo.LinetypeScale;
+        //                            newBlockRef.LineWeight = blockInfo.Lineweight;
+        //                            newBlockRef.Color = blockInfo.Color;
+        //                            newBlockRef.Visible = blockInfo.Visibility;
+
+        //                            // 添加到当前空间  
+        //                            ObjectId newRefId = tr.CurrentSpace.AddEntity(newBlockRef);
+        //                            Env.Editor.Redraw();
+        //                            // 处理属性  
+        //                            BlockTableRecord btr = tr.GetObject(newBlockId, OpenMode.ForRead) as BlockTableRecord;
+        //                            if (btr.HasAttributeDefinitions)
+        //                            {
+        //                                // 添加属性  
+        //                                foreach (ObjectId id in btr)
+        //                                {
+        //                                    DBObject obj = tr.GetObject(id, OpenMode.ForRead);
+        //                                    if (obj is AttributeDefinition attDef && !attDef.Constant)
+        //                                    {
+        //                                        AttributeReference attRef = new AttributeReference();
+        //                                        attRef.SetAttributeFromBlock(attDef, newBlockRef.BlockTransform);
+
+        //                                        // 应用原有的属性值（如果存在）  
+        //                                        if (blockInfo.AttributeValues.ContainsKey(attDef.Tag))
+        //                                        {
+        //                                            attRef.TextString = blockInfo.AttributeValues[attDef.Tag].ToString();
+        //                                        }
+        //                                        else
+        //                                        {
+        //                                            attRef.TextString = attDef.TextString;
+        //                                        }
+        //                                        newBlockRef.AttributeCollection.AppendAttribute(attRef);
+        //                                    }
+        //                                }
+        //                            }
+        //                            LogManager.Instance.LogInfo($"\n已替换块引用: {blockName}，使用图层: {blockLayer}，比例: X={blockInfo.Scale.X:F2}, Y={blockInfo.Scale.Y:F2}, Z={blockInfo.Scale.Z:F2}");
+        //                        }
+        //                    }
+        //                    Env.Editor.Redraw();
+        //                    // 收集块的属性定义  
+        //                    List<AttributeDefinition> attDefs = new List<AttributeDefinition>();
+        //                    BlockTableRecord btr1 = tr.GetObject(newBlockId, OpenMode.ForRead) as BlockTableRecord;
+        //                    if (btr1 != null && btr1.HasAttributeDefinitions)
+        //                    {
+        //                        foreach (ObjectId id in btr1)
+        //                        {
+        //                            DBObject obj = tr.GetObject(id, OpenMode.ForRead);
+        //                            if (obj is AttributeDefinition attDef && !attDef.Constant)
+        //                            {
+        //                                attDefs.Add(attDef);
+        //                            }
+        //                        }
+        //                    }
+        //                    // 使用自定义Jig类进行拖拽，应用推荐比例  
+        //                    EnhancedBlockPlacementJig jig = new EnhancedBlockPlacementJig(newBlockId, attDefs, blockLayer, recommendedScale);
+        //                    PromptResult result = Env.Editor.Drag(jig);
+        //                    if (result.Status == PromptStatus.OK)
+        //                    {
+        //                        // 用户确认后，创建真正的块引用  
+        //                        BlockReference finalBlockRef = new BlockReference(jig.Position, newBlockId);
+        //                        finalBlockRef.Rotation = jig.Rotation;
+        //                        // 设置块引用的图层与推荐图层一致  
+        //                        finalBlockRef.Layer = blockLayer;
+        //                        // 应用推荐的比例  
+        //                        finalBlockRef.ScaleFactors = jig.Scale;
+        //                        ObjectId blockRefId = tr.CurrentSpace.AddEntity(finalBlockRef);
+        //                        // 添加属性  
+        //                        if (btr1.HasAttributeDefinitions)
+        //                        {
+        //                            foreach (AttributeDefinition attDef in attDefs)
+        //                            {
+        //                                AttributeReference attRef = new AttributeReference();
+        //                                attRef.SetAttributeFromBlock(attDef, finalBlockRef.BlockTransform);
+        //                                attRef.TextString = attDef.TextString;
+        //                                finalBlockRef.AttributeCollection.AppendAttribute(attRef);
+        //                            }
+        //                        }
+        //                        LogManager.Instance.LogInfo($"\n已插入新块引用: {blockName}，使用图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}");
+        //                    }
+        //                    Env.Editor.Redraw();
+        //                }
+        //            }
+        //        }
+
+        //        tr.Commit();
+        //        sourceDb.Dispose();
+        //        LogManager.Instance.LogInfo("\n块操作完成。");
+        //        Env.Editor.Redraw();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        // 记录错误日志  
+        //        LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+        //        LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
+        //    }
+        //    #endregion
+        //}
+
+
+        /// <summary>
+        /// 统一的从本地 DWG 资源（或缓存路径）插入块的方法。
+        /// </summary>
+        /// <param name="souerFilePath">本地 DWG 文件路径（必须存在）</param>
+        /// <param name="souerFileName">要插入的块名（或块记录名）</param>
+        /// <param name="souerBlockName">可选块记录名（当块名与记录名不一致时传入）</param>
+        /// <param name="layerName">插入后实体要设置的图层；若为空则使用 VariableDictionary.btnBlockLayer</param>
+        /// <param name="layerColorIndex">插入后实体要设置的图层颜色索引</param>
+        /// <param name="scale">插入时的缩放因子（默认 1）</param>
+        /// <param name="interactive">是否以拖拽交互方式让用户指定插入点（true）或直接放在原点（false）</param>
+        /// <returns>插入成功返回 true，否则 false。</returns>
+        public static void InsertBlockFromResource(string? souerFilePath = null, string souerFileName = null, string? souerBlockName = null, string? layerName = null, int layerColorIndex = 0, double scale = 1.0, bool interactive = true)
+        {
+            #region 方法：进一步完善版本   功能增强（支持 byte[] 缓存、临时文件、属性处理、异常保护）
+            string? tempFileCreated = null;
+            try
+            {
+                using var tr = new DBTrans();
+
+                // 如果调用方未提供文件路径，但是有内存资源（例如从服务器缓存到 VariableDictionary.resourcesFile），则写临时文件并使用
+                if (string.IsNullOrEmpty(souerFilePath))
+                {
+                    // VariableDictionary.resourcesFile 假定为 byte[]，请确认实际变量名与类型
+                    var bytes = VariableDictionary.resourcesFile;
+                    if (bytes != null && bytes.Length > 0)
+                    {
+                        tempFileCreated = AutoCadHelper.SaveBytesToTempDwg(bytes, souerFileName ?? "resource");
+                        souerFilePath = tempFileCreated;
+                    }
+                    else
+                    {
+                        LogManager.Instance.LogInfo("\n未提供源文件路径且内存中无资源可用。");
+                        return;
+                    }
+                }
+
+                // 记录并检查文件存在性
+                if (!File.Exists(souerFilePath))
+                {
+                    LogManager.Instance.LogInfo($"\n无法找到资源文件: {souerFileName}.dwg (路径: {souerFilePath})");
+                    return;
+                }
+                LogManager.Instance.LogInfo($"\n使用资源文件: {souerFilePath}");
+
+                // 读取源数据库 - 仅用于遍历源块表及收集要导入的块 ID
+                using var sourceDb = new Autodesk.AutoCAD.DatabaseServices.Database(false, true);
+                sourceDb.ReadDwgFile(souerFilePath, FileOpenMode.OpenForReadAndAllShare, false, "");
+
+                // 通过源数据库事务遍历源块表并收集要插入的块
+                var sourceBlocks = new Dictionary<string, ObjectId>(StringComparer.OrdinalIgnoreCase);
+                // 建立一个储存块层信息字典
+                var sourceBlockLayerInfo = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                // 开始源数据库事务
+                using (var sourceTr = sourceDb.TransactionManager.StartTransaction())
+                {
+                    //拿到源数据库块表
+                    var sourceBlockTable = (BlockTable)sourceTr.GetObject(sourceDb.BlockTableId, OpenMode.ForRead);
+                    foreach (ObjectId blockId in sourceBlockTable)//遍历源数据库块表
+                    {
+                        //拿到源数据库块表记录
+                        var blockDef = (BlockTableRecord)sourceTr.GetObject(blockId, OpenMode.ForRead);
+                        if (blockDef.IsLayout) continue; // 排除布局
+                        if (!string.IsNullOrEmpty(souerBlockName))//源数据库块表记录名称不为空的条件下
+                        {
+                            //源数据库块表记录名称包含源数据库块表记录名称条件
+                            if (!blockDef.Name.Contains(souerBlockName, StringComparison.OrdinalIgnoreCase)) continue;
+                        }
+                        // 加入集合（保存源 ObjectId）
+                        sourceBlocks[blockDef.Name] = blockId;
+                        //如果有图层名称，则保存图层名称，否则保存默认图层“0”
+                        sourceBlockLayerInfo[blockDef.Name] = layerName ?? "0";
+                        LogManager.Instance.LogInfo($"\n源文件中找到块: {blockDef.Name}，推荐图层: {sourceBlockLayerInfo[blockDef.Name]}");
+                    }
+                    sourceTr.Commit();
+                }
+                //如果没有找到任何块定义，则退出
+                if (sourceBlocks.Count == 0)
+                {
+                    LogManager.Instance.LogInfo("\n未在源文件中找到任何匹配的块定义。");
+                    return;
+                }
+                #region 获取源模型空间中与源文件中相同的块属性
+                // 查找当前模型空间中与这些块同名的引用，收集以便替换
+                var existingBlocks = new Dictionary<string, List<BlockReferenceInfo>>(StringComparer.OrdinalIgnoreCase);
+                // 临时存储每种块类型所有的比例
+                var allBlockScales = new Dictionary<string, List<Scale3d>>(StringComparer.OrdinalIgnoreCase);
+                foreach (ObjectId objId in tr.CurrentSpace)// 循环当前空间内的ObjectId
+                {
+                    if (tr.GetObject(objId, OpenMode.ForRead) is BlockReference blockRef)// 循环到当前图纸空间中的objocetId 能否转换为块引用对象
+                    {
+                        // 获取块引用的块表记录
+                        var btr = tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
+                        if (btr == null) continue;// 块表记录为空则跳过
+                        string blockName = btr.Name;// 获取块表记录名称
+                        if (!sourceBlocks.ContainsKey(blockName)) continue;// 判断源块表记录名称下是不是存在循环到的块名,不在则跳过
+
+                        if (!existingBlocks.ContainsKey(blockName))// 判断当前模型空间的块表记录名称下是不是存在循环到的块名,不在则添加
+                        {
+                            existingBlocks[blockName] = new List<BlockReferenceInfo>();// 新建块表记录名称
+                            allBlockScales[blockName] = new List<Scale3d>();// 新建块的比例表
+                        }
+
+                        // 收集属性值（若有）的临时表字典
+                        var attributeValues = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                        if (blockRef.AttributeCollection != null && blockRef.AttributeCollection.Count > 0)// 有属性值
+                        {
+                            foreach (ObjectId attId in blockRef.AttributeCollection)// 遍历属性值
+                            {
+                                AttributeReference att = (AttributeReference)tr.GetObject(attId, OpenMode.ForRead);// 获取属性值
+                                attributeValues[att.Tag] = att.TextString;// 保存属性值
+                            }
+                        }
+
+                        var blockScale = blockRef.ScaleFactors;// 获取块的缩放比例
+                        allBlockScales[blockName].Add(blockScale);// 保存块的缩放比例
+                        existingBlocks[blockName].Add(new BlockReferenceInfo
+                        {
+                            Id = objId,// objectId
+                            Position = blockRef.Position,// 块的位置坐标
+                            Scale = blockScale,// 块的缩放比例
+                            Rotation = blockRef.Rotation,// 块的旋转角度
+                            Layer = blockRef.Layer,// 块的图层名称
+                            LinetypeScale = blockRef.LinetypeScale,// 块的线型缩放比例
+                            Lineweight = blockRef.LineWeight,// 块的线宽
+                            Color = blockRef.Color,// 块的颜色
+                            AttributeValues = attributeValues,// 块的属性值
+                            Visibility = blockRef.Visible// 块的可见性
+                        });
+
+                        LogManager.Instance.LogInfo($"\n找到需要替换的块引用: {blockName}，比例: X={blockScale.X:F2}, Y={blockScale.Y:F2}, Z={blockScale.Z:F2}");
+                    }
+                }
+                #endregion
+
+                #region 把需要的块从源数据库克隆到当前数据库（一次性克隆所有要用的块）
+
+                // 准备 ObjectIdCollection（源数据库上下文中的 Id）
+                var blockIdCollection = new ObjectIdCollection(sourceBlocks.Values.ToArray());// 把源数据库中的块值转换为元素的数组。添加到集合中
+
+                // 升级目标块表写入权限
+                //var destBlockTable = tr.GetObject(tr.Database.BlockTableId, OpenMode.ForRead) as BlockTable;
+                //destBlockTable.UpgradeOpen();
+               
+                var mapping = new IdMapping();// 创建一个映射对象 创建 ID 映射对象
+                //从源数据库克隆块定义到当前数据库
+                sourceDb.WblockCloneObjects(blockIdCollection, tr.Database.BlockTableId, mapping, DuplicateRecordCloning.Replace, false);
+
+                // 处理每个源块，创建拖拽/替换逻辑
+                foreach (var sourceBlockItemKVP in sourceBlocks)
+                {
+                    //源块获取块名称和源块ID
+                    string blockName = sourceBlockItemKVP.Key;//块名称
+                    ObjectId sourceBlockId = sourceBlockItemKVP.Value;//源块ID
+                    
+                    if (!mapping.Contains(sourceBlockId))
+                    {
+                        LogManager.Instance.LogInfo($"\n克隆失败：源块 {blockName} 未映射到目标数据库。");
+                        continue;
+                    }
+                    //获取源块ID
+                    ObjectId newBlockId = mapping[sourceBlockId].Value;
+                    //获取源块图层信息
+                    string blockLayer = sourceBlockLayerInfo.ContainsKey(blockName) ? sourceBlockLayerInfo[blockName] : (layerName ?? "0");
+
+                    // 根据常见策略选推荐比例（可扩展）
+                    Scale3d recommendedScale = new Scale3d(1, 1, 1);
+                    if (!string.IsNullOrEmpty(souerFileName))//源文件名不为空
+                    {
+                        //源文件名包含PTJ根据源文件名设置推荐比例
+                        if (souerFileName.Contains("PTJ")) recommendedScale = new Scale3d(1, 1, 1);
+                        else if (souerFileName.Contains("两点互锁") || souerFileName.Contains("三点互锁")) recommendedScale = new Scale3d(0.8, 0.8, 0.8);
+                        else if (souerFileName.Contains("设备点")) recommendedScale = new Scale3d(0.01, 0.01, 0.01);
+                    }
+                    if (existingBlocks.ContainsKey(blockName) && allBlockScales.TryGetValue(blockName, out var scalesList) && scalesList.Count > 0)
+                    {
+                        recommendedScale = scalesList[0];
+                    }
+
+
+                    //检查图层是不是存在,如果不存在则添加
+                    if (!tr.LayerTable.Has(blockLayer))
+                    {
+                        tr.LayerTable.Add(blockLayer);//添加图层
+                    }
+
+                    //查找名为“blockLayer”的图层，并将图层“blockLayer”的名称改为“MyLayer3”，颜色改为2号色，设为不可打印。
+                    else if (tr.LayerTable.Has(blockLayer))
+                    {
+                        //tr.LayerTable.Change(blockLayer, lt => {
+                        //    lt.Name = "MyLayer3";
+                        //    lt.Color = Color.FromColorIndex(ColorMethod.ByAci, 2);
+                        //    lt.IsPlottable = false;
+                        //});
+                    }
+
+                    // 如果当前图中存在旧的块引用，先删除并替换
+                    if (existingBlocks.ContainsKey(blockName) && existingBlocks[blockName].Count > 0)
+                    {
+                        //询问用户是不是确定要替换
+                        var dialogResult = MessageBox.Show("当前图块已存在，是否要替换?", "提示:", buttons: MessageBoxButtons.YesNo);
+                        if (dialogResult == DialogResult.Yes)//确定
+                        {
+                            foreach (var blockInfo in existingBlocks[blockName])
+                            {
+                                // 删除原有块引用
+                                var oldEnt = tr.GetObject(blockInfo.Id, OpenMode.ForWrite) as Entity;
+                                oldEnt?.Erase();
+
+                                // 创建新块引用并保留原有属性
+                                var newBlockRef = new BlockReference(blockInfo.Position, newBlockId)
+                                {
+                                    ScaleFactors = blockInfo.Scale,
+                                    Rotation = blockInfo.Rotation,
+                                    Layer = blockLayer,
+                                    LinetypeScale = blockInfo.LinetypeScale,
+                                    LineWeight = blockInfo.Lineweight,
+                                    Color = blockInfo.Color,
+                                    Visible = blockInfo.Visibility
+                                };
+
+                                // 添加到当前空间并注册（返回 ObjectId）
+                                ObjectId newRefId = tr.CurrentSpace.AddEntity(newBlockRef);
+
+                                // 处理属性
+                                //通过块Id拿到块表记录,获取属性定义
+                                var btr = tr.GetObject(newBlockId, OpenMode.ForRead) as BlockTableRecord;
+                                if (btr != null && btr.HasAttributeDefinitions)//判断块表记录是否包含属性定义
+                                {
+                                    //遍历属性定义
+                                    foreach (ObjectId id in btr)
+                                    {
+                                        //获取属性定义对象
+                                        var obj = tr.GetObject(id, OpenMode.ForRead);
+                                        //检测属性定义对象 判断对象是不是属性定义对象且不是常量属性
+                                        if (obj is AttributeDefinition attDef && !attDef.Constant)//如果属性定义对象不是常量属性
+                                        {
+                                            //创建属性引用对象
+                                            var attRef = new AttributeReference();
+                                            //设置属性引用对象属性定义
+                                            attRef.SetAttributeFromBlock(attDef, newBlockRef.BlockTransform);
+                                            //设置属性引用对象属性值应用原有的属性值（如果存在）
+                                            if (blockInfo.AttributeValues != null && blockInfo.AttributeValues.TryGetValue(attDef.Tag, out var val))
+                                            {
+                                                attRef.TextString = Convert.ToString(val) ?? attDef.TextString;
+                                            }
+                                            //添加属性引用对象否则使用属性定义的默认值
+                                            newBlockRef.AttributeCollection.AppendAttribute(attRef);
+                                            //tr.AddNewlyCreatedDBObject(attRef, true);
+                                        }
+                                    }
+                                }
+
+                                LogManager.Instance.LogInfo($"\n已替换块引用: {blockName}，位置: {blockInfo.Position}，图层: {blockLayer}");
+                            }
+                        }
+
+                    }
+
+                    // 拖拽插入（交互模式）
+                    // 收集属性定义以便预览时使用
+                    var attDefs = new List<AttributeDefinition>();
+                    var btr1 = tr.GetObject(newBlockId, OpenMode.ForRead) as BlockTableRecord;
+                    if (btr1 != null && btr1.HasAttributeDefinitions)
+                    {
+                        foreach (ObjectId id in btr1)
+                        {
+                            var obj = tr.GetObject(id, OpenMode.ForRead);
+                            if (obj is AttributeDefinition attDef && !attDef.Constant)
+                            {
+                                attDefs.Add(attDef);
+                            }
+                        }
+                    }
+
+                    // 使用增强的放置 Jig 进行拖拽交互（保留你的 EnhancedBlockPlacementJig）
+                    var jig = new EnhancedBlockPlacementJig(newBlockId, attDefs, blockLayer, recommendedScale);
+                    var promptResult = Env.Editor.Drag(jig);
+                    if (promptResult.Status == PromptStatus.OK)
+                    {
+                        // 用户确认后，创建最终块引用
+                        var finalRef = new BlockReference(jig.Position, newBlockId)
+                        {
+                            Rotation = jig.Rotation,
+                            Layer = blockLayer,
+                            ScaleFactors = jig.Scale
+                        };
+                        ObjectId finalRefId = tr.CurrentSpace.AddEntity(finalRef);
+                        // 添加属性
+                        if (btr1 != null && btr1.HasAttributeDefinitions)
+                        {
+                            foreach (var attDef in attDefs)
+                            {
+                                var attRef = new AttributeReference();
+                                attRef.SetAttributeFromBlock(attDef, finalRef.BlockTransform);
+                                attRef.TextString = attDef.TextString;
+                                // 添加属性引用到块引用的属性集合中
+                                finalRef.AttributeCollection.AppendAttribute(attRef);
+                                //tr.AddNewlyCreatedDBObject(attRef, true);//
+                            }
+                        }
+                        LogManager.Instance.LogInfo($"\n已插入新块引用: {blockName}，图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}");
+                    }
+
+                    Env.Editor.Redraw();
+                } // end foreach
+
+
+                #endregion end clone block processing
+
+                tr.Commit();
+                sourceDb.Dispose();
+                LogManager.Instance.LogInfo("\n块操作完成。");
+                Env.Editor.Redraw();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
+            }
+            finally
+            {
+                // 清理临时文件（如果有创建）
+                try
+                {
+                    if (!string.IsNullOrEmpty(tempFileCreated) && File.Exists(tempFileCreated))
+                        File.Delete(tempFileCreated);
+                }
+                catch { }
+            }
+            #endregion
+        }
+
+        #endregion
+
+
+
 
         /// <summary>
         /// 手动插入图元到0点坐标；
@@ -1266,7 +1863,7 @@ namespace GB_NewCadPlus_III
 
                 if (refFileRec != null)
                 {
-                    Env.Editor.WriteMessage($"{refFileRec.Name}");
+                    LogManager.Instance.LogInfo($"{refFileRec.Name}");
                     //把块插入到当前空间
                     var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, referenceFileObId);
                     //尝试转换为实体
@@ -1293,8 +1890,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
             #endregion
 
@@ -1336,17 +1933,17 @@ namespace GB_NewCadPlus_III
 
                     if (!File.Exists(resourcePath))
                     {
-                        Env.Editor.WriteMessage($"\n无法找到资源文件: {VariableDictionary.btnFileName}.dwg");
+                        LogManager.Instance.LogInfo($"\n无法找到资源文件: {VariableDictionary.btnFileName}.dwg");
                         return;
                     }
                 }
-                Env.Editor.WriteMessage($"\n使用资源文件: {resourcePath}");
+                LogManager.Instance.LogInfo($"\n使用资源文件: {resourcePath}");
                 #endregion
                 // 打开源数据库  
                 var sourceDb = new Database(false, true);
-                sourceDb.ReadDwgFile(resourcePath, FileOpenMode.OpenForReadAndAllShare, false, "");
-                // 获取源数据库中的块表  
-                using (Transaction sourceTr = sourceDb.TransactionManager.StartTransaction())
+                sourceDb.ReadDwgFile(resourcePath, FileOpenMode.OpenForReadAndAllShare, false, "");//读取DWG文件 
+
+                using (Transaction sourceTr = sourceDb.TransactionManager.StartTransaction())//开启事务
                 {
                     //原文件块表
                     BlockTable sourceBlockTable = sourceTr.GetObject(sourceDb.BlockTableId, OpenMode.ForRead) as BlockTable;
@@ -1383,7 +1980,7 @@ namespace GB_NewCadPlus_III
                                 }
                             }
                             blockLayerInfo.Add(blockDef.Name, blockLayer);
-                            Env.Editor.WriteMessage($"\n源文件中找到块: {blockDef.Name}，推荐图层: {blockLayer}" + (foundLayer ? " (来自块内实体)" : " (默认图层)"));
+                            LogManager.Instance.LogInfo($"\n源文件中找到块: {blockDef.Name}，推荐图层: {blockLayer}" + (foundLayer ? " (来自块内实体)" : " (默认图层)"));
                         }
                     }
                     // 查找当前空间中的同名块引用并记录它们的信息  
@@ -1436,7 +2033,7 @@ namespace GB_NewCadPlus_III
                                         AttributeValues = attributeValues,
                                         Visibility = blockRef.Visible
                                     });
-                                    Env.Editor.WriteMessage($"\n找到需要替换的块引用: {blockName}，比例: X={blockScale.X:F2}, Y={blockScale.Y:F2}, Z={blockScale.Z:F2}");
+                                    LogManager.Instance.LogInfo($"\n找到需要替换的块引用: {blockName}，比例: X={blockScale.X:F2}, Y={blockScale.Y:F2}, Z={blockScale.Z:F2}");
                                 }
                             }
                         }
@@ -1493,7 +2090,7 @@ namespace GB_NewCadPlus_III
                                 LayerTableRecord newLayer = new LayerTableRecord();
                                 newLayer.Name = blockLayer;
                                 ObjectId layerId = layerTable.Add(newLayer);
-                                Env.Editor.WriteMessage($"\n创建新图层: {blockLayer}");
+                                LogManager.Instance.LogInfo($"\n创建新图层: {blockLayer}");
                             }
                             // 1. 如果有同名块引用，替换它们  
                             if (!VariableDictionary.btnFileName.Contains("单相插座") && existingBlocks.ContainsKey(blockName) && existingBlocks[blockName].Count > 0)
@@ -1549,7 +2146,7 @@ namespace GB_NewCadPlus_III
                                             }
                                         }
                                     }
-                                    Env.Editor.WriteMessage($"\n已替换块引用: {blockName}，使用图层: {blockLayer}，比例: X={blockInfo.Scale.X:F2}, Y={blockInfo.Scale.Y:F2}, Z={blockInfo.Scale.Z:F2}");
+                                    LogManager.Instance.LogInfo($"\n已替换块引用: {blockName}，使用图层: {blockLayer}，比例: X={blockInfo.Scale.X:F2}, Y={blockInfo.Scale.Y:F2}, Z={blockInfo.Scale.Z:F2}");
 
                                 }
                             }
@@ -1593,7 +2190,7 @@ namespace GB_NewCadPlus_III
                                         finalBlockRef.AttributeCollection.AppendAttribute(attRef);
                                     }
                                 }
-                                Env.Editor.WriteMessage($"\n已插入新块引用: {blockName}，使用图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}");
+                                LogManager.Instance.LogInfo($"\n已插入新块引用: {blockName}，使用图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}");
                             }
                         }
                     }
@@ -1603,14 +2200,14 @@ namespace GB_NewCadPlus_III
 
                 tr.Commit();
                 sourceDb.Dispose();
-                Env.Editor.WriteMessage("\n块操作完成。");
+                LogManager.Instance.LogInfo("\n块操作完成。");
                 Env.Editor.Redraw();
             }
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n插入图元失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n插入图元失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
             #endregion
         }
@@ -1645,7 +2242,7 @@ namespace GB_NewCadPlus_III
                 var fileType = dxfName.Split('_');//截取‘_’字符
                 if (fileType[0] == "TCH")
                 {
-                    Env.Editor.WriteMessage("PTJ-TCH！");
+                    LogManager.Instance.LogInfo("PTJ-TCH！");
                     var fileEntityCopyObId = tr.CurrentSpace.AddEntity(fileEntityCopy);
                     Env.Editor.Redraw();
                     double tempAngle = 0;
@@ -1674,7 +2271,7 @@ namespace GB_NewCadPlus_III
                 }
                 else if (fileEntityCopy is BlockReference)
                 {
-                    Env.Editor.WriteMessage("PTJ-块表记录！");
+                    LogManager.Instance.LogInfo("PTJ-块表记录！");
                     //if (fileEntityCopy.ColorIndex.ToString() != "130") return;
                     var fileEntityCopyObId = tr.CurrentSpace.AddEntity(fileEntityCopy);
                     double tempAngle = 0;
@@ -1705,15 +2302,15 @@ namespace GB_NewCadPlus_III
                 }
                 else
                 {
-                    Env.Editor.WriteMessage("PTJ-块！");
+                    LogManager.Instance.LogInfo("PTJ-块！");
 
                 }
             }
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage(ex.ToString());
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo(ex.ToString());
             }
             #endregion
 
@@ -1740,7 +2337,7 @@ namespace GB_NewCadPlus_III
 
                 if (refFileRec != null)
                 {
-                    Env.Editor.WriteMessage("块！");
+                    LogManager.Instance.LogInfo("块！");
                     //把块插入到当前空间
                     var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, referenceFileObId);
                     //尝试转换为实体
@@ -1779,157 +2376,11 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
             #endregion
 
-        }
-
-        /// <summary>
-        /// 用于保存块引用信息的辅助类  
-        /// </summary>
-        private class BlockReferenceInfo
-        {
-            /// <summary>
-            /// 名称
-            /// </summary>
-            public string Name { get; set; }
-            /// <summary>
-            /// 项目id
-            /// </summary>
-            public ObjectId Id { get; set; }
-            /// <summary>
-            /// 3D坐标点
-            /// </summary>
-            public Point3d Position { get; set; }
-            /// <summary>
-            /// 比例因子
-            /// </summary>
-            public Scale3d ScaleFactors { get; set; }
-            /// <summary>
-            /// 角度
-            /// </summary>
-            public double Rotation { get; set; }
-            /// <summary>
-            /// 比例
-            /// </summary>
-            public Scale3d Scale { get; set; }
-            /// <summary>
-            /// 图层名
-            /// </summary>
-            public string Layer { get; set; }
-            /// <summary>
-            /// 线类型 objectid
-            /// </summary>
-            public ObjectId Linetype { get; set; }
-            /// <summary>
-            /// 线型比例
-            /// </summary>
-            public double LinetypeScale { get; set; }
-            /// <summary>
-            /// 线宽
-            /// </summary>
-            public Autodesk.AutoCAD.DatabaseServices.LineWeight Lineweight { get; set; }
-            /// <summary>
-            /// 线色号
-            /// </summary>
-            public Autodesk.AutoCAD.Colors.Color Color { get; set; }
-            /// <summary>
-            /// 线色号
-            /// </summary>
-            public int ColorIndex { get; set; }
-            /// <summary>
-            /// 属性
-            /// </summary>
-            public Dictionary<string, object> AttributeValues { get; set; } = new Dictionary<string, object>();
-            /// <summary>
-            /// 透明度
-            /// </summary>
-            public bool Visibility { get; set; }
-            /// <summary>
-            /// 块法向量
-            /// </summary>
-            public Vector3d Normal { get; set; }
-        }
-
-        /// <summary>  
-        /// 增强的块放置拖拽类，完整支持组合块预览  
-        /// </summary>  
-        private class EnhancedBlockPlacementJig : EntityJig
-        {
-            private Point3d _position;
-            private double _rotation;
-            private Scale3d _scale;
-            private ObjectId _blockId;
-            private List<AttributeDefinition> _attDefs;
-            private string _blockLayer;
-
-            // 属性  
-            public Point3d Position => _position;
-            public double Rotation => _rotation;
-            public Scale3d Scale => _scale;
-
-            public EnhancedBlockPlacementJig(ObjectId blockId, List<AttributeDefinition> attDefs, string? blockLayer = null, Scale3d? scale = null)
-                : base(new BlockReference(Point3d.Origin, blockId))
-            {
-                _blockId = blockId;
-                _position = Point3d.Origin;
-                _rotation = VariableDictionary.entityRotateAngle; // 使用预设旋转角度  
-                _attDefs = attDefs;
-                _blockLayer = blockLayer ?? "0";
-                _scale = scale ?? new Scale3d(1, 1, 1);
-
-                // 配置预览实体  
-                BlockReference blockRef = (BlockReference)Entity;
-                blockRef.Layer = _blockLayer;
-                blockRef.ScaleFactors = _scale;
-            }
-
-            protected override SamplerStatus Sampler(JigPrompts prompts)
-            {
-                // 获取插入点  
-                JigPromptPointOptions pointOpts = new JigPromptPointOptions("\n指定组合块插入点（右键确认）:");
-                pointOpts.UserInputControls = UserInputControls.Accept3dCoordinates;
-                pointOpts.UseBasePoint = false;
-
-                PromptPointResult pointResult = prompts.AcquirePoint(pointOpts);
-
-                // 如果用户取消  
-                if (pointResult.Status != PromptStatus.OK)
-                    return SamplerStatus.Cancel;
-
-                // 如果位置没变，返回NoChange  
-                if (_position.DistanceTo(pointResult.Value) < 0.001)
-                    return SamplerStatus.NoChange;
-
-                _position = pointResult.Value;
-
-                // 始终使用VariableDictionary.entityRotateAngle作为旋转角度  
-                _rotation = VariableDictionary.entityRotateAngle;
-
-                return SamplerStatus.OK;
-            }
-
-            protected override bool Update()
-            {
-                try
-                {
-                    // 更新块引用的位置、旋转和比例  
-                    BlockReference blockRef = (BlockReference)Entity;
-                    blockRef.Position = _position;
-                    blockRef.Rotation = _rotation;
-                    blockRef.ScaleFactors = _scale;
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    // 记录错误但不抛出异常  
-                    Env.Editor.WriteMessage($"\n块更新时发生错误: {ex.Message}");
-                    return false;
-                }
-            }
         }
 
         /// <summary>
@@ -1951,7 +2402,7 @@ namespace GB_NewCadPlus_III
 
                 if (refFileRec != null)
                 {
-                    Env.Editor.WriteMessage("块！");
+                    LogManager.Instance.LogInfo("块！");
                     //把块插入到当前空间
                     var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, referenceFileObId);
                     //尝试转换为实体
@@ -1992,8 +2443,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage($"\n插入图元失败: {ex.Message}");
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo($"\n插入图元失败: {ex.Message}");
             }
             #endregion
         }
@@ -2032,7 +2483,7 @@ namespace GB_NewCadPlus_III
                 }
                 if (copiedEntities.Count == 0)
                 {
-                    Env.Editor.WriteMessage("\n未找到可复制的天正图元！");
+                    LogManager.Instance.LogInfo("\n未找到可复制的天正图元！");
                     return;
                 }
                 // 计算所有复制图元的包围盒，用于确定基准点  
@@ -2108,8 +2559,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
         }
 
@@ -2139,11 +2590,11 @@ namespace GB_NewCadPlus_III
                 var refFileRec = tr.GetObject(referenceFileObId, OpenMode.ForRead) as BlockTableRecord;
                 if (refFileRec == null)
                 {
-                    Env.Editor.WriteMessage("未找到块记录！");
+                    LogManager.Instance.LogInfo("未找到块记录！");
                     return;
                 }
 
-                Env.Editor.WriteMessage("块！");
+                LogManager.Instance.LogInfo("块！");
                 while (true)
                 {
                     // 把块插入到当前空间  
@@ -2192,7 +2643,7 @@ namespace GB_NewCadPlus_III
                 // 在此处根据插入数量绘图  
                 // ======================  
                 int count = pointS.Count;
-                Env.Editor.WriteMessage($"\n已插入 {count} 个块，开始绘制外围图形...");
+                LogManager.Instance.LogInfo($"\n已插入 {count} 个块，开始绘制外围图形...");
 
                 if (count == 3)
                 { // 三点生成外接圆，圆心与3点等距  
@@ -2212,7 +2663,7 @@ namespace GB_NewCadPlus_III
                     double dist3 = circleCenter.DistanceTo(p3);
 
                     // 记录到日志，以验证计算正确性  
-                    Env.Editor.WriteMessage($"\n圆心到三点的距离: {dist1:F4}, {dist2:F4}, {dist3:F4}");
+                    LogManager.Instance.LogInfo($"\n圆心到三点的距离: {dist1:F4}, {dist2:F4}, {dist3:F4}");
 
                     // 正确创建圆：使用外接圆圆心和半径  
                     var circle = new Circle(circleCenter, Vector3d.ZAxis, radius);
@@ -2223,7 +2674,7 @@ namespace GB_NewCadPlus_III
 
                     tr.CurrentSpace.AddEntity(circle);
                     Env.Editor.Redraw();
-                    Env.Editor.WriteMessage("\n已创建外围圆形，与三点等距并向外扩展150。");
+                    LogManager.Instance.LogInfo("\n已创建外围圆形，与三点等距并向外扩展150。");
 
                 }
                 else if (count == 4)
@@ -2276,7 +2727,7 @@ namespace GB_NewCadPlus_III
 
                     tr.CurrentSpace.AddEntity(pl);
                     Env.Editor.Redraw();
-                    Env.Editor.WriteMessage("\n已创建外围矩形，向外扩展150。");
+                    LogManager.Instance.LogInfo("\n已创建外围矩形，向外扩展150。");
                 }
                 else if (count > 4)
                 {
@@ -2328,12 +2779,12 @@ namespace GB_NewCadPlus_III
 
                     tr.CurrentSpace.AddEntity(polygon);
                     Env.Editor.Redraw();
-                    Env.Editor.WriteMessage($"\n已创建{count}边形外围，向外扩展150。");
+                    LogManager.Instance.LogInfo($"\n已创建{count}边形外围，向外扩展150。");
 
                 }
                 else if (count > 0)
                 {
-                    Env.Editor.WriteMessage($"\n已插入{count}个块，但数量不满足绘制外围图形的条件（需要至少3个点）。");
+                    LogManager.Instance.LogInfo($"\n已插入{count}个块，但数量不满足绘制外围图形的条件（需要至少3个点）。");
                 }
                 //加标注
                 // DDimLinear("总重:" + VariableDictionary.dimString + "kg" + "\n" + $"{count}点着地", Convert.ToInt16(pointS.Count));
@@ -2346,14 +2797,14 @@ namespace GB_NewCadPlus_III
                     DDimLinear(VariableDictionary.dimString, count.ToString(), Convert.ToInt16(dimColorLine));
                 tr.Commit();
                 Env.Editor.Redraw();
-                Env.Editor.WriteMessage("\n操作完成。");
+                LogManager.Instance.LogInfo("\n操作完成。");
                 pointS.Clear();
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"\n插入图元失败：{ex.Message}");
+                LogManager.Instance.LogInfo($"\n插入图元失败：{ex.Message}");
                 // 可以添加更详细的错误信息记录  
-                Env.Editor.WriteMessage($"\n错误详情：{ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n错误详情：{ex.StackTrace}");
             }
             #endregion
         }
@@ -2383,7 +2834,7 @@ namespace GB_NewCadPlus_III
                         //判读是不是为0，0就是天正元素
                         //if (fileId.ObjectClass.DxfName == "INSERT") continue;
                         var fileEntity = tr.GetObject(fileId, OpenMode.ForRead) as Entity;
-                        //Env.Editor.WriteMessage("PTJ元素！");
+                        //LogManager.Instance.LogInfo("PTJ元素！");
                         if (fileEntity == null) continue;
                         var fileEntityCopy = fileEntity.Clone() as Entity;
                         //tr.CurrentSpace.DeepCloneEx(fileEntity,)//深度克隆，可以复制天正图元；
@@ -2393,7 +2844,7 @@ namespace GB_NewCadPlus_III
                         var fileType = dxfName.Split('_');//截取‘_’字符
                         if (fileType[0] == "TCH")
                         {
-                            Env.Editor.WriteMessage("PTJ-TCH！");
+                            LogManager.Instance.LogInfo("PTJ-TCH！");
                             var fileEntityCopyObId = tr.CurrentSpace.AddEntity(fileEntityCopy);
                             double tempAngle = 0;
                             var startPoint = new Point3d(0, 0, 0);
@@ -2421,7 +2872,7 @@ namespace GB_NewCadPlus_III
                         }
                         else if (fileEntityCopy is BlockReference)
                         {
-                            Env.Editor.WriteMessage("PTJ-块表记录！");
+                            LogManager.Instance.LogInfo("PTJ-块表记录！");
                             //if (fileEntityCopy.ColorIndex.ToString() != "130") return;
                             var fileEntityCopyObId = tr.CurrentSpace.AddEntity(fileEntityCopy);//在当前图纸空间中加入这个实体并获取它的ObjoectId
                             double tempAngle = 0;
@@ -2450,7 +2901,7 @@ namespace GB_NewCadPlus_III
                         }
                         else
                         {
-                            Env.Editor.WriteMessage("PTJ-块！");
+                            LogManager.Instance.LogInfo("PTJ-块！");
                             var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, referenceFileObId);
                             //tr.BlockTable.Remove(referenceFileObId);
                             if (tr.GetObject(referenceFileBlock) is not Entity referenceFileEntity) return;
@@ -2487,8 +2938,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
             #endregion
         }
@@ -2514,7 +2965,7 @@ namespace GB_NewCadPlus_III
 
                 if (refFileRec != null)
                 {
-                    Env.Editor.WriteMessage("块！");
+                    LogManager.Instance.LogInfo("块！");
                     //把块插入到当前空间
                     var referenceFileBlock = tr.CurrentSpace.InsertBlock(Point3d.Origin, referenceFileObId);
                     //尝试转换为实体
@@ -2557,8 +3008,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
             #endregion
 
@@ -2686,7 +3137,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
             }
         }
 
@@ -2752,7 +3203,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
             }
         }
 
@@ -2820,7 +3271,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
             }
         }
 
@@ -2890,7 +3341,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构-用户指定两点为直径画圆失败: {ex.Message}");
             }
         }
 
@@ -3034,7 +3485,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构指定数值生成矩形失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构指定数值生成矩形失败: {ex.Message}");
             }
         }
 
@@ -3218,8 +3669,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n暖通用户指定两点为对角线画方失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n暖通用户指定两点为对角线画方失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
 
             }
         }
@@ -3254,12 +3705,12 @@ namespace GB_NewCadPlus_III
                 hatch.EvaluateHatch(true); // 强制计算填充图案
                 var hatchId = tr.CurrentSpace.AddEntity(hatch); // 将填充添加到模型空间
                 Env.Editor.Redraw();  // 强制刷新视图
-                Env.Editor.WriteMessage("\n多边形绘制完成并闭合，填充图案已添加。");
+                LogManager.Instance.LogInfo("\n多边形绘制完成并闭合，填充图案已添加。");
                 //return hatchId;
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n创建填充时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n创建填充时出错: {ex.Message}");
             }
         }
         public static void autoHatch(DBTrans tr, string layerName, int hatchColorIndex, int hatchPatternScale, string patternName, ObjectId entityObjId, ref ObjectId hatchId)
@@ -3282,11 +3733,11 @@ namespace GB_NewCadPlus_III
                 hatch.EvaluateHatch(true); // 强制计算填充图案
                 hatchId = tr.CurrentSpace.AddEntity(hatch); // 将填充添加到模型空间
                 Env.Editor.Redraw();  // 强制刷新视图
-                Env.Editor.WriteMessage("\n多边形绘制完成并闭合，填充图案已添加。");
+                LogManager.Instance.LogInfo("\n多边形绘制完成并闭合，填充图案已添加。");
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n创建填充时出错: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n创建填充时出错: {ex.Message}");
             }
         }
 
@@ -3411,7 +3862,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构指定数值生成矩形失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构指定数值生成矩形失败: {ex.Message}");
             }
             #endregion
         }
@@ -3531,7 +3982,7 @@ namespace GB_NewCadPlus_III
                 }
                 else
                 {
-                    Env.Editor.WriteMessage("\n至少需要三个点才能绘制闭合多边形。");
+                    LogManager.Instance.LogInfo("\n至少需要三个点才能绘制闭合多边形。");
                 }
                 pointS.Clear();
                 if (VariableDictionary.dimString != null)
@@ -3541,7 +3992,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n多点画不规则图形并填充失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n多点画不规则图形并填充失败: {ex.Message}");
             }
         }
 
@@ -3620,11 +4071,11 @@ namespace GB_NewCadPlus_III
                     finalPolyline.ColorIndex = 231;
                     var polylineId = tr.CurrentSpace.AddEntity(finalPolyline);// 将多段线添加到模型空间
                     Env.Editor.Redraw();// 强制刷新视图
-                    Env.Editor.WriteMessage("\n多边形绘制完成并闭合，填充图案已添加。");
+                    LogManager.Instance.LogInfo("\n多边形绘制完成并闭合，填充图案已添加。");
                 }
                 else
                 {
-                    Env.Editor.WriteMessage("\n至少需要三个点才能绘制闭合多边形。");
+                    LogManager.Instance.LogInfo("\n至少需要三个点才能绘制闭合多边形。");
                 }
                 pointS.Clear();  // 清空点列表
 
@@ -3689,8 +4140,8 @@ namespace GB_NewCadPlus_III
                     catch (System.Exception ex)
                     {
                         // 记录错误日志  
-                        Env.Editor.WriteMessage($"\n多点画不规则图形不填充-框着地失败！错误信息: {ex.Message}");
-                        Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                        LogManager.Instance.LogInfo($"\n多点画不规则图形不填充-框着地失败！错误信息: {ex.Message}");
+                        LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
                     }
                 }
                 if (VariableDictionary.dimString != null)
@@ -3700,8 +4151,8 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n多点画不规则图形不填充-框着地失败: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n多点画不规则图形不填充-框着地失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -3778,13 +4229,13 @@ namespace GB_NewCadPlus_III
                     if (layerName != null)
                         DrawArrows(finalPolyline, layerName);
                     Env.Editor.Redraw();// 强制刷新视图
-                    Env.Editor.WriteMessage("\n多边形绘制完成并闭合，填充图案已添加。");
+                    LogManager.Instance.LogInfo("\n多边形绘制完成并闭合，填充图案已添加。");
                     pointS.Clear();  // 清空点列表
 
                 }
                 else
                 {
-                    Env.Editor.WriteMessage("\n至少需要三个点才能绘制闭合多边形。");
+                    LogManager.Instance.LogInfo("\n至少需要三个点才能绘制闭合多边形。");
                 }
                 if (VariableDictionary.dimString != null)
                     DDimLinear(VariableDictionary.dimString);
@@ -3794,9 +4245,9 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构、画多边形失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构、画多边形失败: {ex.Message}");
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -3882,7 +4333,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n结构生成箭头失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n结构生成箭头失败: {ex.Message}");
             }
         }
 
@@ -3973,11 +4424,11 @@ namespace GB_NewCadPlus_III
                     if (VariableDictionary.dimString != null)
                         DDimLinear(VariableDictionary.dimString);
                     Env.Editor.Redraw(); // 强制刷新视图
-                    Env.Editor.WriteMessage("\n多边形绘制完成并闭合，箭头已添加。");
+                    LogManager.Instance.LogInfo("\n多边形绘制完成并闭合，箭头已添加。");
                 }
                 else
                 {
-                    Env.Editor.WriteMessage("\n至少需要三个点才能绘制闭合多边形。");
+                    LogManager.Instance.LogInfo("\n至少需要三个点才能绘制闭合多边形。");
                 }
                 pointS.Clear(); // 清空点列表
                                 //if (VariableDictionary.dimString != null)
@@ -3989,8 +4440,8 @@ namespace GB_NewCadPlus_III
             {
 
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n结构生成箭头失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n结构生成箭头失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4060,8 +4511,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("给体id返回实体对像失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("给体id返回实体对像失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
             return entity;
         }
@@ -4080,7 +4531,7 @@ namespace GB_NewCadPlus_III
 
             if (xrefEntity == null)
             {
-                Env.Editor.WriteMessage("\n错误：选中的对象不是外部参照。");
+                LogManager.Instance.LogInfo("\n错误：选中的对象不是外部参照。");
                 return xrefName = "";
             }
 
@@ -4089,7 +4540,7 @@ namespace GB_NewCadPlus_III
 
             if (btr == null)
             {
-                Env.Editor.WriteMessage("\n错误：无法获取块表记录。");
+                LogManager.Instance.LogInfo("\n错误：无法获取块表记录。");
                 return xrefName = "";
             }
             return xrefName = btr.Name;
@@ -4124,14 +4575,14 @@ namespace GB_NewCadPlus_III
                     double[] doubles = new double[3] { 0, 0, 0 };
                     doubles = (double[])HvacStart;
                     strHvacStart = Convert.ToString(doubles[2]);
-                    Env.Editor.WriteMessage("\nhvacR4:" + hvacR4);
-                    Env.Editor.WriteMessage("\nhvacR3:" + hvacR3);
-                    Env.Editor.WriteMessage("\nhvacStart:" + strHvacStart);
+                    LogManager.Instance.LogInfo("\nhvacR4:" + hvacR4);
+                    LogManager.Instance.LogInfo("\nhvacR3:" + hvacR3);
+                    LogManager.Instance.LogInfo("\nhvacStart:" + strHvacStart);
                 }
             }
             catch
             {
-                //Env.Editor.WriteMessage("您选定的图无不为天正图无，不能读出宽厚参数！");//在下面的历史记录框里显示一样文字
+                //LogManager.Instance.LogInfo("您选定的图无不为天正图无，不能读出宽厚参数！");//在下面的历史记录框里显示一样文字
                 Autodesk.AutoCAD.ApplicationServices.Application.ShowAlertDialog("您选定的图元没有天正元素，不能读出宽厚等参数！");//弹出一个带有声音的消息框；
                 return;
             }
@@ -4330,8 +4781,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n做标注失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n做标注失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4400,8 +4851,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n做标注失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n做标注失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4470,8 +4921,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n做标注失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n做标注失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4541,8 +4992,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n做标注失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n做标注失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4614,8 +5065,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"\n做标注失败！错误信息: {ex.Message}");
-                Env.Editor.WriteMessage($"\n错误堆栈: {ex.StackTrace}");
+                LogManager.Instance.LogInfo($"\n做标注失败！错误信息: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误堆栈: {ex.StackTrace}");
             }
         }
 
@@ -4700,8 +5151,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("给出一点与图层名，做标注失败！");
-                Env.Editor.WriteMessage($"{ex.Message}");
+                LogManager.Instance.LogInfo("给出一点与图层名，做标注失败！");
+                LogManager.Instance.LogInfo($"{ex.Message}");
             }
         }
 
@@ -4823,7 +5274,7 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"标注失败！错误信息: {ex.Message}"); // 输出错误信息  
+                LogManager.Instance.LogInfo($"标注失败！错误信息: {ex.Message}"); // 输出错误信息  
             }
         }
 
@@ -4875,7 +5326,7 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("选择实体失败！");
+                LogManager.Instance.LogInfo("选择实体失败！");
             }
         }
 
@@ -4907,8 +5358,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("插入图元失败！");
-                Env.Editor.WriteMessage("错误信息: " + ex.Message);
+                LogManager.Instance.LogInfo("插入图元失败！");
+                LogManager.Instance.LogInfo("错误信息: " + ex.Message);
             }
             return entities;
         }
@@ -5010,9 +5461,9 @@ namespace GB_NewCadPlus_III
                     }
                     else
                     {
-                        string diaoDingHeight=VariableDictionary.wpfDiaoDingHeight==""
-                        ?VariableDictionary.winFormDiaoDingHeight
-                        :VariableDictionary.wpfDiaoDingHeight;
+                        string diaoDingHeight = VariableDictionary.wpfDiaoDingHeight == ""
+                        ? VariableDictionary.winFormDiaoDingHeight
+                        : VariableDictionary.wpfDiaoDingHeight;
 
                         DBText text = new DBText()
                         {
@@ -5042,8 +5493,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("建筑、用户指定两点吊顶区Line2Polyline失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("建筑、用户指定两点吊顶区Line2Polyline失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
 
@@ -5099,8 +5550,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("建筑房间号文字失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("建筑房间号文字失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
 
@@ -5153,7 +5604,7 @@ namespace GB_NewCadPlus_III
                 var userPoint2 = Env.Editor.Drag(jig);
                 if (userPoint2.Status != PromptStatus.OK)
                 {
-                    Env.Editor.WriteMessage("\n未指定矩形宽度，操作取消。");
+                    LogManager.Instance.LogInfo("\n未指定矩形宽度，操作取消。");
                     return;
                 }
                 // 通过最后一个动态点确定最终宽度  
@@ -5189,11 +5640,11 @@ namespace GB_NewCadPlus_III
                     var hatchId = tr.CurrentSpace.AddEntity(hatch); // 将填充添加到模型空间  
 
                     Env.Editor.Redraw();  // 强制刷新视图  
-                    Env.Editor.WriteMessage("\n矩形绘制完成并闭合，填充图案已添加。");
+                    LogManager.Instance.LogInfo("\n矩形绘制完成并闭合，填充图案已添加。");
                 }
                 catch (System.Exception ex)
                 {
-                    Env.Editor.WriteMessage($"\n创建填充时出错: {ex.Message}");
+                    LogManager.Instance.LogInfo($"\n创建填充时出错: {ex.Message}");
                 }
 
                 Env.Editor.Redraw(); // 强制刷新视图  
@@ -5204,7 +5655,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n矩形绘制失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n矩形绘制失败: {ex.Message}");
             }
         }
 
@@ -5324,7 +5775,7 @@ namespace GB_NewCadPlus_III
                 var userResponse = Env.Editor.Drag(jig);
                 if (userResponse.Status != PromptStatus.OK)
                 {
-                    Env.Editor.WriteMessage("\n未指定矩形尺寸，操作取消。");
+                    LogManager.Instance.LogInfo("\n未指定矩形尺寸，操作取消。");
                     return;
                 }
 
@@ -5420,11 +5871,11 @@ namespace GB_NewCadPlus_III
                     var hatchId = tr.CurrentSpace.AddEntity(hatch);
 
                     Env.Editor.Redraw();
-                    Env.Editor.WriteMessage("\n矩形绘制完成并闭合，填充图案已添加。");
+                    LogManager.Instance.LogInfo("\n矩形绘制完成并闭合，填充图案已添加。");
                 }
                 catch (System.Exception ex)
                 {
-                    Env.Editor.WriteMessage($"\n创建填充时出错: {ex.Message}");
+                    LogManager.Instance.LogInfo($"\n创建填充时出错: {ex.Message}");
                 }
                 if (VariableDictionary.dimString_JZ_宽 != null && VariableDictionary.dimString_JZ_深 != null)
                     DDimLinear(VariableDictionary.dimString_JZ_深, VariableDictionary.dimString_JZ_宽, Convert.ToInt16(VariableDictionary.layerColorIndex));
@@ -5434,7 +5885,7 @@ namespace GB_NewCadPlus_III
             }
             catch (System.Exception ex)
             {
-                Env.Editor.WriteMessage($"\n矩形绘制失败: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n矩形绘制失败: {ex.Message}");
             }
         }
 
@@ -5506,8 +5957,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("建筑画防撞板失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("建筑画防撞板失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
         #endregion
@@ -5542,7 +5993,7 @@ namespace GB_NewCadPlus_III
             // 如果点数不足3个，提示并继续
             if (points.Count < 3)
             {
-                Env.Editor.WriteMessage("\n至少需要3个点来计算面积！");
+                LogManager.Instance.LogInfo("\n至少需要3个点来计算面积！");
                 return;
             }
             // 用户回车结束输入
@@ -5578,7 +6029,7 @@ namespace GB_NewCadPlus_III
                 tr.Commit();
                 Env.Editor.Redraw();
             }
-            Env.Editor.WriteMessage($"\n多边形面积为: {area:F2}");
+            LogManager.Instance.LogInfo($"\n多边形面积为: {area:F2}");
         }
 
         /// <summary>
@@ -5682,8 +6133,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("工艺与暖通标注文字失败！");
-                Env.Editor.WriteMessage($"\n错误信息：{ex.Message}");
+                LogManager.Instance.LogInfo("工艺与暖通标注文字失败！");
+                LogManager.Instance.LogInfo($"\n错误信息：{ex.Message}");
             }
         }
 
@@ -6254,8 +6705,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("关闭图层失败！");
-                Env.Editor.WriteMessage($"\n错误信息：{ex.Message}");
+                LogManager.Instance.LogInfo("关闭图层失败！");
+                LogManager.Instance.LogInfo($"\n错误信息：{ex.Message}");
             }
         }
 
@@ -6747,7 +7198,7 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage($"打开图层失败:{ex}");
+                LogManager.Instance.LogInfo($"打开图层失败:{ex}");
             }
 
         }
@@ -6777,8 +7228,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("图层开或关失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("图层开或关失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
 
         }
@@ -6823,7 +7274,7 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("打开图层失败！");
+                LogManager.Instance.LogInfo("打开图层失败！");
             }
         }
 
@@ -6882,8 +7333,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 // 记录错误日志  
-                Env.Editor.WriteMessage("打开图层失败！");
-                Env.Editor.WriteMessage(ex.Message);
+                LogManager.Instance.LogInfo("打开图层失败！");
+                LogManager.Instance.LogInfo(ex.Message);
             }
         }
 
@@ -6902,8 +7353,8 @@ namespace GB_NewCadPlus_III
             // 读取当前布局，在命令行窗口显示布局名
             var acLayout = tr.GetObject(acLayoutMgr.GetLayoutId(acLayoutMgr.CurrentLayout), OpenMode.ForRead) as Layout;
             // 输出当前布局名和设备名
-            Env.Editor.WriteMessage("\nCurrent layout: " + acLayout.LayoutName);
-            Env.Editor.WriteMessage("\nCurrent device name: " + 516 + acLayout.PlotConfigurationName);
+            LogManager.Instance.LogInfo("\nCurrent layout: " + acLayout.LayoutName);
+            LogManager.Instance.LogInfo("\nCurrent device name: " + 516 + acLayout.PlotConfigurationName);
             // 从布局中获取 PlotInfo
             PlotInfo acPlInfo = new PlotInfo();
             acPlInfo.Layout = acLayout.ObjectId;
@@ -6917,7 +7368,7 @@ namespace GB_NewCadPlus_III
             acLayout.UpgradeOpen();
             acLayout.CopyFrom(acPlSet);
             // 输出已更新的布局设备名
-            Env.Editor.WriteMessage("\nNew device name: " + acLayout.PlotConfigurationName);
+            LogManager.Instance.LogInfo("\nNew device name: " + acLayout.PlotConfigurationName);
             // 将新对象保存到数据库
             tr.Commit();
         }
@@ -7026,7 +7477,7 @@ namespace GB_NewCadPlus_III
                                     Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage($"错误: {ex.Message}");
                                 }
 
-                                Env.Editor.WriteMessage($"\n图层 '{layerName}' 已在视口中冻结。");
+                                LogManager.Instance.LogInfo($"\n图层 '{layerName}' 已在视口中冻结。");
                             }
                         }
                     }
@@ -7035,7 +7486,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"\n发生错误: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n发生错误: {ex.Message}");
             }
         }
         /// <summary>
@@ -7111,7 +7562,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"\n发生错误: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n发生错误: {ex.Message}");
             }
         }
         /// <summary>
@@ -7149,7 +7600,7 @@ namespace GB_NewCadPlus_III
                                 Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage($"错误: {ex.Message}");
                             }
 
-                            Env.Editor.WriteMessage($"\n图层 '{layerName}' 已在视口中冻结。");
+                            LogManager.Instance.LogInfo($"\n图层 '{layerName}' 已在视口中冻结。");
                         }
                     }
                 }
@@ -7235,7 +7686,7 @@ namespace GB_NewCadPlus_III
                                     Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage($"错误: {ex.Message}");
                                 }
 
-                                Env.Editor.WriteMessage($"\n图层 '{layerName}' 已在视口中解冻。");
+                                LogManager.Instance.LogInfo($"\n图层 '{layerName}' 已在视口中解冻。");
                             }
                         }
                     }
@@ -7244,7 +7695,7 @@ namespace GB_NewCadPlus_III
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"\n发生错误: {ex.Message}");
+                LogManager.Instance.LogInfo($"\n发生错误: {ex.Message}");
             }
         }
 
@@ -7482,11 +7933,11 @@ namespace GB_NewCadPlus_III
                     Env.Editor.Redraw();
                     tr.Commit(); // 提交事务
                 }
-                Env.Editor.WriteMessage("\n表格已经插入到CAD。");
+                LogManager.Instance.LogInfo("\n表格已经插入到CAD。");
             }
             catch (Exception ex)
             {
-                Env.Editor.WriteMessage($"\n错误：{ex.Message}");
+                LogManager.Instance.LogInfo($"\n错误：{ex.Message}");
             }
         }
 
@@ -8061,7 +8512,7 @@ namespace GB_NewCadPlus_III
 
                 if (allEntities.Count == 0)
                 {
-                    Env.Editor.WriteMessage("\n未找到可用于新块的图元。");
+                    LogManager.Instance.LogInfo("\n未找到可用于新块的图元。");
                     return;
                 }
 
@@ -8085,7 +8536,7 @@ namespace GB_NewCadPlus_III
                 BlockReference newBlkRef = new BlockReference(Point3d.Origin, newBtr.ObjectId);
                 ms.AppendEntity(newBlkRef);
 
-                Env.Editor.WriteMessage($"\n新块 \"{newBlockName}\" 已创建并插入。");
+                LogManager.Instance.LogInfo($"\n新块 \"{newBlockName}\" 已创建并插入。");
 
                 tr.Commit();
             }
@@ -8159,14 +8610,14 @@ namespace GB_NewCadPlus_III
                     foreach (DBDictionaryEntry entry in nod)
                     {
                         string count = GetDictionaryCount(tr, entry.Value);
-                        Env.Editor.WriteMessage($"\n{index}. \"{entry.Key}\"  {count}");
+                        LogManager.Instance.LogInfo($"\n{index}. \"{entry.Key}\"  {count}");
 
                         dictNames.Add(entry.Key);
                         dictIds.Add(entry.Value);
                         index++;
                     }
 
-                    Env.Editor.WriteMessage($"\nActiveDocument.Dictionaries.Count={dictNames.Count}\n");
+                    LogManager.Instance.LogInfo($"\nActiveDocument.Dictionaries.Count={dictNames.Count}\n");
 
                     // 设置用户输入选项  
                     PromptIntegerOptions opts = new PromptIntegerOptions(
@@ -8185,7 +8636,7 @@ namespace GB_NewCadPlus_III
                     if (result.Status == PromptStatus.None)
                     {
                         continueCommand = false;
-                        Env.Editor.WriteMessage("\nYou can type command DICTS to go again.");
+                        LogManager.Instance.LogInfo("\nYou can type command DICTS to go again.");
                     }
                     // 如果用户输入了有效的索引号  
                     else if (result.Status == PromptStatus.OK)
@@ -8201,7 +8652,7 @@ namespace GB_NewCadPlus_III
 
                             // 提交事务  
                             tr.Commit();
-                            Env.Editor.WriteMessage($"\nDictionary \"{dictNames[selectedIndex]}\" has been removed.");
+                            LogManager.Instance.LogInfo($"\nDictionary \"{dictNames[selectedIndex]}\" has been removed.");
                         }
                     }
 
@@ -8211,7 +8662,7 @@ namespace GB_NewCadPlus_III
                 }
                 catch (System.Exception ex)
                 {
-                    Env.Editor.WriteMessage($"\nError: {ex.Message}");
+                    LogManager.Instance.LogInfo($"\nError: {ex.Message}");
                     continueCommand = false;
                 }
             }
@@ -8242,5 +8693,168 @@ namespace GB_NewCadPlus_III
 
         }
         #endregion
+
+        /// <summary>
+        /// 用于保存块引用信息的辅助类
+        /// </summary>
+        private class BlockReferenceInfo
+        {
+            /// <summary>
+            /// 名称
+            /// </summary>
+            public string Name { get; set; }
+            /// <summary>
+            /// 项目id
+            /// </summary>
+            public ObjectId Id { get; set; }
+            /// <summary>
+            /// 3D坐标点
+            /// </summary>
+            public Point3d Position { get; set; }
+            /// <summary>
+            /// 比例因子
+            /// </summary>
+            public Scale3d ScaleFactors { get; set; }
+            /// <summary>
+            /// 角度
+            /// </summary>
+            public double Rotation { get; set; }
+            /// <summary>
+            /// 比例
+            /// </summary>
+            public Scale3d Scale { get; set; }
+            /// <summary>
+            /// 图层名
+            /// </summary>
+            public string Layer { get; set; }
+            /// <summary>
+            /// 线类型 objectid
+            /// </summary>
+            public ObjectId Linetype { get; set; }
+            /// <summary>
+            /// 线型比例
+            /// </summary>
+            public double LinetypeScale { get; set; }
+            /// <summary>
+            /// 线宽
+            /// </summary>
+            public Autodesk.AutoCAD.DatabaseServices.LineWeight Lineweight { get; set; }
+            /// <summary>
+            /// 线色号
+            /// </summary>
+            public Autodesk.AutoCAD.Colors.Color Color { get; set; }
+            /// <summary>
+            /// 线色号
+            /// </summary>
+            public int ColorIndex { get; set; }
+            /// <summary>
+            /// 属性
+            /// </summary>
+            public Dictionary<string, object> AttributeValues { get; set; } = new Dictionary<string, object>();
+            /// <summary>
+            /// 透明度
+            /// </summary>
+            public bool Visibility { get; set; }
+            /// <summary>
+            /// 块法向量
+            /// </summary>
+            public Vector3d Normal { get; set; }
+        }
+
+        /// <summary>
+        /// 增强的块放置拖拽类，完整支持组合块预览
+        /// </summary>
+        private class EnhancedBlockPlacementJig : EntityJig
+        {
+            private Point3d _position;//块位置 插入点
+            private double _rotation;//块旋转块旋转角度
+            private Scale3d _scale;//块缩放比例
+            private ObjectId _blockId;//块ID
+            private List<AttributeDefinition> _attDefs;//属性定义属性定义列表
+            private string _blockLayer;//块图层
+
+            // 属性
+            public Point3d Position => _position;//块位置块位置 插入点
+            public double Rotation => _rotation;//块旋转角度
+            public Scale3d Scale => _scale;//块缩放比例
+            /// <summary>
+            /// 拖拽类的 - 动态增强的块放置类
+            /// </summary>
+            /// <param name="blockId">块ID</param>
+            /// <param name="attDefs">属性定义列表</param>
+            /// <param name="blockLayer"> 块图层</param>
+            /// <param name="scale">比例</param>
+            public EnhancedBlockPlacementJig(ObjectId blockId, List<AttributeDefinition> attDefs, string? blockLayer = null, Scale3d? scale = null)
+                : base(new BlockReference(Point3d.Origin, blockId))
+            {
+                _blockId = blockId;//块ID
+                _position = Point3d.Origin;//初始位置设为原点
+                _rotation = VariableDictionary.entityRotateAngle; // 使用预设旋转角度
+                _attDefs = attDefs;//属性定义列表
+                _blockLayer = blockLayer ?? "0";//块图层，默认"0"图层
+                _scale = scale ?? new Scale3d(1, 1, 1);//块缩放比例，默认1:1比例
+
+                // 配置预览实体
+                BlockReference blockRef = (BlockReference)Entity;
+                blockRef.Layer = _blockLayer;//设置块图层
+                blockRef.ScaleFactors = _scale;//设置块缩放比例
+            }
+            /// <summary>
+            /// 获取预览实体
+            /// </summary>
+            /// <param name="prompts">提示</param>
+            /// <returns></returns>
+            protected override SamplerStatus Sampler(JigPrompts prompts)
+            {
+                // 获取插入点
+                JigPromptPointOptions pointOpts = new JigPromptPointOptions("\n指定组合块插入点（右键确认）:");
+                pointOpts.UserInputControls = UserInputControls.Accept3dCoordinates;
+                pointOpts.UseBasePoint = false;
+
+                PromptPointResult pointResult = prompts.AcquirePoint(pointOpts);
+
+                // 如果用户取消
+                if (pointResult.Status != PromptStatus.OK)
+                    return SamplerStatus.Cancel;
+
+                // 如果位置没变，返回NoChange
+                if (_position.DistanceTo(pointResult.Value) < 0.001)
+                    return SamplerStatus.NoChange;
+
+                _position = pointResult.Value;
+
+                // 始终使用VariableDictionary.entityRotateAngle作为旋转角度
+                _rotation = VariableDictionary.entityRotateAngle;
+
+                return SamplerStatus.OK;
+            }
+            /// <summary>
+            ///  更新数据
+            /// </summary>
+            /// <returns></returns>
+            protected override bool Update()
+            {
+                try
+                {
+                    // 更新块引用的位置、旋转和比例
+                    BlockReference blockRef = (BlockReference)Entity;
+                    blockRef.Position = _position;
+                    blockRef.Rotation = _rotation;
+                    blockRef.ScaleFactors = _scale;
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    // 记录错误但不抛出异常
+                    LogManager.Instance.LogInfo($"\n块更新时发生错误: {ex.Message}");
+                    return false;
+                }
+            }
+        }
+
+
     }
+
+
 }

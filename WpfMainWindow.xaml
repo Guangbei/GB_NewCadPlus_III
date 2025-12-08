@@ -14,343 +14,12 @@
     d:Name="MainWindows"
     mc:Ignorable="d">
     <UserControl.Resources>
-
-        <!--  自定义控件的资源样式  -->
-        <!--  按钮样式  -->
-        <Style TargetType="Button">
-            <Setter Property="Width" Value="65" />
-            <!--  宽度  -->
-            <Setter Property="Height" Value="30" />
-            <!--  高度  -->
-            <Setter Property="Margin" Value="1" />
-            <!--  间隔  -->
-            <Setter Property="Background" Value="#FFF3EEEE" />
-            <!--  背景颜色  -->
-            <Setter Property="BorderBrush" Value="Gray" />
-            <!--  边框颜色  -->
-            <Setter Property="BorderThickness" Value="1" />
-            <!--  边框宽度  -->
-            <Setter Property="FontSize" Value="12" />
-            <!--  字体大小  -->
-            <Setter Property="FontWeight" Value="Normal" />
-            <!--  字体加粗  -->
-            <Setter Property="Cursor" Value="Hand" />
-            <!--  鼠标样式  -->
-            <Setter Property="Template">
-                <!--  模板内容  -->
-                <Setter.Value>
-                    <!--  模板内容  -->
-                    <ControlTemplate TargetType="Button">
-                        <!--  控件模板  -->
-                        <Border
-                            Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="5">
-                            <!--  边框  -->
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <!--  内容  -->
-                        </Border>
-                        <!--  边框  -->
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="LightBlue" />
-                            </Trigger>
-                            <!--  鼠标移入时  -->
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="White" />
-                            </Trigger>
-                            <!--  按下时  -->
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Background" Value="Gray" />
-                                <Setter Property="Foreground" Value="Gray" />
-                            </Trigger>
-                            <!--  禁用时  -->
-                        </ControlTemplate.Triggers>
-                        <!--  触发器  -->
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!--  TabControlStyle样式  -->
-        <Style x:Key="TabControlStyle" TargetType="{x:Type TabControl}">
-            <Setter Property="Background" Value="White" />
-            <!--  背景颜色  -->
-            <Setter Property="BorderBrush" Value="Gray" />
-            <!--  边框颜色  -->
-            <Setter Property="BorderThickness" Value="2" />
-            <!--  边框宽度  -->
-            <Setter Property="Foreground" Value="Black" />
-            <!--  字体颜色  -->
-            <Setter Property="FontSize" Value="14" />
-            <!--  字体大小  -->
-            <Setter Property="FontWeight" Value="Bold" />
-            <!--  字体加粗  -->
-            <Setter Property="Margin" Value="0" />
-            <!--  间隔  -->
-        </Style>
-        <!--  修改TabItem的样式，使其适应纵向布局  -->
-        <Style x:Key="VerticalTabStyle" TargetType="{x:Type TabItem}">
-            <!--  纵向TabItem样式  -->
-            <Setter Property="Height" Value="50" />
-            <!--  高度  -->
-            <Setter Property="Width" Value="28" />
-            <!--  宽度  -->
-            <Setter Property="Margin" Value="0,0,0,0" />
-            <!--  间隔  -->
-            <Setter Property="Padding" Value="0" />
-            <!--  内间距  -->
-            <Setter Property="FontSize" Value="13" />
-            <!--  字体大小  -->
-            <Setter Property="FontWeight" Value="Normal" />
-            <!--  字体加粗  -->
-            <Setter Property="Template">
-                <!--  模板  -->
-                <Setter.Value>
-                    <!--  模板内容  -->
-                    <ControlTemplate TargetType="{x:Type TabItem}">
-                        <!--  控件模板  -->
-                        <Grid>
-                            <!--  网格  -->
-                            <Border
-                                Name="Border"
-                                Margin="0,0,-1,0"
-                                Background="LightBlue"
-                                BorderBrush="Gray"
-                                BorderThickness="1,1,0,1"
-                                CornerRadius="5">
-                                <ContentPresenter
-                                    x:Name="ContentSite"
-                                    Margin="-10,0,-10,0"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    ContentSource="Header"
-                                    RenderTransformOrigin="0.5,0.5">
-                                    <ContentPresenter.RenderTransform>
-                                        <RotateTransform Angle="270" />
-                                    </ContentPresenter.RenderTransform>
-                                </ContentPresenter>
-                            </Border>
-                            <!--  边框  -->
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <!--  触发器  -->
-                            <Trigger Property="IsSelected" Value="True">
-                                <!--  选中时  -->
-                                <Setter TargetName="Border" Property="Background" Value="LightGoldenrodYellow" />
-                                <!--  背景颜色  -->
-                                <Setter TargetName="Border" Property="BorderThickness" Value="1,1,0,1" />
-                                <!--  边框宽度  -->
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!--  修改TextBox的样式，实现水印功能  -->
-        <Style x:Key="WatermarkTextBoxStyle" TargetType="{x:Type TextBox}">
-            <Setter Property="Padding" Value="3,0,0,0" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-            <!--  添加默认值属性  -->
-            <Setter Property="Tag" Value="" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type TextBox}">
-                        <Grid>
-                            <!--  定义边框背景和边框线  -->
-                            <!--  设置边框背景色，绑定到控件的Background属性  -->
-                            <!--  设置边框画笔颜色，绑定到控件的BorderBrush属性  -->
-                            <!--  设置边框厚度，绑定到控件的BorderThickness属性  -->
-                            <!--  设置边框圆角半径为5个像素  -->
-                            <Border
-                                x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3">
-                                <!--  内容显示区域，用于显示用户输入的文字  -->
-                                <!--  定义ScrollViewer的名称，这是TextBox必须的部分  -->
-                                <ScrollViewer
-                                    x:Name="PART_ContentHost"
-                                    Margin="{TemplateBinding Padding}"
-                                    VerticalAlignment="Center" />
-                            </Border>
-                            <!--  水印文字x:Name="WatermarkText"显示区域  -->
-                            <!--  水印提示文字Text内容  -->
-                            <!--  水印文字Foreground颜色  -->
-                            <!--  水印文字FontSize大小  -->
-                            <!--  垂直居中VerticalAlignment对齐  -->
-                            <!--  左边距Margin微调  -->
-                            <!--  默认隐藏水印文字Visibility  -->
-                            <TextBlock
-                                x:Name="WatermarkText"
-                                Margin="5,0,0,0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                FontStyle="Italic"
-                                Foreground="Gray"
-                                IsHitTestVisible="False"
-                                Text="{TemplateBinding Tag}"
-                                Visibility="Collapsed" />
-
-                        </Grid>
-                        <!--  定义触发器  -->
-                        <ControlTemplate.Triggers>
-                            <!--  当TextBox为空时显示水印  -->
-                            <Trigger Property="Text" Value="">
-                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Visible" />
-                            </Trigger>
-                            <!--  当TextBox获得焦点时隐藏水印  -->
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Collapsed" />
-                            </Trigger>
-                            <!--  当TextBox失去焦点且为空时显示水印  -->
-                            <MultiTrigger>
-                                <MultiTrigger.Conditions>
-                                    <Condition Property="IsFocused" Value="False" />
-                                    <Condition Property="Text" Value="" />
-                                </MultiTrigger.Conditions>
-                                <Setter TargetName="WatermarkText" Property="Visibility" Value="Visible" />
-                            </MultiTrigger>
-                            <!--  边框样式触发器  -->
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#FFFBFF" />
-                                <Setter TargetName="border" Property="BorderBrush" Value="#FFB0B0B0" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#FF569DE5" />
-                            </Trigger>
-                            <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#FF569DE5" />
-                                <Setter TargetName="border" Property="BorderThickness" Value="1" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!--  滚动条样式  -->
-        <Style x:Key="ScrollBarTrackThumb" TargetType="{x:Type Thumb}">
-            <!--  定义滚动条样式  -->
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Thumb}">
-                        <Grid x:Name="Grid">
-                            <Rectangle
-                                Width="Auto"
-                                Height="Auto"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                Fill="Transparent" />
-                            <Border
-                                x:Name="CornerScrollBar"
-                                Width="Auto"
-                                Height="Auto"
-                                HorizontalAlignment="Stretch"
-                                VerticalAlignment="Stretch"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="2" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <!--  定义滚动条样式触发器  -->
-                            <Trigger Property="Tag" Value="Horizontal">
-                                <!--  水平滚动条  -->
-                                <Setter TargetName="CornerScrollBar" Property="Width" Value="Auto" />
-                                <!--  设置滚动条宽度  -->
-                                <Setter TargetName="CornerScrollBar" Property="Height" Value="6" />
-                                <!--  设置滚动条高度  -->
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!--  滚动条样式  -->
-        <Style TargetType="{x:Type ScrollBar}">
-            <Setter Property="Stylus.IsFlicksEnabled" Value="false" />
-            <!--  禁用滚动条翻页  -->
-            <Setter Property="Foreground" Value="#8C8C8C" />
-            <!--  滚动条颜色  -->
-            <Setter Property="Background" Value="Transparent" />
-            <!--  滚动条背景颜色  -->
-            <Setter Property="Width" Value="6" />
-            <!--  滚动条宽度  -->
-            <Setter Property="Template">
-                <!--  定义滚动条模板  -->
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ScrollBar}">
-                        <!--  定义滚动条模板  -->
-                        <Grid
-                            x:Name="GridRoot"
-                            Width="{TemplateBinding Width}"
-                            Background="{TemplateBinding Background}">
-                            <!--  定义滚动条模板  -->
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="0.00001*" />
-                                <!--  定义滚动条模板  -->
-                            </Grid.RowDefinitions>
-                            <Track
-                                x:Name="PART_Track"
-                                Grid.Row="0"
-                                Focusable="false"
-                                IsDirectionReversed="true">
-                                <!--  定义滚动条模板  -->
-                                <Track.Thumb>
-                                    <Thumb
-                                        x:Name="Thumb"
-                                        Background="{TemplateBinding Foreground}"
-                                        Style="{DynamicResource ScrollBarTrackThumb}" />
-                                    <!--  定义滚动条模板  -->
-                                </Track.Thumb>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton
-                                        x:Name="PageUp"
-                                        Command="ScrollBar.PageDownCommand"
-                                        Focusable="false"
-                                        Opacity="0" />
-                                    <!--  定义滚动条模板  -->
-                                </Track.IncreaseRepeatButton>
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton
-                                        x:Name="PageDown"
-                                        Command="ScrollBar.PageUpCommand"
-                                        Focusable="false"
-                                        Opacity="0" />
-                                </Track.DecreaseRepeatButton>
-                            </Track>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsEnabled" Value="false">
-                                <Setter TargetName="Thumb" Property="Visibility" Value="Collapsed" />
-                                <!--  定义滚动条模板  -->
-                            </Trigger>
-                            <Trigger Property="Orientation" Value="Horizontal">
-                                <Setter TargetName="GridRoot" Property="LayoutTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="-90" />
-                                        <!--  定义滚动条模板  -->
-                                    </Setter.Value>
-                                </Setter>
-                                <Setter TargetName="PART_Track" Property="LayoutTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="-90" />
-                                        <!--  定义滚动条模板  -->
-                                    </Setter.Value>
-                                </Setter>
-                                <Setter Property="Width" Value="Auto" />
-                                <!--  定义滚动条模板  -->
-                                <Setter Property="Height" Value="6" />
-                                <Setter TargetName="Thumb" Property="Tag" Value="Horizontal" />
-                                <Setter TargetName="PageDown" Property="Command" Value="ScrollBar.PageLeftCommand" />
-                                <Setter TargetName="PageUp" Property="Command" Value="ScrollBar.PageRightCommand" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--  引用外部样式资源文件  -->
+                <ResourceDictionary Source="/GB_NewCadPlus_III;component/MainWindowStyleDictionary.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </UserControl.Resources>
     <!--  Grid白色背景，最小、大的宽度350，最小高度900  -->
     <Grid
@@ -363,6 +32,7 @@
             <ColumnDefinition Width="0*" />
         </Grid.ColumnDefinitions>
         <TabControl
+            x:Name="MainTabControl"
             MinWidth="350"
             MinHeight="700"
             MaxWidth="330"
@@ -548,7 +218,7 @@
                     <Grid Grid.Row="3" />
                     <Grid Grid.Row="4" Background="Azure">
                         <TabControl
-                            x:Name="MainTabControl"
+                            x:Name="MajroTabControl"
                             Margin="0,0,0,0"
                             Padding="1,2,1,2"
                             Background="Azure"
@@ -2820,10 +2490,10 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="40" />
                         <RowDefinition Height="55" />
-                        <RowDefinition Height="5*" />
+                        <RowDefinition Height="3*" />
                         <RowDefinition Height="155" />
                         <RowDefinition Height="1" />
-                        <RowDefinition Height="200" />
+                        <RowDefinition Height="2*" />
                     </Grid.RowDefinitions>
                     <!--  第一行  -->
                     <Grid Grid.Row="0" Background="FloralWhite">
@@ -2835,9 +2505,8 @@
                             MaxHeight="50"
                             Margin="11,4,151,6"
                             Click="LoadCadDatabase_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="加载CAD数据库" />
-                        </Button>
+                            Content="加载CAD数据库"
+                            FontSize="12" />
                         <Button
                             Width="130"
                             Height="25"
@@ -2845,9 +2514,8 @@
                             MaxHeight="50"
                             Margin="151,4,11,6"
                             Click="LoadSwDatabase_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="加载SW数据库" />
-                        </Button>
+                            Content="加载SW数据库"
+                            FontSize="12" />
                     </Grid>
                     <!--  第二行  -->
                     <Grid Grid.Row="1" Background="Azure">
@@ -2860,9 +2528,8 @@
                             MaxHeight="50"
                             Margin="3,1,259,29"
                             Click="NewCategory_MenuItem_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="添加主分类" />
-                        </Button>
+                            Content="添加主分类"
+                            FontSize="12" />
                         <Button
                             x:Name="添加子分类"
                             Width="80"
@@ -2871,9 +2538,8 @@
                             MaxHeight="50"
                             Margin="3,28,259,1"
                             Click="AddSubcategory_MenuItem_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="添加子分类" />
-                        </Button>
+                            Content="添加子分类"
+                            FontSize="12" />
                         <Button
                             x:Name="修改分类"
                             Width="80"
@@ -2882,9 +2548,8 @@
                             MaxHeight="50"
                             Margin="88,1,174,29"
                             Click="Edit_MenuItem_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="修改分类" />
-                        </Button>
+                            Content="修改分类"
+                            FontSize="12" />
                         <Button
                             x:Name="删除分类"
                             Width="80"
@@ -2893,24 +2558,23 @@
                             MaxHeight="50"
                             Margin="88,28,174,1"
                             Click="Delete_MenuItem_Click"
+                            Content="删除分类"
                             FontSize="14"
-                            TextBlock.FontSize="12">
-                            <TextBlock Text="删除分类" />
-                        </Button>
+                            TextBlock.FontSize="12" />
                         <Button
-                            x:Name="展开所有按钮"
+                            x:Name="展开_折叠架构"
                             Width="80"
                             Height="25"
                             Margin="173,2,89,27"
-                            Click="展开所有按钮_Click"
-                            Content="展开所有" />
+                            Click="展开_折叠架构_Click"
+                            Content="展开\折叠架构" />
                         <Button
-                            x:Name="折叠所有按钮"
+                            x:Name="导入模板"
                             Width="80"
                             Height="25"
                             Margin="173,28,89,1"
-                            Click="折叠所有按钮_Click"
-                            Content="折叠所有" />
+                            Click="导入模板_Btn_Click"
+                            Content="导入模板" />
                         <Button
                             x:Name="刷新架构树按钮"
                             Width="80"
@@ -3066,7 +2730,7 @@
                             VerticalAlignment="Bottom"
                             AcceptsTab="True"
                             BorderThickness="1,2,1,1"
-                            FontSize="10"
+                            FontSize="8"
                             SelectionOpacity="0.5"
                             Style="{StaticResource WatermarkTextBoxStyle}"
                             Tag="文件路径："
@@ -3093,7 +2757,7 @@
                             VerticalAlignment="Bottom"
                             AcceptsTab="True"
                             BorderThickness="1,2,1,1"
-                            FontSize="10"
+                            FontSize="8"
                             SelectionOpacity="0.5"
                             Style="{StaticResource WatermarkTextBoxStyle}"
                             Tag="预览图文件路径："
@@ -3150,9 +2814,8 @@
                             MaxHeight="50"
                             Margin="5,51,257,82"
                             Click="DeleteGraphic_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="删除图元" />
-                        </Button>
+                            Content="删除图元"
+                            FontSize="12" />
                         <Button
                             Width="70"
                             Height="22"
@@ -3160,9 +2823,8 @@
                             MaxHeight="50"
                             Margin="90,127,182,6"
                             Click="ResetToInitial_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="还原初始值" />
-                        </Button>
+                            Content="还原初始值"
+                            FontSize="12" />
                         <Button
                             x:Name="ApplyProperties_Btn"
                             Width="70"
@@ -3171,9 +2833,8 @@
                             MaxHeight="50"
                             Margin="167,127,105,6"
                             Click="ApplyProperties_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="应用属性" />
-                        </Button>
+                            Content="应用属性"
+                            FontSize="12" />
                         <Button
                             x:Name="AddFile_Btn"
                             Width="NaN"
@@ -3183,12 +2844,11 @@
                             Margin="5,123,257,4"
                             Background="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"
                             Click="AddFile_Btn_Click"
+                            Content="完成添加"
                             FontSize="14"
-                            Foreground="White">
-                            <TextBlock FontSize="15" Text="完成添加" />
-                        </Button>
+                            Foreground="White" />
                         <Button
-                            x:Name="导入模板_Btn"
+                            x:Name="ImportFromSelection_Btn"
                             Width="80"
                             Height="22"
                             MaxWidth="80"
@@ -3196,10 +2856,9 @@
                             Margin="5,0,0,59"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Bottom"
-                            Click="导入模板_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="导入模板" />
-                        </Button>
+                            Click="ImportFromSelection_Btn_Click"
+                            Content="添加当前图形入库"
+                            FontSize="10" />
                         <Button
                             x:Name="批量添加图元_Btn"
                             Width="80"
@@ -3210,9 +2869,8 @@
                             HorizontalAlignment="Left"
                             VerticalAlignment="Bottom"
                             Click="批量添加图元_Btn_Click"
-                            FontSize="14">
-                            <TextBlock FontSize="12" Text="批量添加图元" />
-                        </Button>
+                            Content="批量添加图元"
+                            FontSize="12" />
                         <Image
                             x:Name="ViewImage"
                             Width="100"
@@ -3304,178 +2962,13 @@
                         </ScrollViewer>
                     </Grid>
                 </Grid>
-
             </TabItem>
-
-            <!--  在TabControl中添加管理员模块  -->
-
-            <!--<TabItem Header="管理员模块">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="150" />
-            <RowDefinition Height="200" />
-        </Grid.RowDefinitions>
-
-            -->
-            <!--  上半部分：架构树和操作按钮  -->
-            <!--
-        <Grid Grid.Row="0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="200" />
-            </Grid.ColumnDefinitions>
-
-            -->
-            <!--  架构树  -->
-            <!--
-            <TreeView
-                x:Name="CategoryTreeView1"
-                Grid.Column="0"
-                Margin="5"
-                SelectedItemChanged="CategoryTreeView_SelectedItemChanged">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding DisplayText}" />
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-
-            -->
-            <!--  操作按钮  -->
-            <!--
-            <StackPanel Grid.Column="1" Margin="5">
-                <Button
-                    x:Name="添加图元文件按钮"
-                    Content="添加图元文件"
-                    Height="25"
-                    Margin="2"
-                    Click="添加图元文件按钮_Click" />
-                <Button
-                    x:Name="刷新架构树按钮1"
-                    Content="刷新架构树"
-                    Height="25"
-                    Margin="2"
-                    Click="刷新架构树按钮_Click" />
-            </StackPanel>
-        </Grid>
-
-            -->
-            <!--  中间部分：文件选择和基本信息  -->
-            <!--
-        <Grid Grid.Row="1" Background="LightBlue">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="150" />
-            </Grid.ColumnDefinitions>
-
-            -->
-            <!--  文件信息显示  -->
-            <!--
-            <StackPanel Grid.Column="0" Margin="5">
-                <TextBlock Text="文件信息：" FontWeight="Bold" Margin="0,0,0,5" />
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="80" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="25" />
-                        <RowDefinition Height="25" />
-                        <RowDefinition Height="25" />
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="文件路径：" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="FilePathText" IsReadOnly="True" Margin="0,0,5,0" />
-
-                    <TextBlock Grid.Row="0" Grid.Column="2" Text="文件名：" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="0" Grid.Column="3" x:Name="FileNameText" IsReadOnly="True" />
-
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="文件大小：" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="1" Grid.Column="1" x:Name="FileSizeText" IsReadOnly="True" Margin="0,0,5,0" />
-
-                    <TextBlock Grid.Row="1" Grid.Column="2" Text="文件类型：" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="1" Grid.Column="3" x:Name="FileTypeText" IsReadOnly="True" />
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="预览图片：" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="2" Grid.Column="1" x:Name="PreviewImagePathText" IsReadOnly="True" Margin="0,0,5,0" />
-                </Grid>
-            </StackPanel>
-
-            -->
-            <!--  操作按钮  -->
-            <!--
-            <StackPanel Grid.Column="1" Margin="5" VerticalAlignment="Center">
-                <Button
-                    x:Name="选择文件按钮"
-                    Content="选择文件"
-                    Height="25"
-                    Margin="2"
-                    Click="选择文件按钮_Click" />
-                <Button
-                    x:Name="选择预览图片按钮"
-                    Content="选择预览图片"
-                    Height="25"
-                    Margin="2"
-                    Click="选择预览图片按钮_Click" />
-            </StackPanel>
-        </Grid>
-
-            -->
-            <!--  下半部分：属性编辑区域  -->
-            <!--
-        <Grid Grid.Row="2">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="30" />
-            </Grid.RowDefinitions>
-
-            -->
-            <!--  属性编辑DataGrid (4列布局)  -->
-            <!--
-            <DataGrid
-                x:Name="CategoryPropertiesDataGrid1"
-                Grid.Row="0"
-                AutoGenerateColumns="False"
-                CanUserAddRows="True"
-                CanUserDeleteRows="True"
-                HeadersVisibility="Column"
-                GridLinesVisibility="All"
-                Margin="5"
-                FontSize="12">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="字段1" Binding="{Binding PropertyName1}" Width="*" />
-                    <DataGridTextColumn Header="值1" Binding="{Binding PropertyValue1}" Width="*" />
-                    <DataGridTextColumn Header="字段2" Binding="{Binding PropertyName2}" Width="*" />
-                    <DataGridTextColumn Header="值2" Binding="{Binding PropertyValue2}" Width="*" />
-                </DataGrid.Columns>
-            </DataGrid>
-
-            -->
-            <!--  操作按钮  -->
-            <!--
-            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button
-                    x:Name="完成添加按钮"
-                    Content="完成添加"
-                    Width="80"
-                    Height="25"
-                    Margin="5"
-                    Click="完成添加按钮_Click" />
-                <Button
-                    x:Name="取消按钮"
-                    Content="取消"
-                    Width="80"
-                    Height="25"
-                    Margin="5"
-                    Click="取消按钮_Click" />
-            </StackPanel>
-        </Grid>
-    </Grid>
-</TabItem>-->
-
+            <TabItem
+                Width="110"
+                HorizontalAlignment="Right"
+                Header="部门\人员模块">
+                <local:DepartmentAdminControl Height="auto" />
+            </TabItem>
         </TabControl>
 
     </Grid>

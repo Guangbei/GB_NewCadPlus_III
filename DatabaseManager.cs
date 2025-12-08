@@ -1,439 +1,328 @@
-﻿
 using Dapper;
 using MySql.Data.MySqlClient;
+using System.Text;
 using System.Threading.Tasks;
 namespace GB_NewCadPlus_III
 {
-    #region 文件实体管理
-
-    // 在DatabaseManager.cs中添加以下实体类
-
-    /// 文件版本历史实体
-    /// </summary>
-    public class FileVersionHistory
-    {
-        public int Id { get; set; }//id
-        public int FileId { get; set; }//文件id
-        public int Version { get; set; }//文件版本
-        public string FileName { get; set; }//文件名
-        public string StoredFileName { get; set; }//存储文件名
-        public string FilePath { get; set; }//文件存储路径
-        public long FileSize { get; set; }//文件大小
-        public DateTime UpdatedAt { get; set; }//更新时间
-        public string UpdatedBy { get; set; }//更新者
-        public string ChangeDescription { get; set; }//文件修改描述
-    }
-
+    #region
     /// <summary>
-    /// 文件标签实体
-    /// </summary>
-    public class FileTag
-    {
-        public int Id { get; set; }           // 标签ID
-        public int FileId { get; set; }       // 文件ID
-        public string TagName { get; set; }   // 标签名称
-        public DateTime CreatedAt { get; set; } // 创建时间
-    }
-
-    /// <summary>
-    /// 文件访问日志实体
-    /// </summary>
-    public class FileAccessLog
-    {
-        public int Id { get; set; }//id
-        public int FileId { get; set; }//文件id
-        public string UserName { get; set; }//用户名
-        public string ActionType { get; set; }//操作类型Download, View, Upload等
-        public DateTime AccessTime { get; set; }//访问时间
-        public string IpAddress { get; set; }//IP地址
-    }
-
-    #endregion
-    // 在Database命名空间中添加以下类
-    #region 数据库CAD实体
-    /// <summary>
-    /// CAD主分类实体
-    /// </summary>
-    public class CadCategory
-    {
-        public int Id { get; set; }         // 主分类ID：1000, 2000, 3000...
-        public string Name { get; set; }
-        public string DisplayName { get; set; }
-        public int SortOrder { get; set; }
-        public string SubcategoryIds { get; set; } // 子分类ID列表，用逗号分隔
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    /// <summary>
-    /// CAD子分类实体
-    /// </summary>
-    public class CadSubcategory
-    {
-        public int Id { get; set; }              // 子分类ID：根据层级编码
-        public int ParentId { get; set; }         // 父分类ID
-        public string Name { get; set; }            // 子分类名称
-        public string DisplayName { get; set; }
-        public int SortOrder { get; set; }
-        public int Level { get; set; }           // 分类层级（1=二级分类，2=三级分类...）
-        public string SubcategoryIds { get; set; } // 下级子分类ID列表，用逗号分隔
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    /// <summary>
-    /// CAD图元实体
-    /// </summary>
-    public class FileStorage
-    {
-        public int Id { get; set; }//id
-        public int CategoryId { get; set; }//所在子类id
-        public string? FileName { get; set; }//文件名
-        public int FileAttributeId { get; set; }//属性id
-        public string FileStoredName { get; set; } // 存储文件名（唯一）
-        public string DisplayName { get; set; }//显示名
-        public string FileType { get; set; }     // 文件类型（.dwg, .png, .jpg等）
-        public int IsTianZheng { get; set; }//判断是不是天正图元(0=不是天正图元,1=是天正图元)
-        public string FileHash { get; set; }     // 文件哈希值（用于去重）
-        public string ElementBlockName { get; set; }//元素块名
-        public string LayerName { get; set; }//层名
-        public int? ColorIndex { get; set; }//颜色索引
-        public string FilePath { get; set; }//文件路径
-        public string PreviewImageName { get; set; }//预览图片名称
-        public string PreviewImagePath { get; set; }//预览图片路径
-        public long? FileSize { get; set; }//文件大小
-        public int IsPreview { get; set; }      // 是否为预览文件
-        public int Version { get; set; }         // 文件版本
-        public string? Description { get; set; }  // 文件描述
-        public DateTime CreatedAt { get; set; }//创建时间
-        public DateTime UpdatedAt { get; set; }//更新时间
-        public int IsActive { get; set; }       // 是否激活
-        public string? CreatedBy { get; set; }    // 创建者
-        public string CategoryType { get; set; } = "sub"; // main 或 sub
-        public string? Title { get; set; }//标题
-        public string? Keywords { get; set; }//关键字
-        public int IsPublic { get; set; } = 1;//是否公开
-        public string? UpdatedBy { get; set; }//更新者
-        public DateTime? LastAccessedAt { get; set; }//最后访问时间
-    }
-
-    /// <summary>
-    /// CAD图元属性实体
-    /// </summary>
-    public class FileAttribute
-    {
-
-        public int Id { get; set; }//属性Id id AS Id,
-        public int CategoryId { get; set; }//分类id category_id AS CategoryId,
-        public int FileStorageId { get; set; }//文件id file_storage_id AS FileStorageId,
-        public string? FileName { get; set; }//文件名称 file_name AS FileName,
-        public decimal? Length { get; set; }//长度 length AS Length,
-        public decimal? Width { get; set; }//宽度 width AS Width,
-        public decimal? Height { get; set; }//高度  height AS Height,
-        public decimal? Angle { get; set; }//角度 angle AS Angle,
-        public decimal? BasePointX { get; set; }//基点X base_point_x AS BasePointX,
-        public decimal? BasePointY { get; set; }//基点Y base_point_y AS BasePointY,
-        public decimal? BasePointZ { get; set; }//基点Z base_point_z AS BasePointZ,
-        public DateTime CreatedAt { get; set; }//创建时间 created_at AS CreatedAt,
-        public DateTime UpdatedAt { get; set; }//更新时间 updated_at AS UpdatedAt,
-        public string? Description { get; set; }//描述 description AS Description,
-        public string? MediumName { get; set; }//介质 medium_name AS MediumName,
-        public string? Specifications { get; set; }//规格 specifications AS Specifications,
-        public string? Material { get; set; }//材质 material AS Material,
-        public string? StandardNumber { get; set; }//标准编号 standard_number AS StandardNumber,
-        public string? Power { get; set; }//功率 power AS Power, 
-        public string? Volume { get; set; }//容积 volume AS Volume,
-        public string? Pressure { get; set; }//压力 pressure AS Pressure,
-        public string? Temperature { get; set; }//温度 temperature AS Temperature,
-        public string? Diameter { get; set; }//直径 diameter AS Diameter,
-        public string? OuterDiameter { get; set; }//外径 outer_diameter AS OuterDiameter,
-        public string? InnerDiameter { get; set; }//内径 inner_diameter AS InnerDiameter,
-        public string? Thickness { get; set; }//厚度 thickness AS Thickness,
-        public string? Weight { get; set; }//重量 weight AS Weight,
-        public string? Model { get; set; }//型号 model AS Model,
-        public string? Remarks { get; set; }//备注 remarks AS Remarks,
-        public string? Customize1 { get; set; }//自定义1 customize1 AS Customize1,
-        public string? Customize2 { get; set; }//自定义2 customize2 AS Customize2,
-        public string? Customize3 { get; set; }//自定义3 customize3 AS Customize3
-    }
-
-    /// <summary>
-    /// 分类统计信息
-    /// </summary>
-    public class CategoryStatistics
-    {
-        public int Id { get; set; }//ID
-        public int CategoryId { get; set; }//分类ID
-        public string CategoryType { get; set; }//分类类型
-        public int FileCount { get; set; }//文件数量
-        public long TotalSize { get; set; }//总大小
-        public DateTime? LastFileAdded { get; set; }//最后添加文件时间
-        public DateTime UpdatedAt { get; set; }//更新时间
-    }
-
-    /// <summary>
-    /// 文件访问统计
-    /// </summary>
-    public class FileAccessStats
-    {
-        public int TotalAccess { get; set; }//总访问次数
-        public int DownloadCount { get; set; }//下载次数
-        public int ViewCount { get; set; }//浏览次数
-        public DateTime? FirstAccess { get; set; }//首次访问时间
-        public DateTime? LastAccess { get; set; }//最后访问时间
-    }
-
-    #endregion
-
-    /// <summary>
-    /// 分类ID生成器
-    /// </summary>
-    public static class CategoryIdGenerator
-    {
-        /// <summary>
-        /// 生成主分类ID
-        /// </summary>
-        public static async Task<int> GenerateMainCategoryIdAsync(DatabaseManager dbManager)
-        {
-            try
-            {
-                // 获取最大的主分类ID
-                var categories = await dbManager.GetAllCadCategoriesAsync();
-                if (categories == null || categories.Count == 0)
-                {
-                    return 1000; // 第一个主分类ID
-                }
-                // 查找最大的主分类ID（千位数）
-                var maxMainId = categories.Max(c => c.Id);
-                int nextMainId = ((maxMainId / 1000) + 1) * 1000;
-                return nextMainId;
-            }
-            catch
-            {
-                return 1000; // 出错时返回默认值
-            }
-        }
-
-        /// <summary>
-        /// 生成子分类ID
-        /// </summary>
-        public static async Task<int> GenerateSubcategoryIdAsync(DatabaseManager dbManager, int parentId)
-        {
-            try
-            {
-                int level = await DetermineCategoryLevelAsync(dbManager, parentId);// 确定层级
-                if (level == 1)  // 生成新ID
-                {
-                    return await GenerateLevel2SubcategoryIdAsync(dbManager, parentId);   // 二级子分类：父ID(4位) + 序号(3位)
-                }
-                else
-                {
-                    return await GenerateLevel3PlusSubcategoryIdAsync(dbManager, parentId, level); // 三级及以上子分类：父ID + 序号(3位)
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"生成子分类ID失败: {ex.Message}");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// 确定分类层级
-        /// </summary>
-        private static async Task<int> DetermineCategoryLevelAsync(DatabaseManager dbManager, int parentId)
-        {
-            if (parentId < 10000)
-            {
-                return 1;  // 父级是主分类（4位），这是二级子分类
-            }
-            else
-            {
-                var parentSubcategory = await dbManager.GetCadSubcategoryByIdAsync(parentId); // 父级是子分类，需要确定是几级子分类
-                if (parentSubcategory != null)
-                {
-                    return parentSubcategory.Level + 1;
-                }
-                else
-                {
-                    return 1; // 默认为二级分类
-                }
-            }
-        }
-
-        /// <summary>
-        /// 生成二级子分类ID
-        /// </summary>
-        private static async Task<int> GenerateLevel2SubcategoryIdAsync(DatabaseManager dbManager, int parentId)
-        {
-
-            string parentPrefix = parentId.ToString();// 格式：父ID(4位) + 序号(3位)
-            var subcategories = await dbManager.GetCadSubcategoriesByParentIdAsync(parentId);    // 获取同一父级下的所有二级子分类
-
-            if (subcategories.Count == 0) return int.Parse($"{parentPrefix}001");
-            var level2Subcategories = subcategories.Where(s => s.Level == 1).ToList();// 筛选出二级子分类
-
-            var maxId = level2Subcategories.Max(s => s.Id);                                       // 找到最大的序号
-            string maxIdStr = maxId.ToString();                                                              // 获取最大ID的末尾3位
-            if (maxIdStr.Length >= 3)                                                                        // 确保最大ID的末尾有3位
-            {
-                string sequenceStr = maxIdStr.Substring(maxIdStr.Length - 3);                       // 获取最大ID的末尾3位
-                if (int.TryParse(sequenceStr, out int sequence))                                    // 尝试将末尾3位转换为数字
-                {
-                    return int.Parse($"{parentPrefix}{(sequence + 1):D3}");                               // 返回下一个ID
-                }
-            }
-            int nextSequence = level2Subcategories.Count + 1;                                               // 如果解析失败，使用计数方式
-            return int.Parse($"{parentPrefix}{nextSequence:D3}");                                        // 返回下一个ID
-
-        }
-
-        /// <summary>
-        /// 生成三级及以上子分类ID
-        /// </summary>
-        private static async Task<int> GenerateLevel3PlusSubcategoryIdAsync(DatabaseManager dbManager, int parentId, int level)
-        {
-            string parentPrefix = parentId.ToString(); // 格式：父ID + 序号(3位)
-            var subcategories = await dbManager.GetCadSubcategoriesByParentIdAsync(parentId);  // 获取同一父级下的所有同级子分类
-            var sameLevelSubcategories = subcategories.Where(s => s.Level == level).ToList();// 筛选出同一层级的子分类
-            if (sameLevelSubcategories.Count == 0)// 如果没有同级子分类
-            {
-                return int.Parse($"{parentPrefix}001");
-            }
-            else
-            {
-                var maxId = sameLevelSubcategories.Max(s => s.Id);// 找到最大的序号
-                string maxIdStr = maxId.ToString();// 获取最大ID的末尾3位
-                if (maxIdStr.Length >= 3)// 确保最大ID的末尾有3位
-                {
-                    string sequenceStr = maxIdStr.Substring(maxIdStr.Length - 3);// 获取最大ID的末尾3位
-                    if (int.TryParse(sequenceStr, out int sequence))// 尝试将末尾3位转换为数字
-                    {
-                        return int.Parse($"{parentPrefix}{(sequence + 1):D3}");// 返回下一个ID
-                    }
-                }
-                int nextSequence = sameLevelSubcategories.Count + 1;   // 如果解析失败，使用计数方式
-                return int.Parse($"{parentPrefix}{nextSequence:D3}");// 返回下一个ID
-            }
-        }
-    }
-
-    #region 显示图元属性
-
-    /// <summary>
-    /// 属性数据模型
-    /// </summary>
-    public class PropertyPair
-    {
-        public string PropertyName1 { get; set; }
-        public string PropertyValue1 { get; set; }
-        public string PropertyName2 { get; set; }
-        public string PropertyValue2 { get; set; }
-
-        public PropertyPair(string name1, string value1, string name2 = "", string value2 = "")
-        {
-            PropertyName1 = name1 ?? "";
-            PropertyValue1 = value1 ?? "";
-            PropertyName2 = name2 ?? "";
-            PropertyValue2 = value2 ?? "";
-        }
-    }
-
-    #endregion
-
-    #region SW实体
-    /// <summary>
-    /// SW主分类实体
-    /// </summary>
-    public class SwCategory
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public string DisplayName { get; set; }
-        public int SortOrder { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    /// <summary>
-    /// SW子分类实体
-    /// </summary>
-    public class SwSubcategory
-    {
-        public int Id { get; set; }
-        public int ParentId { get; set; }
-        public string Name { get; set; }
-        public string DisplayName { get; set; }
-        public int SortOrder { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
-    /// <summary>
-    /// SW图元实体
-    /// </summary>
-    public class SwGraphic
-    {
-        public int Id { get; set; }//id
-        public int SubcategoryId { get; set; }//所在子类id
-        public string FileName { get; set; }//文件名
-        public string DisplayName { get; set; }//显示名
-        public string ElementBlockName { get; set; }//元素块名
-        public string LayerName { get; set; }//层名
-        public int? ColorIndex { get; set; }//颜色索引
-        public string FilePath { get; set; }//文件路径
-        public string PreviewImageName { get; set; }
-        public string PreviewImagePath { get; set; }//预览图片路径
-        public long? FileSize { get; set; }//文件大小
-        public DateTime CreatedAt { get; set; }//创建时间
-        public DateTime UpdatedAt { get; set; }//更新时间
-    }
-
-    /// <summary>
-    /// SW图元属性实体
-    /// </summary>
-    public class SwGraphicAttribute
-    {
-        public int Id { get; set; }//Id
-        public int CadGraphiceId { get; set; }//cad图元id
-        public string GraphiceName { get; set; }//图元名称
-        public int SortOrder { get; set; }//排序序号
-        public decimal? Length { get; set; }//长度
-        public decimal? Width { get; set; }//宽度
-        public decimal? Height { get; set; }//高度
-        public decimal? Angle { get; set; }//角度
-        public decimal? BasePointX { get; set; }//基点X
-        public decimal? BasePointY { get; set; }//基点Y
-        public decimal? BasePointZ { get; set; }//基点Z
-        public DateTime CreatedAt { get; set; }//创建时间
-        public DateTime UpdatedAt { get; set; }//更新时间
-        public string Description { get; set; }//描述
-        public string MediumName { get; set; }//介质
-        public string Specifications { get; set; }//规格
-        public string Material { get; set; }//材质
-        public string StandardNumber { get; set; }//标准编号
-        public string Power { get; set; }//功率
-        public string Volume { get; set; }//容积
-        public string Pressure { get; set; }//压力
-        public string Temperature { get; set; }//温度
-        public string Diameter { get; set; }//直径
-        public string OuterDiameter { get; set; }//外径
-        public string InnerDiameter { get; set; }//内径
-        public string Thickness { get; set; }//厚度
-        public string Weight { get; set; }//重量
-        public string Model { get; set; }//型号
-        public string Remarks { get; set; }//备注
-        public string Customize1 { get; set; }//自定义1
-        public string Customize2 { get; set; }//自定义2
-        public string Customize3 { get; set; }//自定义3
-    }
-    #endregion
-
-    /// <summary>
-    /// 数据库访问类
+    /// 数据库访问类  
     /// </summary>
     public class DatabaseManager
     {
+        /// <summary>
+        /// 对外公开数据库连接（注意：调用方负责不要忘记关闭/处置）
+        /// </summary>
+        public MySqlConnection GetConnection()
+        {
+            return new MySqlConnection(_connectionString);
+        }
+
+        /// <summary>
+        /// 用户实体（对应 users 表）
+        /// </summary>
+        public class User
+        {
+            public int Id { get; set; }
+            public string Username { get; set; }
+            public string PasswordHash { get; set; }
+            public string DisplayName { get; set; }
+            public string Gender { get; set; }
+            public string Phone { get; set; }
+            public string Email { get; set; }
+            public int? DepartmentId { get; set; }
+            public string Role { get; set; }
+            public int Status { get; set; }
+            public DateTime CreatedAt { get; set; }
+            public DateTime UpdatedAt { get; set; }
+        }
+
+        /// <summary>
+        /// 根据用户名查询用户（用于注册后获取 id）
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns>匹配的 User 或 null</returns>
+        public async Task<User> GetUserByUsernameAsync(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username))
+                return null;
+
+            const string sql = @"
+                SELECT
+                    id AS Id,
+                    username AS Username,
+                    password_hash AS PasswordHash,
+                    display_name AS DisplayName,
+                    gender AS Gender,
+                    phone AS Phone,
+                    email AS Email,
+                    department_id AS DepartmentId,
+                    role AS Role,
+                    status AS Status,
+                    created_at AS CreatedAt,
+                    updated_at AS UpdatedAt
+                FROM users
+                WHERE username = @Username
+                LIMIT 1";
+
+            try
+            {
+                using var conn = GetConnection();
+                var user = await conn.QuerySingleOrDefaultAsync<User>(sql, new { Username = username }).ConfigureAwait(false);
+                return user;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"GetUserByUsernameAsync 出错: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 检查指定数据库中是否缺少核心表。
+        /// 返回：
+        /// - 若数据库不存在：返回包含单项 "__DATABASE_MISSING__"
+        /// - 若数据库存在但缺少表：返回缺失表名列表（不为空）
+        /// - 若一切正常：返回空列表
+        /// </summary>
+        public static List<string> CheckMissingCoreTables(string server, int port, string user, string password, string database = "cad_sw_library")
+        {
+            var missing = new List<string>();
+            try
+            {
+                // 连接到目标数据库以检查表
+                var connStr = $"Server={server};Port={port};Database={database};Uid={user};Pwd={password};";
+                using var conn = new MySqlConnection(connStr);
+                conn.Open();
+
+                // 需要保证的核心表
+                var required = new[]
+                {
+                    "cad_categories",
+                    "cad_subcategories",
+                    "cad_file_storage",
+                    "cad_file_attributes",
+                    "system_config",
+                    "users",
+                    "departments",
+                    "department_users",
+                    "category_department_map"
+                };
+
+                var sql = @"SELECT table_name FROM information_schema.tables
+                        WHERE table_schema = @schema AND table_name IN @names";
+                var found = conn.Query<string>(sql, new { schema = database, names = required }).AsList();
+
+                foreach (var t in required)
+                {
+                    if (!found.Contains(t))
+                        missing.Add(t);
+                }
+
+                return missing;
+            }
+            catch (MySqlException mex)
+            {
+                // 数据库不存在
+                if (mex.Number == 1049)
+                {
+                    return new List<string> { "__DATABASE_MISSING__" };
+                }
+                return new List<string> { $"__DB_ERROR__:{mex.Message}" };
+            }
+            catch (Exception)
+            {
+                return new List<string> { "__DB_CHECK_FAILED__" };
+            }
+        }
+
+        /// <summary>
+        /// 创建数据库（若不存在）并创建缺失的核心表。
+        /// 返回 true 表示成功（即创建完毕或已存在），false 表示失败。
+        /// 注意：该方法会在服务器上执行 DDL，请确保凭据具有相应权限。
+        /// </summary>
+        public static bool CreateDatabaseAndCoreTables(string server, int port, string user, string password, string database = "cad_sw_library")
+        {
+            try
+            {
+                // 1) 先连接到 server（不指定数据库）以便创建数据库
+                var masterConn = $"Server={server};Port={port};Uid={user};Pwd={password};";
+                using (var conn = new MySqlConnection(masterConn))
+                {
+                    conn.Open();
+                    var createDbSql = $"CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;";
+                    conn.Execute(createDbSql);
+                }
+
+                // 2) 连接到刚创建/存在的数据库，逐个创建表（IF NOT EXISTS）
+                var dbConn = $"Server={server};Port={port};Database={database};Uid={user};Pwd={password};";
+                using (var conn = new MySqlConnection(dbConn))
+                {
+                    conn.Open();
+                    var sql = new StringBuilder();
+
+                    // cad_categories
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `cad_categories` (
+                        `id` INT NOT NULL PRIMARY KEY,
+                        `name` VARCHAR(200) NOT NULL,
+                        `display_name` VARCHAR(200),
+                        `subcategory_ids` TEXT,
+                        `sort_order` INT DEFAULT 0,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // cad_subcategories
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `cad_subcategories` (
+                        `id` INT NOT NULL PRIMARY KEY,
+                        `parent_id` INT NOT NULL,
+                        `name` VARCHAR(200) NOT NULL,
+                        `display_name` VARCHAR(200),
+                        `sort_order` INT DEFAULT 0,
+                        `level` INT DEFAULT 1,
+                        `subcategory_ids` TEXT,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX(`parent_id`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // cad_file_storage
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `cad_file_storage` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `category_id` INT,
+                        `category_type` VARCHAR(16) DEFAULT 'sub',
+                        `file_attribute_id` INT,
+                        `file_name` VARCHAR(512),
+                        `file_stored_name` VARCHAR(512),
+                        `display_name` VARCHAR(512),
+                        `file_type` VARCHAR(32),
+                        `file_hash` VARCHAR(128),
+                        `file_path` VARCHAR(1024),
+                        `preview_image_path` VARCHAR(1024),
+                        `preview_image_name` VARCHAR(512),
+                        `file_size` BIGINT,
+                        `is_preview` TINYINT DEFAULT 0,
+                        `version` INT DEFAULT 1,
+                        `description` TEXT,
+                        `is_active` TINYINT DEFAULT 1,
+                        `created_by` VARCHAR(128),
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // cad_file_attributes
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `cad_file_attributes` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `file_storage_id` INT,
+                        `file_name` VARCHAR(512),
+                        `length` DECIMAL(18,4),
+                        `width` DECIMAL(18,4),
+                        `height` DECIMAL(18,4),
+                        `angle` DECIMAL(10,4),
+                        `base_point_x` DECIMAL(18,4),
+                        `base_point_y` DECIMAL(18,4),
+                        `base_point_z` DECIMAL(18,4),
+                        `description` TEXT,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // system_config
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `system_config` (
+                        `config_key` VARCHAR(200) PRIMARY KEY,
+                        `config_value` TEXT
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // departments
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `departments` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `name` VARCHAR(200) NOT NULL UNIQUE,
+                        `display_name` VARCHAR(200),
+                        `sort_order` INT DEFAULT 0,
+                        `is_active` TINYINT DEFAULT 1,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // users (详细人员信息表)
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `users` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `username` VARCHAR(100) NOT NULL UNIQUE,
+                        `password_hash` VARCHAR(512),
+                        `display_name` VARCHAR(200),
+                        `gender` ENUM('男','女','无信息') DEFAULT '无信息',
+                        `phone` VARCHAR(32),
+                        `email` VARCHAR(200),
+                        `department_id` INT,
+                        `role` VARCHAR(64),
+                        `status` TINYINT DEFAULT 1,
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX(`department_id`),
+                        CONSTRAINT `fk_users_department` FOREIGN KEY (`department_id`) REFERENCES `departments`(`id`) ON DELETE SET NULL ON UPDATE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // department_users (可选的多对多)
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `department_users` (
+                        `department_id` INT NOT NULL,
+                        `user_id` INT NOT NULL,
+                        PRIMARY KEY (`department_id`,`user_id`),
+                        INDEX(`user_id`),
+                        CONSTRAINT `fk_dept_users_dept` FOREIGN KEY (`department_id`) REFERENCES `departments`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                        CONSTRAINT `fk_dept_users_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // category_department_map (一对一映射 cad_categories.id -> departments.id)
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `category_department_map` (
+                        `category_id` INT NOT NULL PRIMARY KEY,
+                        `department_id` INT NOT NULL UNIQUE,
+                        CONSTRAINT `fk_map_category` FOREIGN KEY (`category_id`) REFERENCES `cad_categories`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                        CONSTRAINT `fk_map_department` FOREIGN KEY (`department_id`) REFERENCES `departments`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    // file_access_logs & file_tags & file_version_history (ensure basic tables)
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `file_access_logs` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `file_id` INT,
+                        `user_name` VARCHAR(200),
+                        `action_type` VARCHAR(50),
+                        `ip_address` VARCHAR(64),
+                        `user_agent` VARCHAR(512),
+                        `access_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `file_tags` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `file_id` INT,
+                        `tag_name` VARCHAR(200),
+                        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    sql.AppendLine(@"CREATE TABLE IF NOT EXISTS `file_version_history` (
+                        `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                        `file_id` INT,
+                        `version` INT,
+                        `file_name` VARCHAR(512),
+                        `stored_file_name` VARCHAR(512),
+                        `file_path` VARCHAR(1024),
+                        `file_size` BIGINT,
+                        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        `updated_by` VARCHAR(200),
+                        `change_description` TEXT
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+                    conn.Execute(sql.ToString());
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"CreateDatabaseAndCoreTables 失败: {ex.Message}");
+                return false;
+            }
+        }
+
         /// <summary>
         /// 主窗口
         /// </summary>
@@ -501,17 +390,207 @@ namespace GB_NewCadPlus_III
                 return false;
             }
         }
-        /// <summary>
-        /// 获取数据库连接
-        /// </summary>
-        /// <returns></returns>
-        private MySqlConnection GetConnection()
+        
+        #region 部门与人员同步方法
+
+        // 新增：部门实体
+        public class Department
         {
-            return new MySqlConnection(_connectionString);
+            public int Id { get; set; }
+            public string Name { get; set; }
+            public string DisplayName { get; set; }
+            public int SortOrder { get; set; }
+            public bool IsActive { get; set; }
+            public DateTime CreatedAt { get; set; }
+            public DateTime UpdatedAt { get; set; }
+        }
+
+        /// <summary>
+        /// 获取所有部门（用于注册窗口下拉列表）
+        /// </summary>
+        public async Task<List<Department>> GetAllDepartmentsAsync()
+        {
+            const string sql = @"
+              SELECT
+                  id AS Id,
+                  name AS Name,
+                  display_name AS DisplayName,
+                  sort_order AS SortOrder,
+                  is_active AS IsActive,
+                  created_at AS CreatedAt,
+                  updated_at AS UpdatedAt
+              FROM departments
+              ORDER BY sort_order, name";
+            try
+            {
+                using var connection = new MySqlConnection(_connectionString);
+                var depts = await connection.QueryAsync<Department>(sql).ConfigureAwait(false);
+                return depts.AsList();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"GetAllDepartmentsAsync 出错: {ex.Message}");
+                return new List<Department>();
+            }
         }
 
 
+        /// <summary>
+        /// 将 cad_categories 中尚未映射到 departments 的分类逐条创建部门并建立映射。
+        /// 保持幂等：已存在的映射或同名部门不会重复创建（会尝试复用同名部门）。
+        /// </summary>
+        public async Task SyncDepartmentsFromCadCategoriesAsync()
+        {
+            try
+            {
+                var categories = await GetAllCadCategoriesAsync().ConfigureAwait(false);
+                if (categories == null || categories.Count == 0) return;
+
+                using var conn = GetConnection();
+                await conn.OpenAsync().ConfigureAwait(false);
+
+                foreach (var cat in categories)
+                {
+                    // 检查是否已有映射
+                    var mapSql = "SELECT department_id FROM category_department_map WHERE category_id = @CategoryId";
+                    var mapped = await conn.QueryFirstOrDefaultAsync<int?>(mapSql, new { CategoryId = cat.Id }).ConfigureAwait(false);
+                    if (mapped.HasValue) continue;
+
+                    // 尝试按名称查找已有部门
+                    var deptSql = "SELECT id FROM departments WHERE name = @Name LIMIT 1";
+                    var deptId = await conn.QueryFirstOrDefaultAsync<int?>(deptSql, new { Name = cat.Name }).ConfigureAwait(false);
+                    if (!deptId.HasValue)
+                    {
+                        // 插入新部门
+                        var insertDeptSql = @"INSERT INTO departments (name, display_name, sort_order, created_at, updated_at) 
+                                              VALUES (@Name, @DisplayName, @SortOrder, NOW(), NOW());
+                                              SELECT LAST_INSERT_ID();";
+                        var newDeptId = await conn.ExecuteScalarAsync<int>(insertDeptSql, new { Name = cat.Name, DisplayName = cat.DisplayName ?? cat.Name, SortOrder = cat.SortOrder }).ConfigureAwait(false);
+                        deptId = newDeptId;
+                    }
+
+                    if (deptId.HasValue)
+                    {
+                        // 建立映射
+                        var insertMap = "INSERT INTO category_department_map (category_id, department_id) VALUES (@CategoryId, @DepartmentId)";
+                        await conn.ExecuteAsync(insertMap, new { CategoryId = cat.Id, DepartmentId = deptId.Value }).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"SyncDepartmentsFromCadCategoriesAsync 出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 删除与分类相关的部门映射与（可选）部门记录。
+        /// 当分类被删除时调用：如果该部门没有其他映射且没有用户（或你选择直接删除），则删除部门。
+        /// </summary>
+        public async Task RemoveDepartmentMappingForCategoryAsync(int categoryId)
+        {
+            try
+            {
+                using var conn = GetConnection();
+                await conn.OpenAsync().ConfigureAwait(false);
+
+                var getDeptSql = "SELECT department_id FROM category_department_map WHERE category_id = @CategoryId";
+                var deptId = await conn.QueryFirstOrDefaultAsync<int?>(getDeptSql, new { CategoryId = categoryId }).ConfigureAwait(false);
+                if (!deptId.HasValue)
+                {
+                    // 无映射， nothing to do
+                    return;
+                }
+
+                // 删除映射
+                var delMapSql = "DELETE FROM category_department_map WHERE category_id = @CategoryId";
+                await conn.ExecuteAsync(delMapSql, new { CategoryId = categoryId }).ConfigureAwait(false);
+
+                // 检查该部门是否仍被其它分类映射或有用户
+                var usedByCatSql = "SELECT COUNT(*) FROM category_department_map WHERE department_id = @DepartmentId";
+                var usedByCat = await conn.QuerySingleAsync<int>(usedByCatSql, new { DepartmentId = deptId.Value }).ConfigureAwait(false);
+                var userCountSql = "SELECT COUNT(*) FROM users WHERE department_id = @DepartmentId";
+                var userCount = await conn.QuerySingleAsync<int>(userCountSql, new { DepartmentId = deptId.Value }).ConfigureAwait(false);
+
+                if (usedByCat == 0 && userCount == 0)
+                {
+                    var delDeptSql = "DELETE FROM departments WHERE id = @DepartmentId";
+                    await conn.ExecuteAsync(delDeptSql, new { DepartmentId = deptId.Value }).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"RemoveDepartmentMappingForCategoryAsync 出错: {ex.Message}");
+            }
+        }
+
+        #endregion
+
         #region CAD分类操作
+
+        /// <summary>
+        /// 添加CAD分类（并同步创建部门映射）
+        /// </summary>
+        public async Task<int> AddCadCategoryAsync(CadCategory category)
+        {
+            using var connection = GetConnection();
+            var sql = @"INSERT INTO cad_categories (name, display_name, sort_order) 
+                VALUES (@Name, @DisplayName, @SortOrder)";
+            var affected = await connection.ExecuteAsync(sql, category).ConfigureAwait(false);
+
+            // 异步触发同步（保证分类与部门一致）
+            _ = SyncDepartmentsFromCadCategoriesAsync();
+            return affected;
+        }
+
+        /// <summary>
+        /// 修改CAD分类（并同步部门信息）
+        /// </summary>
+        public async Task<int> UpdateCadCategoryAsync(CadCategory category)
+        {
+            using var connection = GetConnection();
+            var sql = @"UPDATE cad_categories 
+                SET name = @Name, display_name = @DisplayName, sort_order = @SortOrder, updated_at = NOW() 
+                WHERE id = @Id";
+            var affected = await connection.ExecuteAsync(sql, category).ConfigureAwait(false);
+
+            // 如果分类名或显示名变更，更新对应部门（若已存在映射）
+            try
+            {
+                using var conn = GetConnection();
+                await conn.OpenAsync().ConfigureAwait(false);
+                var mapSql = "SELECT department_id FROM category_department_map WHERE category_id = @CategoryId";
+                var deptId = await conn.QueryFirstOrDefaultAsync<int?>(mapSql, new { CategoryId = category.Id }).ConfigureAwait(false);
+                if (deptId.HasValue)
+                {
+                    var updateDeptSql = @"UPDATE departments SET name = @Name, display_name = @DisplayName, updated_at = NOW() WHERE id = @Id";
+                    await conn.ExecuteAsync(updateDeptSql, new { Name = category.Name, DisplayName = category.DisplayName ?? category.Name, Id = deptId.Value }).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"UpdateCadCategoryAsync 同步部门时出错: {ex.Message}");
+            }
+
+            // 确保全量同步以修正遗漏
+            _ = SyncDepartmentsFromCadCategoriesAsync();
+            return affected;
+        }
+
+        /// <summary>
+        /// 删除CAD分类（并删除部门映射及可选部门）
+        /// </summary>
+        public async Task<int> DeleteCadCategoryAsync(int id)
+        {
+            using var connection = GetConnection();
+            var sql = "DELETE FROM cad_categories WHERE id = @Id";
+            var affected = await connection.ExecuteAsync(sql, new { Id = id }).ConfigureAwait(false);
+
+            // 删除映射并在必要时删除部门
+            _ = RemoveDepartmentMappingForCategoryAsync(id);
+            return affected;
+        }
+
         /// <summary>
         /// 获取所有CAD分类
         /// </summary>
@@ -544,6 +623,7 @@ namespace GB_NewCadPlus_III
                 throw;
             }
         }
+
         /// <summary>
         /// 根据名称获取CAD分类
         /// </summary>
@@ -576,42 +656,7 @@ namespace GB_NewCadPlus_III
 
 
         }
-        /// <summary>
-        /// 添加CAD分类
-        /// </summary>
-        /// <param name="category"></param>
-        /// <returns></returns>
-        public async Task<int> AddCadCategoryAsync(CadCategory category)
-        {
-            using var connection = GetConnection();
-            var sql = @"INSERT INTO cad_categories (name, display_name, sort_order) 
-                VALUES (@Name, @DisplayName, @SortOrder)";
-            return await connection.ExecuteAsync(sql, category);
-        }
-        /// <summary>
-        /// 修改CAD分类
-        /// </summary>
-        /// <param name="category"></param>
-        /// <returns></returns>
-        public async Task<int> UpdateCadCategoryAsync(CadCategory category)
-        {
-            using var connection = GetConnection();
-            var sql = @"UPDATE cad_categories 
-                SET name = @Name, display_name = @DisplayName, sort_order = @SortOrder, updated_at = NOW() 
-                WHERE id = @Id";
-            return await connection.ExecuteAsync(sql, category);
-        }
-        /// <summary>
-        /// 删除CAD分类
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        public async Task<int> DeleteCadCategoryAsync(int id)
-        {
-            using var connection = GetConnection();
-            var sql = "DELETE FROM cad_categories WHERE id = @Id";
-            return await connection.ExecuteAsync(sql, new { Id = id });
-        }
+      
         #endregion
 
         #region CAD子分类操作
@@ -1947,45 +1992,46 @@ namespace GB_NewCadPlus_III
         public async Task<FileAttribute> GetFileAttributeByGraphicIdAsync(int fileStorageId)
         {
             const string sql = @"
-             SELECT 
-                 id AS Id,//主键ID
-                 file_storage_id AS FileStorageId ,//文件ID
-                 file_Name AS FileName,//图元名称
-                 length AS Length,//长度
-                 width AS Width,//宽度
-                 height AS Height,//高度
-                 angle AS Angle,//角度
-                 base_point_x AS BasePointX,//基点X
-                 base_point_y AS BasePointY,//基点Y
-                 base_point_z AS BasePointZ,//基点Z
-                 created_at AS CreatedAt,//创建时间
-                 updated_at AS UpdatedAt,//更新时间
-                 description AS Description,//描述
-                 medium_name AS MediumName,//中文名称
-                 specifications AS Specifications,//规格
-                 material AS Material,//材质
-                 standard_number AS StandardNumber,//标准编号
-                 power AS Power,//功率
-                 volume AS Volume,//容积
-                 pressure AS Pressure,//压力
-                 temperature AS Temperature,//温度
-                 diameter AS Diameter,//直径
-                 outer_diameter AS OuterDiameter,//外径
-                 inner_diameter AS InnerDiameter,//内径
-                 thickness AS Thickness,//厚度
-                 weight AS Weight,//重量
-                 model AS Model,//材质
-                 remarks AS Remarks,//备注
-                 customize1 AS Customize1,//自定义字段1
-                 customize2 AS Customize2,//自定义字段2
-                 customize3 AS Customize3
-             FROM cad_file_attributes 
-             WHERE file_storage_id = @FileStorageId";
+               SELECT
+                   id AS Id,
+                   file_storage_id AS FileStorageId,
+                   file_name AS FileName,
+                   length AS Length,
+                   width AS Width,
+                   height AS Height,
+                   angle AS Angle,
+                   base_point_x AS BasePointX,
+                   base_point_y AS BasePointY,
+                   base_point_z AS BasePointZ,
+                   created_at AS CreatedAt,
+                   updated_at AS UpdatedAt,
+                   description AS Description,
+                   medium_name AS MediumName,
+                   specifications AS Specifications,
+                   material AS Material,
+                   standard_number AS StandardNumber,
+                   power AS Power,
+                   volume AS Volume,
+                   pressure AS Pressure,
+                   temperature AS Temperature,
+                   diameter AS Diameter,
+                   outer_diameter AS OuterDiameter,
+                   inner_diameter AS InnerDiameter,
+                   thickness AS Thickness,
+                   weight AS Weight,
+                   model AS Model,
+                   remarks AS Remarks,
+                   customize1 AS Customize1,
+                   customize2 AS Customize2,
+                   customize3 AS Customize3
+               FROM cad_file_attributes
+               WHERE file_storage_id = @FileStorageId
+               LIMIT 1;";
+
             try
             {
                 using var connection = new MySqlConnection(_connectionString);
-                var FileStorageId = fileStorageId;
-                var result = await connection.QuerySingleOrDefaultAsync<FileAttribute>(sql, new { FileStorageId });
+                var result = await connection.QuerySingleOrDefaultAsync<FileAttribute>(sql, new { FileStorageId = fileStorageId }).ConfigureAwait(false);
                 return result;
             }
             catch (Exception ex)
@@ -1993,9 +2039,7 @@ namespace GB_NewCadPlus_III
                 Env.Editor.WriteMessage($"获取图元属性时出错: {ex.Message}");
                 return null;
             }
-
         }
-
         /// <summary>
         /// 修改CAD图元
         /// </summary>
@@ -2309,17 +2353,17 @@ namespace GB_NewCadPlus_III
         public async Task<int> AddFileStorageAsync(FileStorage file)
         {
             const string sql = @" 
-     INSERT INTO cad_file_storage 
-     (category_id, file_attribute_id, file_name, file_stored_name, display_name, file_type, is_tianzheng, file_hash,
-      element_block_name, layer_name, color_index, file_path, preview_image_name, preview_image_path,
-      file_size, is_preview, version, description, is_active, created_by, category_type, title, keywords,
-      is_public, updated_by, last_accessed_at, created_at, updated_at)
-     VALUES 
-     (@CategoryId, @FileAttributeId, @FileName, @FileStoredName, @DisplayName, @FileType, @IsTianZheng, @FileHash,
-      @ElementBlockName, @LayerName, @ColorIndex, @FilePath, @PreviewImageName, @PreviewImagePath,
-      @FileSize, @IsPreview, @Version, @Description, @IsActive, @CreatedBy, @CategoryType, @Title, @Keywords,
-      @IsPublic, @UpdatedBy, @LastAccessedAt, @CreatedAt, @UpdatedAt);
-     SELECT LAST_INSERT_ID();";
+               INSERT INTO cad_file_storage 
+               (category_id, file_attribute_id, file_name, file_stored_name, display_name, file_type, is_tianzheng, file_hash,
+                element_block_name, layer_name, color_index, file_path, preview_image_name, preview_image_path,
+                file_size, is_preview, version, description, is_active, created_by, category_type, title, keywords,
+                is_public, updated_by, last_accessed_at, created_at, updated_at)
+               VALUES 
+               (@CategoryId, @FileAttributeId, @FileName, @FileStoredName, @DisplayName, @FileType, @IsTianZheng, @FileHash,
+                @ElementBlockName, @LayerName, @ColorIndex, @FilePath, @PreviewImageName, @PreviewImagePath,
+                @FileSize, @IsPreview, @Version, @Description, @IsActive, @CreatedBy, @CategoryType, @Title, @Keywords,
+                @IsPublic, @UpdatedBy, @LastAccessedAt, @CreatedAt, @UpdatedAt);
+               SELECT LAST_INSERT_ID();";
             try
             {
                 using var connection = new MySql.Data.MySqlClient.MySqlConnection(_connectionString);
@@ -2644,5 +2688,479 @@ namespace GB_NewCadPlus_III
         #endregion
 
         #endregion
+
+        /// <summary>
+        /// 在WpfMainWindow.xaml.cs中添加网络连接测试方法
+        /// </summary>
+        /// <param name="host"></param>
+        /// <param name="port"></param>
+        /// <param name="timeoutMs"></param>
+        /// <returns></returns>
+        public static bool TestNetworkConnection(string host, int port, int timeoutMs = 5000)
+        {
+            try
+            {
+                using (var client = new System.Net.Sockets.TcpClient())
+                {
+                    var result = client.BeginConnect(host, port, null, null);
+                    var success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(timeoutMs));
+                    client.EndConnect(result);
+                    return success;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
+
+    #endregion
+
+    #region 文件实体管理
+
+    /// 文件版本历史实体
+    /// </summary>
+    public class FileVersionHistory
+    {
+        public int Id { get; set; }//id
+        public int FileId { get; set; }//文件id
+        public int Version { get; set; }//文件版本
+        public string FileName { get; set; }//文件名
+        public string StoredFileName { get; set; }//存储文件名
+        public string FilePath { get; set; }//文件存储路径
+        public long FileSize { get; set; }//文件大小
+        public DateTime UpdatedAt { get; set; }//更新时间
+        public string UpdatedBy { get; set; }//更新者
+        public string ChangeDescription { get; set; }//文件修改描述
+    }
+
+    /// <summary>
+    /// 文件标签实体
+    /// </summary>
+    public class FileTag
+    {
+        public int Id { get; set; }           // 标签ID
+        public int FileId { get; set; }       // 文件ID
+        public string TagName { get; set; }   // 标签名称
+        public DateTime CreatedAt { get; set; } // 创建时间
+    }
+
+    /// <summary>
+    /// 文件访问日志实体
+    /// </summary>
+    public class FileAccessLog
+    {
+        public int Id { get; set; }//id
+        public int FileId { get; set; }//文件id
+        public string UserName { get; set; }//用户名
+        public string ActionType { get; set; }//操作类型Download, View, Upload等
+        public DateTime AccessTime { get; set; }//访问时间
+        public string IpAddress { get; set; }//IP地址
+    }
+
+    #endregion
+    // 在Database命名空间中添加以下类
+    #region 数据库CAD实体
+    /// <summary>
+    /// CAD主分类实体
+    /// </summary>
+    public class CadCategory
+    {
+        public int Id { get; set; }         // 主分类ID：1000, 2000, 3000...
+        public string Name { get; set; }
+        public string DisplayName { get; set; }
+        public int SortOrder { get; set; }
+        public string SubcategoryIds { get; set; } // 子分类ID列表，用逗号分隔
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// CAD子分类实体
+    /// </summary>
+    public class CadSubcategory
+    {
+        public int Id { get; set; }              // 子分类ID：根据层级编码
+        public int ParentId { get; set; }         // 父分类ID
+        public string Name { get; set; }            // 子分类名称
+        public string DisplayName { get; set; }
+        public int SortOrder { get; set; }
+        public int Level { get; set; }           // 分类层级（1=二级分类，2=三级分类...）
+        public string SubcategoryIds { get; set; } // 下级子分类ID列表，用逗号分隔
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// CAD图元实体
+    /// </summary>
+    public class FileStorage
+    {
+        /*
+         case "元素块名":
+                        _currentFileStorage.ElementBlockName = propertyValue;
+                        break;
+                    case "层名":
+                        _currentFileStorage.LayerName = propertyValue;
+                        break;
+                    case "颜色索引":
+                        _currentFileStorage.ColorIndex = Convert.ToInt32(propertyValue);
+                        break;
+                    case "是否公开":
+                        _currentFileStorage.IsPublic = Convert.ToInt32(propertyValue);
+                        break;
+                    case "描述":
+                        _currentFileStorage.Description = propertyValue;
+         */
+
+
+        public int Id { get; set; }//id
+        public int CategoryId { get; set; }//所在子类id
+        public string? FileName { get; set; }//文件名
+        public int FileAttributeId { get; set; }//属性id
+        public string FileStoredName { get; set; } // 存储文件名（唯一）
+        public string DisplayName { get; set; }//显示名
+        public string FileType { get; set; }     // 文件类型（.dwg, .png, .jpg等）
+        public int IsTianZheng { get; set; }//判断是不是天正图元(0=不是天正图元,1=是天正图元)
+        public double scale { get; set; } // 缩放比例
+        public string FileHash { get; set; }     // 文件哈希值（用于去重）
+        public string ElementBlockName { get; set; }//元素块名
+        public string LayerName { get; set; }//层名
+        public int? ColorIndex { get; set; }//颜色索引
+        public string FilePath { get; set; }//文件路径
+        public string PreviewImageName { get; set; }//预览图片名称
+        public string PreviewImagePath { get; set; }//预览图片路径
+        public long? FileSize { get; set; }//文件大小
+        public int IsPreview { get; set; }      // 是否为预览文件
+        public int Version { get; set; }         // 文件版本
+        public string? Description { get; set; }  // 文件描述
+        public DateTime CreatedAt { get; set; }//创建时间
+        public DateTime UpdatedAt { get; set; }//更新时间
+        public int IsActive { get; set; }       // 是否激活
+        public string? CreatedBy { get; set; }    // 创建者
+        public string CategoryType { get; set; } = "sub"; // main 或 sub
+        public string? Title { get; set; }//标题
+        public string? Keywords { get; set; }//关键字
+        public int IsPublic { get; set; } = 1;//是否公开
+        public string? UpdatedBy { get; set; }//更新者
+        public DateTime? LastAccessedAt { get; set; }//最后访问时间
+    }
+
+    /// <summary>
+    /// CAD图元属性实体
+    /// </summary>
+    public class FileAttribute
+    {
+
+        public int Id { get; set; }//属性Id id AS Id,
+        public int CategoryId { get; set; }//分类id category_id AS CategoryId,
+        public int FileStorageId { get; set; }//文件id file_storage_id AS FileStorageId,
+        public string? FileName { get; set; }//文件名称 file_name AS FileName,
+        public decimal? Length { get; set; }//长度 length AS Length,
+        public decimal? Width { get; set; }//宽度 width AS Width,
+        public decimal? Height { get; set; }//高度  height AS Height,
+        public decimal? Angle { get; set; }//角度 angle AS Angle,
+        public decimal? BasePointX { get; set; }//基点X base_point_x AS BasePointX,
+        public decimal? BasePointY { get; set; }//基点Y base_point_y AS BasePointY,
+        public decimal? BasePointZ { get; set; }//基点Z base_point_z AS BasePointZ,
+        public DateTime CreatedAt { get; set; }//创建时间 created_at AS CreatedAt,
+        public DateTime UpdatedAt { get; set; }//更新时间 updated_at AS UpdatedAt,
+        public string? Description { get; set; }//描述 description AS Description,
+        public string? MediumName { get; set; }//介质 medium_name AS MediumName,
+        public string? Specifications { get; set; }//规格 specifications AS Specifications,
+        public string? Material { get; set; }//材质 material AS Material,
+        public string? StandardNumber { get; set; }//标准编号 standard_number AS StandardNumber,
+        public string? Power { get; set; }//功率 power AS Power, 
+        public string? Volume { get; set; }//容积 volume AS Volume,
+        public string? Pressure { get; set; }//压力 pressure AS Pressure,
+        public string? Temperature { get; set; }//温度 temperature AS Temperature,
+        public string? Diameter { get; set; }//直径 diameter AS Diameter,
+        public string? OuterDiameter { get; set; }//外径 outer_diameter AS OuterDiameter,
+        public string? InnerDiameter { get; set; }//内径 inner_diameter AS InnerDiameter,
+        public string? Thickness { get; set; }//厚度 thickness AS Thickness,
+        public string? Weight { get; set; }//重量 weight AS Weight,
+        public string? Model { get; set; }//型号 model AS Model,
+        public string? Remarks { get; set; }//备注 remarks AS Remarks,
+        public string? Customize1 { get; set; }//自定义1 customize1 AS Customize1,
+        public string? Customize2 { get; set; }//自定义2 customize2 AS Customize2,
+        public string? Customize3 { get; set; }//自定义3 customize3 AS Customize3
+    }
+
+    /// <summary>
+    /// 分类统计信息
+    /// </summary>
+    public class CategoryStatistics
+    {
+        public int Id { get; set; }//ID
+        public int CategoryId { get; set; }//分类ID
+        public string CategoryType { get; set; }//分类类型
+        public int FileCount { get; set; }//文件数量
+        public long TotalSize { get; set; }//总大小
+        public DateTime? LastFileAdded { get; set; }//最后添加文件时间
+        public DateTime UpdatedAt { get; set; }//更新时间
+    }
+
+    /// <summary>
+    /// 文件访问统计
+    /// </summary>
+    public class FileAccessStats
+    {
+        public int TotalAccess { get; set; }//总访问次数
+        public int DownloadCount { get; set; }//下载次数
+        public int ViewCount { get; set; }//浏览次数
+        public DateTime? FirstAccess { get; set; }//首次访问时间
+        public DateTime? LastAccess { get; set; }//最后访问时间
+    }
+
+    #endregion
+
+    /// <summary>
+    /// 分类ID生成器
+    /// </summary>
+    public static class CategoryIdGenerator
+    {
+        /// <summary>
+        /// 生成主分类ID
+        /// </summary>
+        public static async Task<int> GenerateMainCategoryIdAsync(DatabaseManager dbManager)
+        {
+            try
+            {
+                // 获取最大的主分类ID
+                var categories = await dbManager.GetAllCadCategoriesAsync();
+                if (categories == null || categories.Count == 0)
+                {
+                    return 1000; // 第一个主分类ID
+                }
+                // 查找最大的主分类ID（千位数）
+                var maxMainId = categories.Max(c => c.Id);
+                int nextMainId = ((maxMainId / 1000) + 1) * 1000;
+                return nextMainId;
+            }
+            catch
+            {
+                return 1000; // 出错时返回默认值
+            }
+        }
+
+        /// <summary>
+        /// 生成子分类ID
+        /// </summary>
+        public static async Task<int> GenerateSubcategoryIdAsync(DatabaseManager dbManager, int parentId)
+        {
+            try
+            {
+                int level = await DetermineCategoryLevelAsync(dbManager, parentId);// 确定层级
+                if (level == 1)  // 生成新ID
+                {
+                    return await GenerateLevel2SubcategoryIdAsync(dbManager, parentId);   // 二级子分类：父ID(4位) + 序号(3位)
+                }
+                else
+                {
+                    return await GenerateLevel3PlusSubcategoryIdAsync(dbManager, parentId, level); // 三级及以上子分类：父ID + 序号(3位)
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"生成子分类ID失败: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 确定分类层级
+        /// </summary>
+        private static async Task<int> DetermineCategoryLevelAsync(DatabaseManager dbManager, int parentId)
+        {
+            if (parentId < 10000)
+            {
+                return 1;  // 父级是主分类（4位），这是二级子分类
+            }
+            else
+            {
+                var parentSubcategory = await dbManager.GetCadSubcategoryByIdAsync(parentId); // 父级是子分类，需要确定是几级子分类
+                if (parentSubcategory != null)
+                {
+                    return parentSubcategory.Level + 1;
+                }
+                else
+                {
+                    return 1; // 默认为二级分类
+                }
+            }
+        }
+
+        /// <summary>
+        /// 生成二级子分类ID
+        /// </summary>
+        private static async Task<int> GenerateLevel2SubcategoryIdAsync(DatabaseManager dbManager, int parentId)
+        {
+
+            string parentPrefix = parentId.ToString();// 格式：父ID(4位) + 序号(3位)
+            var subcategories = await dbManager.GetCadSubcategoriesByParentIdAsync(parentId);    // 获取同一父级下的所有二级子分类
+
+            if (subcategories.Count == 0) return int.Parse($"{parentPrefix}001");
+            var level2Subcategories = subcategories.Where(s => s.Level == 1).ToList();// 筛选出二级子分类
+
+            var maxId = level2Subcategories.Max(s => s.Id);                                       // 找到最大的序号
+            string maxIdStr = maxId.ToString();                                                              // 获取最大ID的末尾3位
+            if (maxIdStr.Length >= 3)                                                                        // 确保最大ID的末尾有3位
+            {
+                string sequenceStr = maxIdStr.Substring(maxIdStr.Length - 3);                       // 获取最大ID的末尾3位
+                if (int.TryParse(sequenceStr, out int sequence))                                    // 尝试将末尾3位转换为数字
+                {
+                    return int.Parse($"{parentPrefix}{(sequence + 1):D3}");                               // 返回下一个ID
+                }
+            }
+            int nextSequence = level2Subcategories.Count + 1;                                               // 如果解析失败，使用计数方式
+            return int.Parse($"{parentPrefix}{nextSequence:D3}");                                        // 返回下一个ID
+
+        }
+
+        /// <summary>
+        /// 生成三级及以上子分类ID
+        /// </summary>
+        private static async Task<int> GenerateLevel3PlusSubcategoryIdAsync(DatabaseManager dbManager, int parentId, int level)
+        {
+            string parentPrefix = parentId.ToString(); // 格式：父ID + 序号(3位)
+            var subcategories = await dbManager.GetCadSubcategoriesByParentIdAsync(parentId);  // 获取同一父级下的所有同级子分类
+            var sameLevelSubcategories = subcategories.Where(s => s.Level == level).ToList();// 筛选出同一层级的子分类
+            if (sameLevelSubcategories.Count == 0)// 如果没有同级子分类
+            {
+                return int.Parse($"{parentPrefix}001");
+            }
+            else
+            {
+                var maxId = sameLevelSubcategories.Max(s => s.Id);// 找到最大的序号
+                string maxIdStr = maxId.ToString();// 获取最大ID的末尾3位
+                if (maxIdStr.Length >= 3)// 确保最大ID的末尾有3位
+                {
+                    string sequenceStr = maxIdStr.Substring(maxIdStr.Length - 3);// 获取最大ID的末尾3位
+                    if (int.TryParse(sequenceStr, out int sequence))// 尝试将末尾3位转换为数字
+                    {
+                        return int.Parse($"{parentPrefix}{(sequence + 1):D3}");// 返回下一个ID
+                    }
+                }
+                int nextSequence = sameLevelSubcategories.Count + 1;   // 如果解析失败，使用计数方式
+                return int.Parse($"{parentPrefix}{nextSequence:D3}");// 返回下一个ID
+            }
+        }
+    }
+
+    #region 显示图元属性
+
+    /// <summary>
+    /// 属性数据模型
+    /// </summary>
+    public class PropertyPair
+    {
+        public string PropertyName1 { get; set; }
+        public string PropertyValue1 { get; set; }
+        public string PropertyName2 { get; set; }
+        public string PropertyValue2 { get; set; }
+
+        public PropertyPair(string name1, string value1, string name2 = "", string value2 = "")
+        {
+            PropertyName1 = name1 ?? "";
+            PropertyValue1 = value1 ?? "";
+            PropertyName2 = name2 ?? "";
+            PropertyValue2 = value2 ?? "";
+        }
+    }
+
+    #endregion
+
+    #region SW实体
+    /// <summary>
+    /// SW主分类实体
+    /// </summary>
+    public class SwCategory
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string DisplayName { get; set; }
+        public int SortOrder { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// SW子分类实体
+    /// </summary>
+    public class SwSubcategory
+    {
+        public int Id { get; set; }
+        public int ParentId { get; set; }
+        public string Name { get; set; }
+        public string DisplayName { get; set; }
+        public int SortOrder { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+    }
+
+    /// <summary>
+    /// SW图元实体
+    /// </summary>
+    public class SwGraphic
+    {
+        public int Id { get; set; }//id
+        public int SubcategoryId { get; set; }//所在子类id
+        public string FileName { get; set; }//文件名
+        public string DisplayName { get; set; }//显示名
+        public string ElementBlockName { get; set; }//元素块名
+        public string LayerName { get; set; }//层名
+        public int? ColorIndex { get; set; }//颜色索引
+        public string FilePath { get; set; }//文件路径
+        public string PreviewImageName { get; set; }
+        public string PreviewImagePath { get; set; }//预览图片路径
+        public long? FileSize { get; set; }//文件大小
+        public DateTime CreatedAt { get; set; }//创建时间
+        public DateTime UpdatedAt { get; set; }//更新时间
+    }
+
+    /// <summary>
+    /// SW图元属性实体
+    /// </summary>
+    public class SwGraphicAttribute
+    {
+        public int Id { get; set; }//Id
+        public int CadGraphiceId { get; set; }//cad图元id
+        public string GraphiceName { get; set; }//图元名称
+        public int SortOrder { get; set; }//排序序号
+        public decimal? Length { get; set; }//长度
+        public decimal? Width { get; set; }//宽度
+        public decimal? Height { get; set; }//高度
+        public decimal? Angle { get; set; }//角度
+        public decimal? BasePointX { get; set; }//基点X
+        public decimal? BasePointY { get; set; }//基点Y
+        public decimal? BasePointZ { get; set; }//基点Z
+        public DateTime CreatedAt { get; set; }//创建时间
+        public DateTime UpdatedAt { get; set; }//更新时间
+        public string Description { get; set; }//描述
+        public string MediumName { get; set; }//介质
+        public string Specifications { get; set; }//规格
+        public string Material { get; set; }//材质
+        public string StandardNumber { get; set; }//标准编号
+        public string Power { get; set; }//功率
+        public string Volume { get; set; }//容积
+        public string Pressure { get; set; }//压力
+        public string Temperature { get; set; }//温度
+        public string Diameter { get; set; }//直径
+        public string OuterDiameter { get; set; }//外径
+        public string InnerDiameter { get; set; }//内径
+        public string Thickness { get; set; }//厚度
+        public string Weight { get; set; }//重量
+        public string Model { get; set; }//型号
+        public string Remarks { get; set; }//备注
+        public string Customize1 { get; set; }//自定义1
+        public string Customize2 { get; set; }//自定义2
+        public string Customize3 { get; set; }//自定义3
+    }
+    #endregion
+
+   
+
+
+
 }

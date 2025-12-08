@@ -1,11 +1,8 @@
-﻿using System;
 using System.Data;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
 using static GB_NewCadPlus_III.WpfMainWindow;
 using DataTable = System.Data.DataTable;
 using MessageBox = System.Windows.MessageBox;

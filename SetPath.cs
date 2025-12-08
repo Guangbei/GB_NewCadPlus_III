@@ -1,4 +1,6 @@
-﻿namespace GB_NewCadPlus_III 
+﻿using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
+
+namespace GB_NewCadPlus_III
 {
     /// <summary>
     /// 获取路径相关
@@ -97,14 +99,25 @@
         /// 拿到要插入文件的地址（C:\Users\Administrator\AppData\Local），如果没有文件，就把资源文件复制过去
         /// </summary>
         /// <param name="table">块表与块表记录</param>
-        /// <param name="bytes">文件字节</param>
-        /// <param name="fileName">文件名</param>
+        /// <param name="filePathAndName">文件路径与文件名称</param>
         /// <param name="blockName">块名</param>
         ///  /// <param name="over">是否覆盖</param>
         /// <returns>返回文件的objectId,块名</returns>
         public static ObjectId GetBlockFormA(this SymbolTable<BlockTable, BlockTableRecord> table, string filePathAndName, string blockName, bool over)
         {
-            return table.GetBlockFrom(filePathAndName, blockName, over);
+            try
+            {
+                return table.GetBlockFrom(filePathAndName, blockName, over);
+            }
+            catch (Exception ex)
+            {
+                Env.Editor.WriteMessage($"获取块时出错: {ex.Message}");
+                return table.GetBlockFrom(filePathAndName, blockName, over);
+            }
+            finally
+            {
+                table = null;
+            }
         }
 
         /// <summary>
