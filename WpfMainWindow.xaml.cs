@@ -1,4 +1,4 @@
-﻿using GB_NewCadPlus_III.Helpers;
+using GB_NewCadPlus_III.Helpers;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
 using System.ComponentModel;
@@ -7015,6 +7015,52 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"TrySetPropertyValue 失败: prop={prop.Name}, val='{rawValue}', err={ex.Message}");
             }
         }
+
+        private void 属性同步_Click(object sender, RoutedEventArgs e)
+        {
+            Env.Document.SendStringToExecute("SyncPipeProperties ", false, false, false);
+
+            //Env.Document.SendStringToExecute("PreviewPipeGeometry ", false, false, false);
+        }
+
+        private void 表格同步_Click(object sender, RoutedEventArgs e)
+        {
+            Env.Document.SendStringToExecute("GenerateEquipmentTable ", false, false, false);
+
+        }
+
+        private void 导出表格_Click(object sender, RoutedEventArgs e)
+        {
+            Env.Document.SendStringToExecute("ExportTableToExcel ", false, false, false);
+
+        }
+
+        private void 生成设备表_Click(object sender, RoutedEventArgs e)
+        {
+            Env.Document.SendStringToExecute("GenerateEquipmentTable ", false, false, false);
+
+        }
+
+        private void 绘制进口管道_Click(object sender, RoutedEventArgs e)
+        {
+            VariableDictionary.entityRotateAngle = 0;
+            VariableDictionary.btnFileName = "GB_PID_JKGD_进口管道";
+            VariableDictionary.btnFileName_blockName = "#GB_PID_JKGD_进口管道";
+            VariableDictionary.btnBlockLayer = "管道";
+            //VariableDictionary.resourcesFile = Resources.GB_PID_GDJK_进口管道;
+            Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
+        }
+
+        private void 绘制出口管道_Click(object sender, RoutedEventArgs e)
+        {
+            VariableDictionary.entityRotateAngle = 0;
+            VariableDictionary.btnFileName = "GB_PID_CKGD_出口管道";
+            VariableDictionary.btnFileName_blockName = "#GB_PID_CKGD_出口管道";
+            VariableDictionary.btnBlockLayer = "管道";
+            //VariableDictionary.resourcesFile = Resources.GB_PID_GDJK_出口管道;
+            Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
+        }
+
     }
 
     /// <summary>

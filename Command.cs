@@ -1,4 +1,4 @@
-﻿using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.GraphicsInterface;
 using Autodesk.AutoCAD.PlottingServices;
 using Autodesk.AutoCAD.Windows;
@@ -71,7 +71,7 @@ namespace GB_NewCadPlus_III
     public delegate void sendText(string text);
 
     /// <summary>
-    /// 主命令类
+    /// 主命令类 
     /// </summary>
     public class Command
     {
@@ -842,6 +842,12 @@ namespace GB_NewCadPlus_III
         }
 
         #endregion
+
+        /*
+        SyncAttribute
+         */
+
+
 
         #region 插入图元
 
@@ -1650,7 +1656,7 @@ namespace GB_NewCadPlus_III
                 // 升级目标块表写入权限
                 //var destBlockTable = tr.GetObject(tr.Database.BlockTableId, OpenMode.ForRead) as BlockTable;
                 //destBlockTable.UpgradeOpen();
-               
+
                 var mapping = new IdMapping();// 创建一个映射对象 创建 ID 映射对象
                 //从源数据库克隆块定义到当前数据库
                 sourceDb.WblockCloneObjects(blockIdCollection, tr.Database.BlockTableId, mapping, DuplicateRecordCloning.Replace, false);
@@ -1661,7 +1667,7 @@ namespace GB_NewCadPlus_III
                     //源块获取块名称和源块ID
                     string blockName = sourceBlockItemKVP.Key;//块名称
                     ObjectId sourceBlockId = sourceBlockItemKVP.Value;//源块ID
-                    
+
                     if (!mapping.Contains(sourceBlockId))
                     {
                         LogManager.Instance.LogInfo($"\n克隆失败：源块 {blockName} 未映射到目标数据库。");

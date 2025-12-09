@@ -1,5 +1,6 @@
-﻿
+
 // Excel操作命名空间
+using Mysqlx.Crud;
 using OfficeOpenXml;
 using System.Data;
 using System.Drawing;
@@ -47,30 +48,30 @@ namespace GB_NewCadPlus_III
         /// 预定义的英文对照表
         /// </summary>
         private static readonly Dictionary<string, string> ChineseToEnglish = new Dictionary<string, string>
-        {
-            { "管子", "Pipe(m)" },
-            { "阀门", "Valve(Pcs.)" },
-            { "法兰", "Flange(Pcs.)" },
-            { "垫片", "Gasket(Pcs.)" },
-            { "螺栓", "Bolt(Pcs.)" },
-            { "螺母", "Nut(Pcs.)" },
-            { "名称", "Name" },
-            { "介质", "Medium Name" },
-            { "规格", "Specs." },
-            { "材料", "Material" },
-            { "数量", "Quan." },
-            { "图号或标准号", "DWG.No./ STD.No." },
-            { "功率", "Power" },
-            { "容积", "Volume" },
-            { "压力", "Pressure" },
-            { "温度", "Temperature" },
-            { "直径", "Diameter" },
-            { "长度", "Length" },
-            { "厚度", "Thickness" },
-            { "重量", "Weight" },
-            { "型号", "Model" },
-            { "备注", "Remark" }
-        };
+            {
+                { "管子", "Pipe(m)" },
+                { "阀门", "Valve(Pcs.)" },
+                { "法兰", "Flange(Pcs.)" },
+                { "垫片", "Gasket(Pcs.)" },
+                { "螺栓", "Bolt(Pcs.)" },
+                { "螺母", "Nut(Pcs.)" },
+                { "名称", "Name" },
+                { "介质", "Medium Name" },
+                { "规格", "Specs." },
+                { "材料", "Material" },
+                { "数量", "Quan." },
+                { "图号或标准号", "DWG.No./ STD.No." },
+                { "功率", "Power" },
+                { "容积", "Volume" },
+                { "压力", "Pressure" },
+                { "温度", "Temperature" },
+                { "直径", "Diameter" },
+                { "长度", "Length" },
+                { "厚度", "Thickness" },
+                { "重量", "Weight" },
+                { "型号", "Model" },
+                { "备注", "Remark" }
+            };
 
         /// <summary>
         /// 主命令：生成设备材料表
@@ -381,345 +382,7 @@ namespace GB_NewCadPlus_III
 
         #endregion
 
-        #region line段信息获取方法
 
-        /// <summary>
-        /// 线段信息存储类
-        /// </summary>
-        public class SegmentInfo
-        {
-            public Point3d MidPoint { get; set; }             // 中点坐标
-            public double LineWeight { get; set; }            // 线宽（毫米）
-            public ObjectId Id { get; set; }               // 线段ID
-            public Point3d StartPoint { get; set; }        // 起点坐标
-            public Point3d EndPoint { get; set; }          // 终点坐标
-            public List<Point3d> MidPoints { get; set; }   // 中间点（多段线专用）
-            public double Length { get; set; }             // 线段长度
-            public double Angle { get; set; }              // 线段角度（弧度）
-            public string Layer { get; set; }              // 所在图层
-            public int ColorIndex { get; set; }            // 颜色索引
-            public double LinetypeScale { get; set; }      // 线型比例
-            public string EntityType { get; set; }         // 实体类型（Line/Polyline）
-
-            /// <summary>
-            /// 构造函数，计算线段相关属性
-            /// </summary>
-            /// <param name="start">开始点</param>
-            /// <param name="end"></param>
-            /// <param name="layer"></param>
-            /// <param name="lineWeight"></param>
-            /// <param name="linetypeScale"></param>
-            public SegmentInfo(Point3d startPoint, Point3d endPoint, string layer, double lineWeight, double linetypeScale)
-            {
-                StartPoint = startPoint;
-                EndPoint = endPoint;
-                Layer = layer;
-                LineWeight = lineWeight;
-                LinetypeScale = linetypeScale;
-
-                // 计算线段长度
-                Length = startPoint.DistanceTo(endPoint);
-
-                // 计算中点坐标
-                MidPoint = new Point3d(
-                    (startPoint.X + endPoint.X) / 2,
-                    (startPoint.Y + endPoint.Y) / 2,
-                    (startPoint.Z + endPoint.Z) / 2
-                );
-
-                // 计算线段角度（弧度）
-                double dx = endPoint.X - startPoint.X;
-                double dy = endPoint.Y - startPoint.Y;
-                Angle = Math.Atan2(dy, dx);
-            }
-
-            /// <summary>
-            /// 重写ToString方法，方便输出线段信息
-            /// </summary>
-            /// <returns></returns>
-            public override string ToString()
-            {
-                return $"线段信息:\n" +
-                       $"长度: {Length:F3}\n" +
-                       $"起点: ({StartPoint.X:F3}, {StartPoint.Y:F3}, {StartPoint.Z:F3})\n" +
-                       $"终点: ({EndPoint.X:F3}, {EndPoint.Y:F3}, {EndPoint.Z:F3})\n" +
-                       $"中点: ({MidPoint.X:F3}, {MidPoint.Y:F3}, {MidPoint.Z:F3})\n" +
-                       $"角度: {Angle * 180 / Math.PI:F3}°\n" +
-                       $"图层: {Layer}\n" +
-                       $"线宽: {LineWeight:F3}\n" +
-                       $"线型比例: {LinetypeScale:F3}";
-            }
-        }
-
-        /// <summary>
-        /// 主要处理方法：获取线段信息
-        /// </summary>
-        /// <returns>线段List<SegmentInfo></returns>
-        //public static List<SegmentInfo> GetLineSegmentInfo(Document doc, Database db, Editor ed)
-        //{
-        //    // 线段信息存储列表
-        //    List<SegmentInfo> segmentInfoList = new List<SegmentInfo>();
-
-        //    // 开始事务
-        //    using (Transaction trans = db.TransactionManager.StartTransaction())
-        //    {
-        //        try
-        //        {
-        //            // 选择线段（Line和轻量多段线）
-        //            TypedValue[] filterList = new TypedValue[] {
-        //            new TypedValue((int)DxfCode.Operator, "<OR"),
-        //            new TypedValue((int)DxfCode.GradientObjType, RXClass.GetClass(typeof(Line)).DxfName),
-        //            new TypedValue((int)DxfCode.GradientObjType, RXClass.GetClass(typeof(Polyline)).DxfName),
-        //            new TypedValue((int)DxfCode.Operator, "OR>")
-        //        };
-
-        //            SelectionFilter filter = new SelectionFilter(filterList);
-        //            PromptSelectionResult selResult = ed.GetSelection(filter);
-        //            //SelectionFilter filter = new SelectionFilter();
-        //            //PromptSelectionResult selResult = ed.GetSelection();
-        //            // 检查选择结果
-        //            if (selResult.Status != PromptStatus.OK)
-        //            {
-        //                ed.WriteMessage("\n未选择任何线段。");
-        //                return segmentInfoList;
-        //            }
-
-        //            SelectionSet selSet = selResult.Value;
-
-        //            // 遍历选择的对象
-        //            foreach (SelectedObject selObj in selSet)
-        //            {
-        //                // 打开选择的实体
-        //                Entity entity = trans.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
-
-        //                // 处理Line类型
-        //                if (entity is Line line)
-        //                {
-        //                    SegmentInfo segInfo = new SegmentInfo(
-        //                         line.StartPoint,
-        //                         line.EndPoint,
-        //                         line.Layer,
-        //                         GetLineWeightInMm(line.LineWeight),
-        //                         line.LinetypeScale
-        //                     );
-        //                    segmentInfoList.Add(segInfo);
-        //                }
-        //                // 处理Polyline类型
-        //                else if (entity is Polyline polyline)
-        //                {
-        //                    // 遍历多段线的直线段
-        //                    for (int i = 0; i < polyline.NumberOfVertices - 1; i++)
-        //                    {
-        //                        // 检查是否为直线段
-        //                        if (polyline.GetSegmentType(i) == SegmentType.Line)
-        //                        {
-        //                            Point3d startPt = polyline.GetPoint3dAt(i);
-        //                            Point3d endPt = polyline.GetPoint3dAt(i + 1);
-
-        //                            SegmentInfo segInfo = new SegmentInfo(
-        //                                 startPt,
-        //                                 endPt,
-        //                                 polyline.Layer,
-        //                                 GetLineWeightInMm(polyline.LineWeight),
-        //                                 polyline.LinetypeScale
-        //                             );
-        //                            segmentInfoList.Add(segInfo);
-        //                        }
-        //                    }
-
-        //                    // 处理闭合多段线的最后一段
-        //                    if (polyline.Closed &&
-        //                        polyline.GetSegmentType(polyline.NumberOfVertices - 1) == SegmentType.Line)
-        //                    {
-        //                        Point3d startPt = polyline.GetPoint3dAt(polyline.NumberOfVertices - 1);
-        //                        Point3d endPt = polyline.GetPoint3dAt(0);
-
-        //                        SegmentInfo segInfo = new SegmentInfo(
-        //                            startPt,
-        //                            endPt,
-        //                            polyline.Layer,
-        //                            GetLineWeightInMm(polyline.LineWeight),
-        //                            polyline.LinetypeScale
-        //                        );
-        //                        segmentInfoList.Add(segInfo);
-        //                    }
-        //                }
-        //            }
-
-        //            // 提交事务
-        //            trans.Commit();
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            // 异常处理
-        //            ed.WriteMessage($"\n发生错误：{ex.Message}");
-        //        }
-        //    }
-
-        //    return segmentInfoList;
-        //}
-
-        // 之前的代码保持不变，只修改线宽转换方法
-
-        /// <summary>
-        /// 获取线宽的mm值
-        /// </summary>
-        //private static double GetLineWeightInMm(LineWeight lineWeight)
-        //{
-        //    // 优先使用反射方法，如果失败则使用硬编码映射
-        //    return ConvertLineWeightToMmReflection(lineWeight);
-        //}
-
-        // 可以添加一个重载方法，支持从图层获取线宽
-
-        /// <summary>
-        /// 获取线宽的mm值
-        /// </summary>
-        //private static double GetLineWeightInMm(LineWeight lineWeight, Database db, string layerName)
-        //{
-        //    // 如果是ByLayer，尝试获取图层线宽
-        //    if (lineWeight == LineWeight.ByLayer)
-        //    {
-        //        return GetLayerLineWeight(db, layerName);
-        //    }
-
-        //    // 否则使用标准转换
-        //    return ConvertLineWeightToMmReflection(lineWeight);
-        //}
-
-        // 方法1：使用硬编码映射（最兼容的方法）
-
-        /// <summary>
-        /// 将线宽转换为mm
-        /// </summary>
-        //public static double ConvertLineWeightToMm(LineWeight lineWeight)
-        //{
-        //    // 标准线宽映射表（毫米）
-        //    switch (lineWeight)
-        //    {
-        //        case LineWeight.ByLayer:     // 图层线宽
-        //        case LineWeight.ByBlock:     // 块线宽
-        //        case LineWeight.ByLineWeightDefault: // 默认线宽
-        //            return 0; // 返回0表示使用默认线宽
-
-        //        case LineWeight.LineWeight000:  // 最细线宽
-        //            return 0.00;
-        //        case LineWeight.LineWeight005:
-        //            return 0.05;
-        //        case LineWeight.LineWeight009:
-        //            return 0.09;
-        //        case LineWeight.LineWeight013:
-        //            return 0.13;
-        //        case LineWeight.LineWeight015:
-        //            return 0.15;
-        //        case LineWeight.LineWeight018:
-        //            return 0.18;
-        //        case LineWeight.LineWeight020:
-        //            return 0.20;
-        //        case LineWeight.LineWeight025:
-        //            return 0.25;
-        //        case LineWeight.LineWeight030:
-        //            return 0.30;
-        //        case LineWeight.LineWeight035:
-        //            return 0.35;
-        //        case LineWeight.LineWeight040:
-        //            return 0.40;
-        //        case LineWeight.LineWeight050:
-        //            return 0.50;
-        //        case LineWeight.LineWeight053:
-        //            return 0.53;
-        //        case LineWeight.LineWeight060:
-        //            return 0.60;
-        //        case LineWeight.LineWeight070:
-        //            return 0.70;
-        //        case LineWeight.LineWeight080:
-        //            return 0.80;
-        //        case LineWeight.LineWeight090:
-        //            return 0.90;
-        //        case LineWeight.LineWeight100:
-        //            return 1.00;
-        //        case LineWeight.LineWeight106:
-        //            return 1.06;
-        //        case LineWeight.LineWeight120:
-        //            return 1.20;
-        //        case LineWeight.LineWeight140:
-        //            return 1.40;
-        //        case LineWeight.LineWeight158:
-        //            return 1.58;
-        //        case LineWeight.LineWeight200:
-        //            return 2.00;
-        //        case LineWeight.LineWeight211:
-        //            return 2.11;
-        //        default:
-        //            return 0; // 未知线宽返回0
-        //    }
-        //}
-
-        /// <summary>
-        /// 方法2：反射方式（适用于不同版本的API）
-        /// </summary>
-        /// <param name="lineWeight">线宽</param>
-        /// <returns></returns>
-        //public static double ConvertLineWeightToMmReflection(LineWeight lineWeight)
-        //{
-        //    try
-        //    {
-        //        // 使用反射调用 LineWeightToReal 方法
-        //        var lineWeightType = typeof(LineWeight);
-        //        var method = lineWeightType.GetMethod("LineWeightToReal",
-        //            System.Reflection.BindingFlags.Public |
-        //            System.Reflection.BindingFlags.Static);
-
-        //        if (method != null)
-        //        {
-        //            object result = method.Invoke(null, new object[] { lineWeight });
-        //            return result != null ? Convert.ToDouble(result) : 0;
-        //        }
-        //    }
-        //    catch
-        //    {
-        //        // 如果反射调用失败，返回0
-        //    }
-
-        //    // 如果反射失败，使用硬编码映射
-        //    return ConvertLineWeightToMm(lineWeight);
-        //}
-
-        // 方法3：尝试获取图层默认线宽（需要数据库上下文）
-
-        /// <summary>
-        /// 获取图层默认线宽
-        /// </summary>
-        //public static double GetLayerLineWeight(Database db, string layerName)
-        //{
-        //    using (Transaction trans = db.TransactionManager.StartTransaction())
-        //    {
-        //        try
-        //        {
-        //            // 打开图层表
-        //            LayerTable layerTable = trans.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
-
-        //            // 获取指定图层
-        //            if (layerTable.Has(layerName))
-        //            {
-        //                ObjectId layerId = layerTable[layerName];
-        //                LayerTableRecord layer = trans.GetObject(layerId, OpenMode.ForRead) as LayerTableRecord;
-
-        //                // 返回图层的线宽
-        //                return ConvertLineWeightToMm(layer.LineWeight);
-        //            }
-        //        }
-        //        catch
-        //        {
-        //            // 发生错误返回0
-        //        }
-
-        //        return 0;
-        //    }
-        //}
-
-
-        #endregion
 
         #region
 
@@ -756,11 +419,11 @@ namespace GB_NewCadPlus_III
             {
                 // 创建选择过滤器，只允许选择直线(LINE)和轻量多段线(LWPOLYLINE)
                 TypedValue[] filterValues = new TypedValue[] {
-                    new TypedValue((int)DxfCode.Operator, "<OR"),
-                    new TypedValue((int)DxfCode.Start, "LINE"),  // 使用 DxfCode.Start
-                    new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),  // 使用 DxfCode.Start
-                    new TypedValue((int)DxfCode.Operator, "OR>")
-                };
+                        new TypedValue((int)DxfCode.Operator, "<OR"),
+                        new TypedValue((int)DxfCode.Start, "LINE"),  // 使用 DxfCode.Start
+                        new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),  // 使用 DxfCode.Start
+                        new TypedValue((int)DxfCode.Operator, "OR>")
+                    };
 
                 SelectionFilter filter = new SelectionFilter(filterValues);
 
@@ -970,214 +633,913 @@ namespace GB_NewCadPlus_III
         #endregion
 
 
+        #region 同步管道的实现方法
+
         /// <summary>
-        /// 同步属性
+        /// 存储从示例块中分析出的管道信息
         /// </summary>
-        [CommandMethod("SyncAttribute")]
-        public static void SyncAttribute()
+        public class SamplePipeInfo
+        {
+            public Polyline PipeBodyTemplate { get; set; }
+            public Polyline DirectionArrowTemplate { get; set; }
+            public List<AttributeDefinition> AttributeDefinitions { get; set; } = new List<AttributeDefinition>();
+            public Point3d BasePoint { get; set; }
+        }
+
+        /// <summary>
+        /// 同步管道\属性
+        /// </summary>        
+        [CommandMethod("SyncPipeProperties")]
+        public void SyncPipeProperties()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
             Database db = doc.Database;
             Editor ed = doc.Editor;
-            try
+            //获取选择的线段
+            var lineSelResult = ed.GetSelection(
+                new PromptSelectionOptions { MessageForAdding = "\n请选择要同步的线段 (LINE 或 LWPOLYLINE):" },
+                new SelectionFilter(new[] { new TypedValue((int)DxfCode.Start, "LINE,LWPOLYLINE") })
+            );
+            if (lineSelResult.Status != PromptStatus.OK)
             {
-                // 创建选择过滤器，只允许选择直线(LINE)和轻量多段线(LWPOLYLINE)
-                TypedValue[] filterValues = new TypedValue[] {
-                    new TypedValue((int)DxfCode.Operator, "<OR"),
-                    new TypedValue((int)DxfCode.Start, "LINE"),  // 使用 DxfCode.Start
-                    new TypedValue((int)DxfCode.Start, "LWPOLYLINE"),  // 使用 DxfCode.Start
-                    new TypedValue((int)DxfCode.Operator, "OR>")
-                };
-
-                SelectionFilter filter = new SelectionFilter(filterValues);
-
-                // 设置选择选项
-                PromptSelectionOptions opts = new PromptSelectionOptions
-                {
-                    MessageForAdding = "\n选择线段或多段线: ",
-                    AllowDuplicates = false
-                };
-
-                // 获取用户选择
-                PromptSelectionResult selResult = ed.GetSelection(opts, filter);
-                if (selResult.Status != PromptStatus.OK)
-                {
-                    ed.WriteMessage("\n未选择对象或选择已取消。");
-                    return;
-                }
-
-                SelectionSet selectionSet = selResult.Value;
-                ed.WriteMessage($"\n已选择 {selectionSet.Count} 个对象");
-
-                // 存储所有线段信息的列表
-                List<LineSegmentInfo> lineInfos = new List<LineSegmentInfo>();
-
-                // 开始事务处理
-                using (var tr = new DBTrans())
-                {
-                    // 遍历所有选中的对象
-                    foreach (SelectedObject selObj in selectionSet)
-                    {
-                        if (selObj == null) continue;
-                        //拿到选定线段的实体
-                        Entity? selObjEntity = tr.GetObject(selObj.ObjectId, OpenMode.ForRead) as Entity;
-
-                        if (selObjEntity != null && selObjEntity is Line line)
-                        {
-                            ed.WriteMessage("\n找到直线对象");
-                            lineInfos.Add(ProcessLine(line, tr));//把本线段加入所有线段信息总变量中；
-                        }
-                        else if (selObjEntity != null && selObjEntity is Polyline pline) // 处理轻量多段线
-                        {
-                            ed.WriteMessage("\n找到多段线对象");
-                            lineInfos.Add(ProcessPolyline(pline, tr));//把本线段加入所有线段信息总变量中；
-                        }
-                        else
-                        {
-                            ed.WriteMessage($"\n跳过不支持的类型: {selObjEntity?.GetType().Name}");
-                        }
-                    }
-
-                    // 判断所有收集的线段总变量是否为空
-                    if (lineInfos.Count > 0)
-                    {
-                        //打印所有选定的线段信息；
-                        PrintLineInfos(ed, lineInfos);
-                        // 提示用户选择动态块参照
-                        PromptEntityOptions promptOpts = new PromptEntityOptions("\n选择要拉伸的动态块:");
-                        promptOpts.SetRejectMessage("\n请选择一个块参照.");
-                        promptOpts.AddAllowedClass(typeof(BlockReference), true);
-                        PromptEntityResult resultPER = doc.Editor.GetEntity(promptOpts);
-
-                        // 如果用户取消选择，则退出
-                        if (resultPER.Status != PromptStatus.OK)
-                            return;
-
-                        // 设定用户选定的块参照
-                        BlockReference? blockRef = tr.GetObject(resultPER.ObjectId, OpenMode.ForRead) as BlockReference;
-
-                        if (blockRef == null)
-                        {
-                            doc.Editor.WriteMessage("\n没有找到有效的块参照.");
-                            return;
-                        }
-
-                        foreach (var lineItem in lineInfos)//循环所有选定的简易线段；
-                        {
-                            // 创建新块参照的克隆
-                            BlockReference newBlockRef = (BlockReference)blockRef.Clone();
-
-                            // 添加到当前空间
-                            var newBlockRefObjectId = tr.CurrentSpace.AddEntity(newBlockRef);
-
-                            // 确保事务处于写入模式
-                            if (!newBlockRef.IsWriteEnabled) newBlockRef.UpgradeOpen();
-                            //创建动态块
-                            DynamicBlockReferencePropertyCollection dynProps = newBlockRef.DynamicBlockReferencePropertyCollection;
-                            //拿到简易线段的起点和终点
-                            Point3d newStartPoint = lineItem.StartPoint;
-                            Point3d newEndPoint = lineItem.EndPoint;
-                            double newAngle = lineItem.Angle;//角度
-                            bool isRotated = false;
-                            if (newStartPoint.X < newEndPoint.X || newStartPoint.Y > newEndPoint.Y)
-                                isRotated = true;
-                            //如果起点和终点相同，则退出
-                            if (newStartPoint == newEndPoint)
-                            {
-                                doc.Editor.WriteMessage("\n起点和终点不能相同.");
-                                break;
-                            }
-                            /* 交换起点与终点
-                              //else if (Convert.ToInt32(newStartPoint.X) > Convert.ToInt32(newEndPoint.X))//如果起点在终点的右侧，则交换起点和终点
-                            //{
-                            //    newStartPoint = lineItem.EndPoint;
-                            //    newEndPoint = lineItem.StartPoint;
-                            //    isRotated = true;
-                            //}
-                            //else if (Convert.ToInt32(newStartPoint.X) == Convert.ToInt32(newEndPoint.X) && Convert.ToInt32(newStartPoint.Y) > Convert.ToInt32(newEndPoint.Y))//如果起点在终点的下方，则交换起点和终点
-                            //{
-                            //    newStartPoint = lineItem.EndPoint;
-                            //    newEndPoint = lineItem.StartPoint;
-                            //    isRotated = true;
-                            //}
-                             */
-
-                            if (Convert.ToInt32(newStartPoint.X) == Convert.ToInt32(newEndPoint.X))//如果起点和终点在同一X方向，则移动块到Y轴方向
-                            {
-                                //移动块到竖线中间位置
-                                MoveBlock(newBlockRef, new Point3d(newStartPoint.X, (newStartPoint.Y + newEndPoint.Y) / 2, 0));
-                                //设置角度
-                                SetDynamicBlockNewAngle(dynProps, newAngle, ed);
-                                //设置管道流向方向
-                                if (isRotated)
-                                    SetDynamicBlockNewRotated(dynProps, isRotated, ed);
-                            }
-                            else if (Convert.ToInt32(newStartPoint.Y) == Convert.ToInt32(newEndPoint.Y))
-                            {
-                                //移动块到横线中间位置
-                                MoveBlock(newBlockRef, new Point3d((newStartPoint.X + newEndPoint.X) / 2, newStartPoint.Y, 0));
-                                //设置管道流向方向
-                                //if(isRotated)
-                                //SetDynamicBlockNewRotated(dynProps, isRotated, ed);
-                            }
-
-
-                            // 打开块表记录
-                            BlockTableRecord? blockTableRecord = tr.GetObject(newBlockRef.BlockTableRecord, OpenMode.ForRead) as BlockTableRecord;
-
-                            // 查找多段线（Polyline）
-                            //Polyline polyline = new Polyline();
-                            if (blockTableRecord != null)
-                                foreach (ObjectId btrObjId in blockTableRecord)
-                                {
-                                    Entity? ent = tr.GetObject(btrObjId, OpenMode.ForRead) as Entity;
-                                    if (ent != null && ent is Polyline polyline)
-                                    {
-                                        // 获取原始多段线的起点和终点（在块局部坐标系中）
-                                        var originalStartPoint = polyline.GetPoint3dAt(0);
-                                        var originalEndPoint = polyline.GetPoint3dAt(polyline.NumberOfVertices - 1);
-                                        // 转换为世界坐标系
-                                        var worldStartPoint = newBlockRef.BlockTransform * originalStartPoint;
-                                        var worldEndPoint = newBlockRef.BlockTransform * originalEndPoint;
-
-                                        // 计算多段线的原始方向向量
-                                        Vector3d originalDirection = (worldEndPoint - worldStartPoint).GetNormal();
-                                        //计算拉伸距离（投影到原始多段线方向）
-                                        //如果是向右拉伸，则拉伸距离为负数；如果向左拉伸，则拉伸距离为正数
-                                        var startStretchDistance = (newStartPoint - worldStartPoint).DotProduct(originalDirection);
-
-                                        //如果向左拉伸，则拉伸距离为负数；如果向右拉伸，则拉伸距离为正数
-                                        var endStretchDistance = (newEndPoint - worldEndPoint).DotProduct(originalDirection);
-
-                                        // 设置起始点与终点
-                                        SetDynamicBlockEndPoints(dynProps, startStretchDistance, endStretchDistance, ed);
-
-                                        //设置管道流向方向
-                                        if (isRotated)
-                                            SetDynamicBlockNewRotated(dynProps, isRotated, ed);
-                                    }
-                                    else
-                                    {
-                                        doc.Editor.WriteMessage("\n在动态块中没有找到多段线.");
-                                        break;
-                                    }
-                                }
-                        }
-                    }
-                    else
-                    {
-                        ed.WriteMessage("\n未找到可处理的线段对象");
-                    }
-
-                    tr.Commit();
-                    Env.Editor.Redraw();
-                }
+                ed.WriteMessage("\n操作取消。");
+                return;
             }
-            catch (System.Exception ex)
+            var sourceLineIds = lineSelResult.Value.GetObjectIds().ToList();//获取选择的线段
+            var blockSelResult = ed.GetEntity("\n请选择示例管线块:");//选择示例管线块提示用户选择一个块参照
+            if (blockSelResult.Status != PromptStatus.OK)
             {
-                ed.WriteMessage($"\n错误: {ex.Message}\n{ex.StackTrace}");
+                ed.WriteMessage("\n操作取消。");
+                return;
+            }
+            using (var tr = new DBTrans())
+            {
+                try
+                {
+                    //获取选择的块参照
+                    var sampleBlockRef = tr.GetObject(blockSelResult.ObjectId, OpenMode.ForRead) as BlockReference;
+                    if (sampleBlockRef == null)
+                    {
+                        ed.WriteMessage("\n错误：选择的不是块参照。");
+                        return;
+                    }
+                    //获取示例块信息
+                    var sampleInfo = AnalyzeSampleBlock(tr, sampleBlockRef);
+                    if (sampleInfo.PipeBodyTemplate == null)
+                    {
+                        ed.WriteMessage("\n错误：示例块中未找到作为管道主体的 Polyline。");
+                        return;
+                    }
+                    //获取选择的线段信息
+                    var lineSegments = CollectLineSegments(tr, sourceLineIds);
+                    if (lineSegments == null || lineSegments.Count == 0)
+                    {
+                        ed.WriteMessage("\n未找到可处理的线段。");
+                        return;
+                    }
+                    // 1. 构建连续顶点与总长度
+                    var orderedVertices = BuildOrderedVerticesFromSegments(lineSegments, 0.1);
+                    if (orderedVertices.Count < 2)
+                    {
+                        ed.WriteMessage("\n顶点不足，无法生成管线。");
+                        return;
+                    }
+                    double pipelineLength = 0.0;//管道总长度
+                    for (int i = 0; i < orderedVertices.Count - 1; i++)//遍历顶点
+                        pipelineLength += orderedVertices[i].DistanceTo(orderedVertices[i + 1]);//计算总长度
+                    // 2. 中点与角度（用于插入点）
+                    var (midPoint, midAngle) = ComputeMidPointAndAngle(orderedVertices, pipelineLength);
+
+                    // 目标方向：仅依据中点附近线段方向（保证箭头朝向正确流向）
+                    Vector3d targetDir = ComputeDirectionAtPoint(orderedVertices, midPoint, 1e-6);
+                    Vector3d segmentDir = ComputeAggregateSegmentDirection(lineSegments);
+                    if (!segmentDir.IsZeroLength() && targetDir.DotProduct(segmentDir) < 0)
+                    {
+                        targetDir = -targetDir;
+                    }
+
+                    // 3. 管线主体（局部，不旋转）
+                    Polyline pipeLocal = BuildPipePolylineLocal(sampleInfo.PipeBodyTemplate, orderedVertices, midPoint);
+
+                    // 4. 箭头模板（局部朝 +X）
+                    var (arrowOutline, arrowFill) = EnsureArrowEntities(sampleInfo, sampleBlockRef.Name);
+
+                    // 5. 属性（局部）
+                    var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBlockRef.Name);
+
+                    // 6. 坐标系对齐矩阵：局部 +X → 起点→终点的整体方向
+                    Vector3d targetY = Vector3d.ZAxis.CrossProduct(targetDir).GetNormal();
+                    if (targetY.IsZeroLength())
+                        targetY = Vector3d.YAxis;
+                    // 目标坐标系
+                    Matrix3d alignLocal = Matrix3d.AlignCoordinateSystem(
+                        Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
+                        Point3d.Origin, targetDir, targetY, Vector3d.ZAxis
+                    );
+
+                    // 管线主体：不旋转
+                    var pipeAligned = (Polyline)pipeLocal.Clone();
+
+                    // 箭头：对齐到整体方向（尖端朝向终点）
+                    var arrowOutlineAligned = (Polyline)arrowOutline.Clone();
+                    // 对齐
+                    arrowOutlineAligned.TransformBy(alignLocal);
+                    // 填充
+                    Solid? arrowFillAligned = null;
+                    if (arrowFill != null)
+                    {
+                        arrowFillAligned = (Solid)arrowFill.Clone();// 克隆填充实体
+                        arrowFillAligned.TransformBy(alignLocal);// 对齐 
+                    }
+                    // 对箭头进行对齐 箭头位置：中点处 + 起点处 + 终点处
+                    const double ArrowOffsetFromEnds = 20.0;
+                    // 对齐 箭头
+                    var (startArrowPoint, startDirRaw) = SamplePointAndDirectionAlongPath(orderedVertices, Math.Min(ArrowOffsetFromEnds, pipelineLength));
+                    // 对齐 起点
+                    var (endArrowPoint, endDirRaw) = SamplePointAndDirectionAlongPath(orderedVertices, Math.Max(0.0, pipelineLength - ArrowOffsetFromEnds));
+                    // 起点
+                    Vector3d startOffsetLocal = startArrowPoint - midPoint;
+                    // 终点
+                    Vector3d endOffsetLocal = endArrowPoint - midPoint;
+                   // 目标方向
+                    Vector3d targetDirNormalized = targetDir.IsZeroLength() ? Vector3d.XAxis : targetDir.GetNormal();
+                    // 起点向量
+                    Vector3d startDir = startDirRaw.IsZeroLength()? targetDirNormalized : startDirRaw.GetNormal();
+                    if (targetDirNormalized.DotProduct(startDir) < 0)
+                        startDir = -startDir;
+                    // 终点向量
+                    Vector3d endDir = endDirRaw.IsZeroLength() ? targetDirNormalized : endDirRaw.GetNormal();
+                    if (targetDirNormalized.DotProduct(endDir) < 0)
+                        endDir = -endDir;
+                    // 中点向量 对齐箭头实体
+                    var (midArrowOutline, midArrowFill) = AlignArrowToDirection(arrowOutline, arrowFill, targetDirNormalized);
+                    // 箭头实体
+                    var arrowEntities = new List<Entity> { midArrowOutline };
+                    if (midArrowFill != null)
+                    {
+                        arrowEntities.Add(midArrowFill);
+                    }
+                    // 箭头偏移
+                    if (startOffsetLocal.Length > 1e-3)
+                    {
+                        // 起始箭头
+                        var (startArrow, startFill) = AlignArrowToDirection(arrowOutline, arrowFill, startDir);
+                        // 起始箭头偏移
+                        startArrow.TransformBy(Matrix3d.Displacement(startOffsetLocal));
+                        // 起始箭头填充
+                        arrowEntities.Add(startArrow);
+                        if (startFill != null)
+                        {
+                            // 起始箭头填充
+                            startFill.TransformBy(Matrix3d.Displacement(startOffsetLocal));
+                            arrowEntities.Add(startFill);
+                        }
+                    }
+                    // 结束箭头 
+                    if (endOffsetLocal.Length > 1e-3)
+                    {
+                        // 结束箭头
+                        var (endArrow, endFill) = AlignArrowToDirection(arrowOutline, arrowFill, endDir);
+                        // 偏移
+                        endArrow.TransformBy(Matrix3d.Displacement(endOffsetLocal));
+                        arrowEntities.Add(endArrow);//添加结束箭头
+                        if (endFill != null)
+                        {
+                            endFill.TransformBy(Matrix3d.Displacement(endOffsetLocal));
+                            arrowEntities.Add(endFill);
+                        }
+                    }
+                    // 7. 以中点为插入点、旋转=0 创建并插入块（箭头与管线在中点处重合且同向）
+                    string desiredName = sampleBlockRef.Name;
+                    // 创建块  
+                    string newBlockName = BuildPipeBlockDefinition(tr, desiredName, pipeAligned, arrowEntities, attDefsLocal);
+                    // 属性字典赋值
+                    var attValues = attDefsLocal.ToDictionary(a => a.Tag, a => a.TextString ?? string.Empty);
+                    // 插入块并返回块ID
+                    var newBrId = InsertPipeBlockWithAttributes(tr, midPoint, newBlockName, 0.0, attValues);
+                    // 获取块引用
+                    var newBr = tr.GetObject(newBrId, OpenMode.ForWrite) as BlockReference;
+                    if (newBr != null)
+                    {
+                        newBr.Layer = sampleInfo.PipeBodyTemplate.Layer;//设置块的图层
+                    }
+                    foreach (var line in lineSegments)
+                    {
+                        var lineWrite = tr.GetObject(line.Id, OpenMode.ForWrite) as Line;//获取对象
+                        lineWrite.Erase();//删除线
+                    }
+                    tr.Commit();
+                    ed.WriteMessage("\n管线块已生成：基点=中点，方向顺时针90°，包含管线、方向箭头与属性。");
+                }
+                catch (Exception ex)
+                {
+                    ed.WriteMessage($"\n发生错误: {ex.Message}\n{ex.StackTrace}");
+                    tr.Abort();
+                }
             }
         }
+        /// <summary>
+        /// 创建管道
+        /// </summary>
+        /// <param name="vertices"></param>
+        /// <param name="distance"></param>
+        /// <returns></returns>
+        private static (Point3d point, Vector3d direction) SamplePointAndDirectionAlongPath(List<Point3d> vertices, double distance)
+        {
+            if (vertices == null || vertices.Count == 0)
+                return (Point3d.Origin, Vector3d.XAxis);
+            if (vertices.Count == 1)
+                return (vertices[0], Vector3d.XAxis);
+
+            double target = Math.Max(0.0, distance);
+
+            for (int i = 0; i < vertices.Count - 1; i++)
+            {
+                Point3d start = vertices[i];
+                Point3d end = vertices[i + 1];
+                Vector3d delta = end - start;
+                double segLen = start.DistanceTo(end);
+                if (segLen <= 0)
+                    continue;
+
+                if (target <= segLen)
+                {
+                    double t = target / segLen;
+                    var sampled = new Point3d(
+                        start.X + delta.X * t,
+                        start.Y + delta.Y * t,
+                        start.Z + delta.Z * t
+                    );
+                    Vector3d dir = delta.IsZeroLength() ? Vector3d.XAxis : delta.GetNormal();
+                    return (sampled, dir);
+                }
+
+                target -= segLen;
+            }
+
+            Vector3d fallbackDir = (vertices.Last() - vertices[vertices.Count - 2]).GetNormal();
+            if (fallbackDir.IsZeroLength())
+                fallbackDir = Vector3d.XAxis;
+            return (vertices.Last(), fallbackDir);
+        }
+
+        /// <summary>
+        /// 将箭头几何按照指定方向对齐
+        /// </summary>
+        private (Polyline outline, Solid? fill) AlignArrowToDirection(Polyline arrowTemplate, Solid? fillTemplate, Vector3d direction)
+        {
+            Vector3d dir = direction.IsZeroLength() ? Vector3d.XAxis : direction.GetNormal();
+            Vector3d yAxis = Vector3d.ZAxis.CrossProduct(dir);
+            if (yAxis.IsZeroLength())
+                yAxis = Vector3d.YAxis;
+            else
+                yAxis = yAxis.GetNormal();
+
+            Matrix3d alignMatrix = Matrix3d.AlignCoordinateSystem(
+                Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
+                Point3d.Origin, dir, yAxis, Vector3d.ZAxis
+            );
+
+            var outline = (Polyline)arrowTemplate.Clone();
+            outline.TransformBy(alignMatrix);
+
+            Solid? fill = null;
+            if (fillTemplate != null)
+            {
+                fill = (Solid)fillTemplate.Clone();
+                fill.TransformBy(alignMatrix);
+            }
+
+            return (outline, fill);
+        }
+
+        /// <summary>
+        /// 获取箭头
+        /// </summary>
+        /// <param name="segments"></param>
+        /// <returns></returns>
+        private static Vector3d ComputeAggregateSegmentDirection(List<LineSegmentInfo> segments)
+        {
+            if (segments == null || segments.Count == 0)
+                return new Vector3d(0, 0, 0);
+
+            Vector3d sum = new Vector3d(0, 0, 0);
+            foreach (var seg in segments)
+            {
+                Vector3d dir = seg.EndPoint - seg.StartPoint;
+                if (!dir.IsZeroLength())
+                    sum += dir.GetNormal();
+            }
+
+            return sum.IsZeroLength() ? new Vector3d(0, 0, 0) : sum.GetNormal();
+        }
+
+        /// <summary>
+        /// 计算某点附近的方向向量（优先使用与 referencePoint 最近的线段）
+        /// </summary>
+        private static Vector3d ComputeDirectionAtPoint(List<Point3d> orderedVertices, Point3d referencePoint, double tol = 1e-6)
+        {
+            if (orderedVertices == null || orderedVertices.Count < 2)
+                return Vector3d.XAxis;
+
+            Vector3d fallbackDir = ComputePathDirectionVector(orderedVertices, tol);
+            double bestDist = double.MaxValue;
+            Vector3d bestDir = fallbackDir.IsZeroLength() ? Vector3d.XAxis : fallbackDir;
+
+            for (int i = 0; i < orderedVertices.Count - 1; i++)
+            {
+                Point3d start = orderedVertices[i];
+                Point3d end = orderedVertices[i + 1];
+                Vector3d segment = end - start;
+                if (segment.IsZeroLength())
+                    continue;
+
+                Point3d projected = ProjectPointToSegment(referencePoint, start, end);
+                double dist = referencePoint.DistanceTo(projected);
+                if (dist + tol < bestDist)
+                {
+                    bestDist = dist;
+                    bestDir = segment.GetNormal();
+                }
+            }
+
+            if (!bestDir.IsZeroLength() && !fallbackDir.IsZeroLength() && bestDir.DotProduct(fallbackDir) < 0)
+            {
+                bestDir = -bestDir;
+            }
+
+            return bestDir.IsZeroLength() ? fallbackDir : bestDir;
+        }
+
+        /// <summary>
+        /// 将点投影到指定线段上
+        /// </summary>
+        private static Point3d ProjectPointToSegment(Point3d point, Point3d segmentStart, Point3d segmentEnd)
+        {
+            Vector3d segment = segmentEnd - segmentStart;
+            if (segment.IsZeroLength())
+                return segmentStart;
+
+            Vector3d toPoint = point - segmentStart;
+            double t = toPoint.DotProduct(segment) / segment.DotProduct(segment);
+            t = Math.Max(0.0, Math.Min(1.0, t));
+            return segmentStart + segment * t;
+        }
+
+        /// <summary>
+        /// 计算整条路径的总体方向向量（UCS，Z=+）
+        /// </summary>
+        private static Vector3d ComputePathDirectionVector(List<Point3d> orderedVertices, double tol = 1e-6)
+        {
+            if (orderedVertices == null || orderedVertices.Count < 2)
+                return Vector3d.XAxis;
+
+            // 直接用整体起点→终点的向量，保证箭头指向终点（流向）
+            Vector3d overall = orderedVertices.Last() - orderedVertices.First();
+            if (overall.Length > tol)
+                return overall.GetNormal();
+
+            // 回退：选择最长段方向
+            double maxLen = 0.0;
+            Vector3d longestDir = Vector3d.XAxis;
+            for (int i = 0; i < orderedVertices.Count - 1; i++)
+            {
+                Vector3d v = orderedVertices[i + 1] - orderedVertices[i];
+                if (v.Length > maxLen)
+                {
+                    maxLen = v.Length;
+                    longestDir = v.GetNormal();
+                }
+            }
+            return longestDir;
+        }
+
+        /// <summary>
+        /// 获取选择的线段信息
+        /// </summary>
+        /// <param name="orderedVertices">有序顶点列表</param>
+        /// <param name="totalLength">总长度</param>
+        /// <returns></returns>
+        private (Point3d midPoint, double midAngle) ComputeMidPointAndAngle(List<Point3d> orderedVertices, double totalLength)
+        {
+            double halfLen = totalLength / 2.0;
+            double acc = 0.0;
+            Point3d midPoint = orderedVertices[0];
+            double midAngle = 0.0;
+
+            for (int i = 0; i < orderedVertices.Count - 1; i++)
+            {
+                var p1 = orderedVertices[i];
+                var p2 = orderedVertices[i + 1];
+                double segLen = p1.DistanceTo(p2);
+                if (acc + segLen >= halfLen)
+                {
+                    double t = (halfLen - acc) / segLen;
+                    midPoint = new Point3d(
+                        p1.X + (p2.X - p1.X) * t,
+                        p1.Y + (p2.Y - p1.Y) * t,
+                        p1.Z + (p2.Z - p1.Z) * t
+                    );
+                    midAngle = ComputeSegmentAngleUcs(p1, p2);
+                    break;
+                }
+                acc += segLen;
+            }
+            return (midPoint, midAngle);
+        }
+
+        /// <summary>
+        /// 计算线段角度
+        /// </summary>
+        /// <param name="p1">起点</param>
+        /// <param name="p2">终点</param>
+        /// <returns>线段在UCS中的角度</returns>
+        private static double ComputeSegmentAngleUcs(Point3d p1, Point3d p2)
+        {
+            // 当前UCS的XY平面，保证与AutoCAD旋转角同一参考
+            var plane = new Plane(Point3d.Origin, Vector3d.ZAxis);
+            Vector3d dir = (p2 - p1).GetNormal();
+            double angle = dir.AngleOnPlane(plane); // 以正X为0，逆时针为正
+                                                    // 归一化到 [0, 2π)
+            if (angle < 0) angle += 2.0 * Math.PI;
+            return angle;
+        }
+
+        /// <summary>
+        /// 获取两个点之间的方向
+        /// </summary>
+        /// <param name="origin">起点</param>
+        /// <param name="flowDir">流向</param>
+        /// <returns></returns>
+        private (Matrix3d worldToLocal, Matrix3d localToWorld) CreatePipeCoordinateSystem(Point3d origin, Vector3d flowDir)
+        {
+            Vector3d xAxis = flowDir.IsZeroLength() ? Vector3d.XAxis : flowDir.GetNormal();
+            Vector3d yAxis = Vector3d.ZAxis.CrossProduct(xAxis).IsZeroLength()
+                ? Vector3d.YAxis
+                : Vector3d.ZAxis.CrossProduct(xAxis).GetNormal();
+
+            Matrix3d localToWorld = Matrix3d.AlignCoordinateSystem(
+                Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
+                origin, xAxis, yAxis, Vector3d.ZAxis);
+
+            return (localToWorld.Inverse(), localToWorld);
+        }
+
+        /// <summary>
+        /// 构建局部坐标的管线 Polyline
+        /// </summary>
+        /// <param name="template">模板 Polyline</param>
+        /// <param name="verticesWorld">全局坐标系下的顶点列表</param>
+        /// <param name="midPointWorld">全局坐标系下的中点</param>
+        /// <returns>局部坐标系下的管线 Polyline</returns>
+        private Polyline BuildPipePolylineLocal(Polyline template, List<Point3d> verticesWorld, Point3d midPointWorld)
+        {
+            var pl = new Polyline();
+            for (int i = 0; i < verticesWorld.Count; i++)
+            {
+                var local = new Point2d(verticesWorld[i].X - midPointWorld.X, verticesWorld[i].Y - midPointWorld.Y);
+                //var local = new Point2d(verticesWorld[i].X, verticesWorld[i].Y);
+                pl.AddVertexAt(i, local, 0, template.ConstantWidth, template.ConstantWidth);
+            }
+            pl.Layer = template.Layer;
+            pl.Color = template.Color;
+            pl.LineWeight = template.LineWeight;
+            pl.Linetype = template.Linetype;
+            pl.LinetypeScale = template.LinetypeScale;
+            pl.Elevation = 0;
+            pl.Normal = Vector3d.ZAxis;
+            pl.Closed = false;
+            return pl;
+        }
+
+        /// <summary>
+        /// 新增：创建方向箭头（轮廓 + 填充）
+        /// </summary>
+        /// <param name="arrowLength">箭头长度</param>
+        /// <param name="arrowHeight">箭头高度</param>
+        /// <param name="colorIndex">颜色索引</param>
+        /// <param name="pipeTemplate">管道模板</param>
+        /// <returns>轮廓和填充的元组</returns>
+        private (Polyline outline, Solid fill) CreateArrowTriangleFilled(double arrowLength, double arrowHeight, short colorIndex, Polyline pipeTemplate)
+        {
+            // 三角顶点（局部坐标，尖端朝 +X）
+            var tip = new Point2d(arrowLength / 2.0, 0.0);
+            var leftBottom = new Point2d(-arrowLength / 2.0, -arrowHeight / 2.0);
+            var leftTop = new Point2d(-arrowLength / 2.0, arrowHeight / 2.0);
+
+            // 轮廓
+            var arrow = new Polyline();
+            arrow.AddVertexAt(0, tip, 0, 0, 0);
+            arrow.AddVertexAt(1, leftBottom, 0, 0, 0);
+            arrow.AddVertexAt(2, leftTop, 0, 0, 0);
+            arrow.Closed = true;
+            arrow.Layer = pipeTemplate.Layer;
+            //arrow.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, colorIndex);
+            //arrow.Linetype = pipeTemplate.Linetype;
+            arrow.LinetypeScale = pipeTemplate.LinetypeScale;
+            arrow.LineWeight = pipeTemplate.LineWeight;
+            arrow.Elevation = 0;
+            arrow.Normal = Vector3d.ZAxis;
+
+            // 填充（二维实心三角形）
+            var solid = new Solid(
+                new Point3d(tip.X, tip.Y, 0),
+                new Point3d(leftBottom.X, leftBottom.Y, 0),
+                new Point3d(leftTop.X, leftTop.Y, 0),
+                new Point3d(leftTop.X, leftTop.Y, 0) // 三角形第四点与第三点相同
+            );
+            solid.Layer = pipeTemplate.Layer;
+            solid.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(Autodesk.AutoCAD.Colors.ColorMethod.ByAci, colorIndex);
+            solid.LineWeight = pipeTemplate.LineWeight;
+            solid.Normal = Vector3d.ZAxis;
+
+            return (arrow, solid);
+        }
+
+        /// <summary>
+        /// 修改：根据示例名称创建箭头（轮廓 + 填充），若示例已有模板则仍使用模板轮廓并补上填充
+        /// </summary>
+        /// <param name="sampleInfo">示例管道信息</param>
+        /// <param name="sampleBlockName">示例块名称</param>
+        /// <returns>轮廓和填充的元组</returns>
+        private (Polyline outline, Solid? fill) EnsureArrowEntities(SamplePipeInfo sampleInfo, string sampleBlockName)
+        {
+            if (sampleInfo.DirectionArrowTemplate != null)
+            {
+                // 使用示例箭头模板轮廓（已移动尖端到原点）
+                var arrowClone = (Polyline)sampleInfo.DirectionArrowTemplate.Clone();
+                if (string.IsNullOrEmpty(arrowClone.Layer))
+                    arrowClone.Layer = sampleInfo.PipeBodyTemplate.Layer;
+                arrowClone.Color = sampleInfo.DirectionArrowTemplate.Color;
+                arrowClone.Linetype = sampleInfo.DirectionArrowTemplate.Linetype;
+                arrowClone.LinetypeScale = sampleInfo.DirectionArrowTemplate.LinetypeScale;
+                arrowClone.LineWeight = sampleInfo.DirectionArrowTemplate.LineWeight;
+
+                // 用模板箭头顶点生成一个实心填充 Solid（三角形）
+                if (arrowClone.NumberOfVertices >= 3)
+                {
+                    var p0 = arrowClone.GetPoint3dAt(0);
+                    var p1 = arrowClone.GetPoint3dAt(1);
+                    var p2 = arrowClone.GetPoint3dAt(2);
+                    var solid = new Solid(p0, p1, p2, p2);
+                    solid.Layer = arrowClone.Layer;
+                    solid.Color = arrowClone.Color;
+                    solid.LineWeight = arrowClone.LineWeight;
+                    solid.Normal = Vector3d.ZAxis;
+                    return (arrowClone, solid);
+                }
+                return (arrowClone, null);
+            }
+
+            // 无模板时，自绘：出口=黄(ACI 2)，入口=绿(ACI 3)，长度=10，高=3
+            var (colorIndex, length, height) = DetermineArrowStyleByName(sampleBlockName);
+            var (outline, fill) = CreateArrowTriangleFilled(length, height, colorIndex, sampleInfo.PipeBodyTemplate);
+            return (outline, fill);
+        }
+              
+        /// <summary>
+        /// 修改：块定义构建，加入额外实体（管线 + 箭头）
+        /// </summary>
+        /// <param name="tr">数据库事务</param>
+        /// <param name="desiredName">期望的块名称</param>
+        /// <param name="pipeLocal">管道轮廓</param>
+        /// <param name="overlayEntities">附加实体列表（一般为箭头轮廓和填充）</param>
+        /// <param name="attDefsLocal">属性定义列表</param>
+        /// <returns>块定义名称</returns>
+        private string BuildPipeBlockDefinition(DBTrans tr, string desiredName, Polyline pipeLocal, List<Entity> overlayEntities, List<AttributeDefinition> attDefsLocal)
+        {
+            string finalName = desiredName;
+            int suf = 1;
+            while (tr.BlockTable.Has(finalName))
+                finalName = desiredName + "_PIPEGEN_" + suf++;
+
+            tr.BlockTable.Add(
+                finalName,
+                btr =>
+                {
+                    btr.Origin = Point3d.Origin;
+                },
+                () =>
+                {
+                    var entities = new List<Entity>
+                    {
+                        (Polyline)pipeLocal.Clone()
+                    };
+                    if (overlayEntities != null)
+                    {
+                        foreach (var entity in overlayEntities)
+                        {
+                            if (entity == null)
+                                continue;
+
+                            var clone = entity.Clone() as Entity;
+                            if (clone != null)
+                                entities.Add(clone);
+                        }
+                    }
+                    return entities;
+                },
+                () => attDefsLocal
+            );
+
+            return finalName;
+        }
+
+        /// <summary>
+        /// 根据名称确定箭头样式
+        /// </summary>
+        /// <param name="blockName">块名称</param>
+        /// <returns>箭头样式元组</returns>
+        private (short colorIndex, double length, double height) DetermineArrowStyleByName(string blockName)
+        {
+            string nameLower = (blockName ?? string.Empty).ToLowerInvariant();
+            bool isOutlet = nameLower.Contains("出口") || nameLower.Contains("outlet");
+            bool isInlet = nameLower.Contains("入口") || nameLower.Contains("inlet");
+
+            // 出口=黄色(ACI 2)，入口=绿色(ACI 3)，默认黄色
+            short colorIndex = isInlet ? (short)3 : (short)2;
+            if (!isInlet && !isOutlet)
+            {
+                colorIndex = 2;
+            }
+
+            return (colorIndex, 10.0, 3.0);
+        }
+
+        /// <summary>
+        /// 创建属性定义
+        /// </summary>
+        /// <param name="defs">属性定义列表</param>
+        /// <param name="midPointWorld">中点位置（世界坐标系）</param>
+        /// <param name="finalRotation">最终旋转角度</param>
+        /// <param name="pipelineLength">管道长度</param>
+        /// <param name="titleFallback">管道标题后备值</param>
+        /// <returns>属性定义列表</returns>
+        private List<AttributeDefinition> CloneAttributeDefinitionsLocal(List<AttributeDefinition> defs, Point3d midPointWorld, double finalRotation, double pipelineLength, string titleFallback)
+        {
+            var result = new List<AttributeDefinition>();
+            bool hasTitle = false;
+
+            foreach (var def in defs)
+            {
+                var cloned = def.Clone() as AttributeDefinition;
+                if (cloned == null) continue;
+
+                // 转为局部坐标（相对中点）
+                var localPos = new Point3d(def.Position.X - midPointWorld.X, def.Position.Y - midPointWorld.Y, 0);
+                cloned.Position = localPos;
+                cloned.Rotation = def.Rotation;
+                cloned.Invisible = def.Invisible;
+                cloned.Constant = def.Constant;
+                cloned.Tag = def.Tag;
+                cloned.TextString = def.TextString;
+                cloned.Height = def.Height;
+
+                if (!string.IsNullOrWhiteSpace(cloned.Tag))
+                {
+                    var tagLower = cloned.Tag.ToLowerInvariant();
+                    if (tagLower.Contains("长度") || tagLower.Contains("length"))
+                    {
+                        double baseValue = 0.0;
+                        if (double.TryParse(cloned.TextString, out double parsed)) baseValue = parsed;
+                        cloned.TextString = (baseValue + pipelineLength).ToString("0.###");
+                    }
+                    if (string.Equals(cloned.Tag, "管道标题", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasTitle = true;
+                        cloned.Position = Point3d.Origin;
+                        cloned.Rotation = finalRotation;
+                        cloned.Invisible = false;
+                        if (string.IsNullOrWhiteSpace(cloned.TextString))
+                            cloned.TextString = titleFallback ?? "管道";
+                    }
+                }
+
+                result.Add(cloned);
+            }
+
+            if (!hasTitle)
+            {
+                result.Add(new AttributeDefinition
+                {
+                    Tag = "管道标题",
+                    Position = Point3d.Origin,
+                    Rotation = finalRotation,
+                    TextString = string.IsNullOrWhiteSpace(titleFallback) ? "管道" : titleFallback,
+                    Height = defs != null && defs.Count > 0 ? defs[0].Height : 2.5,
+                    Invisible = false,
+                    Constant = false
+                });
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 插入管道块
+        /// </summary>
+        /// <param name="tr">数据库事务</param>
+        /// <param name="insertPointWorld">插入点（世界坐标）</param>
+        /// <param name="blockName">块名称</param>
+        /// <param name="rotation">旋转角度</param>
+        /// <param name="attValues">属性值字典</param>
+        /// <returns>新插入块的对象ID</returns>
+        private ObjectId InsertPipeBlockWithAttributes(DBTrans tr, Point3d insertPointWorld, string blockName, double rotation, Dictionary<string, string> attValues)
+        {
+            ObjectId btrId = tr.BlockTable[blockName];
+            ObjectId newBrId = tr.CurrentSpace.InsertBlock(insertPointWorld, btrId, rotation: rotation, atts: attValues);
+            return newBrId;
+        }
+
+        /// <summary>
+        /// 新增：根据首尾相连的线段集合，按连通顺序构建连续顶点列表（起点、每个连接点、终点）
+        /// </summary>
+        /// <param name="segments">线段集合</param>
+        /// <param name="tol">容差</param>
+        /// <returns></returns>
+        private List<Point3d> BuildOrderedVerticesFromSegments(List<LineSegmentInfo> segments, double tol = 1e-6)
+        {
+            var result = new List<Point3d>();// 结果顶点列表
+            if (segments == null || segments.Count == 0) return result;
+
+            // 比较两点是否相等（使用容差）
+            static bool PointsEqual(Point3d a, Point3d b, double tol)
+            {
+                return Math.Abs(a.X - b.X) <= tol && Math.Abs(a.Y - b.Y) <= tol && Math.Abs(a.Z - b.Z) <= tol;
+            }
+            // 构建唯一点列表并统计度数（出现次数）
+            var uniquePoints = new List<Point3d>();
+            Func<Point3d, int> getIndex = p =>
+            {
+                for (int i = 0; i < uniquePoints.Count; i++)//
+                {
+                    if (PointsEqual(uniquePoints[i], p, tol)) return i;
+                }
+                uniquePoints.Add(p);
+                return uniquePoints.Count - 1;
+            };
+            // 构建索引列表
+            var counts = new List<int>();
+            var segPairs = new List<(int s, int e)>();
+            foreach (var seg in segments)
+            {
+                var si = getIndex(seg.StartPoint);
+                var ei = getIndex(seg.EndPoint);
+                segPairs.Add((si, ei));
+
+                // ensure counts capacity
+                while (counts.Count < uniquePoints.Count) counts.Add(0);
+                counts[si]++;
+                counts[ei]++;
+            }
+            // 找到链的端点：度为1的点（非闭合链）
+            int startPointIndex = -1;
+            for (int i = 0; i < counts.Count; i++)
+            {
+                if (counts[i] == 1)
+                {
+                    startPointIndex = i;
+                    break;
+                }
+            }
+            // 若都是度 >=2（闭合回路或多分支），退回到第一个段的起点
+            if (startPointIndex == -1)
+            {
+                startPointIndex = segPairs.Count > 0 ? segPairs[0].s : 0;
+            }
+            // 从 startPointIndex 开始按链遍历段
+            var visited = new bool[segPairs.Count];
+            Point3d current = uniquePoints[startPointIndex];
+            result.Add(current);
+            bool progressed;
+            do
+            {
+                progressed = false;
+                for (int i = 0; i < segPairs.Count; i++)
+                {
+                    if (visited[i]) continue;
+                    var (si, ei) = segPairs[i];
+                    if (PointsEqual(uniquePoints[si], current, tol))
+                    {
+                        // forward
+                        var next = uniquePoints[ei];
+                        if (!PointsEqual(next, result.Last(), tol))
+                            result.Add(next);
+                        current = next;
+                        visited[i] = true;
+                        progressed = true;
+                        break;
+                    }
+                    else if (PointsEqual(uniquePoints[ei], current, tol))
+                    {
+                        // reverse
+                        var next = uniquePoints[si];
+                        if (!PointsEqual(next, result.Last(), tol))
+                            result.Add(next);
+                        current = next;
+                        visited[i] = true;
+                        progressed = true;
+                        break;
+                    }
+                }
+            } while (progressed);
+            return result;
+        }
+
+        /// <summary>
+        /// 分析示例块，提取管道、箭头和属性信息
+        /// </summary>
+        private SamplePipeInfo AnalyzeSampleBlock(Transaction tr, BlockReference blockRef)
+        {
+            //获取块的属性 初始化结果对象
+            var info = new SamplePipeInfo();
+            // 打开块表记录
+            var btr = (BlockTableRecord)tr.GetObject(blockRef.BlockTableRecord, OpenMode.ForRead);
+            info.BasePoint = btr.Origin;//获取块的基点
+            //遍历块中的对象 遍历块中的所有实体
+            List<Polyline> polylines = new List<Polyline>();
+
+            foreach (ObjectId id in btr)
+            {
+                //获取对象
+                var dbObj = tr.GetObject(id, OpenMode.ForRead);
+                if (dbObj is Polyline pl)
+                {
+                    //创建副本收集所有多段线
+                    polylines.Add(pl.Clone() as Polyline);
+                }
+                else if (dbObj is AttributeDefinition attDef)//属性定义获取属性定义
+                {
+                    //创建副本添加属性定义到结果对象 添加属性定义到结果对象的属性定义列表
+                    info.AttributeDefinitions.Add(attDef.Clone() as AttributeDefinition);
+                }
+            }
+            //创建结果对象 分析多段线以识别管道主体和方向箭头
+            if (polylines.Count == 0) return info;
+
+            // 假设最长的Polyline是管道主体
+            polylines = polylines.OrderByDescending(p => p.Length).ToList();
+            info.PipeBodyTemplate = polylines[0];//设置管道主体模板设置管道主体模板为最长的多段线
+
+            // 假设闭合的、有3个顶点的Polyline是方向箭头
+            info.DirectionArrowTemplate = polylines.FirstOrDefault(p => p.Closed && p.NumberOfVertices == 3);
+
+            if (info.DirectionArrowTemplate != null)
+            {
+                //获取箭头尖端的点 将箭头移动到原点，便于后续变换
+                Point3d arrowTip = info.DirectionArrowTemplate.GetPoint3dAt(0);//获取箭头尖端的点假设第一个顶点是箭头尖端
+                //创建一个矩阵，将箭头移动到原点创建变换矩阵将箭头移动到原点 创建变换矩阵将箭头移动到原点
+                Matrix3d toOrigin = Matrix3d.Displacement(Point3d.Origin - arrowTip);
+                //将箭头移动到原点应用变换 将变换应用到箭头模板上
+                info.DirectionArrowTemplate.TransformBy(toOrigin);
+            }
+
+            return info;
+        }
+
+        /// <summary>
+        /// 从选择的ObjectId集合中收集所有线段信息
+        /// </summary>
+        private List<LineSegmentInfo> CollectLineSegments(Transaction tr, List<ObjectId> ids)
+        {
+            var segments = new List<LineSegmentInfo>();
+            foreach (var id in ids)
+            {
+                var ent = tr.GetObject(id, OpenMode.ForRead);
+                if (ent is Line line)
+                {
+                    segments.Add(ProcessLine(line, tr));
+                }
+                else if (ent is Polyline pl)
+                {
+                    for (int i = 0; i < pl.NumberOfVertices - 1; i++)
+                    {
+                        if (pl.GetSegmentType(i) == SegmentType.Line)
+                        {
+                            var p1 = pl.GetPoint3dAt(i);
+                            var p2 = pl.GetPoint3dAt(i + 1);
+                            var vec = p2 - p1;
+                            segments.Add(new LineSegmentInfo
+                            {
+                                StartPoint = p1,
+                                EndPoint = p2,
+                                Length = vec.Length,
+                                Angle = vec.GetAngleTo(Vector3d.XAxis, Vector3d.ZAxis),
+                                Layer = pl.Layer,
+                                ColorIndex = pl.ColorIndex,
+                                LinetypeScale = pl.LinetypeScale,
+                                EntityType = "POLYLINE_SEGMENT"
+                            });
+                        }
+                    }
+                }
+            }
+            return segments;
+        }
+
+        #endregion
+
+
 
         #region 操作动态块的方法
 
@@ -1485,8 +1847,8 @@ namespace GB_NewCadPlus_III
                     Point3d newStartPoint = startPointResult.Value;
                     Point3d newEndPoint = endPointResult.Value;
                     double newAngle = 0;
-                    if (newEndPoint.X==newStartPoint.X)
-                    newAngle = - Math.Atan2(newEndPoint.Y - newStartPoint.Y, newEndPoint.X - newStartPoint.X);
+                    if (newEndPoint.X == newStartPoint.X)
+                        newAngle = -Math.Atan2(newEndPoint.Y - newStartPoint.Y, newEndPoint.X - newStartPoint.X);
                     if (newEndPoint.Y == newStartPoint.Y)
                         newAngle = Math.Atan2(newEndPoint.Y - newStartPoint.Y, newEndPoint.X - newStartPoint.X);
 

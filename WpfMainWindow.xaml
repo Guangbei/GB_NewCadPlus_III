@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="GB_NewCadPlus_III.WpfMainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -49,7 +49,7 @@
                         <RowDefinition Height="2" />
                         <RowDefinition Height="28" />
                         <RowDefinition Height="2" />
-                        <RowDefinition Height="108" />
+                        <RowDefinition Height="120" />
                     </Grid.RowDefinitions>
                     <Grid
                         Grid.Row="0"
@@ -284,22 +284,107 @@
                                                 <Grid Grid.Row="1">
                                                     <Grid Margin="0">
                                                         <Grid.RowDefinitions>
+                                                            <RowDefinition Height="80" />
                                                             <RowDefinition Height="*" />
                                                             <RowDefinition Height="140" />
                                                             <RowDefinition Height="75" />
                                                             <RowDefinition Height="102" />
                                                         </Grid.RowDefinitions>
+                                                        <Grid Grid.Row="0">
+                                                            <GroupBox
+                                                                x:Name="工艺绘制"
+                                                                FontFamily="Microsoft YaHei UI"
+                                                                Header="工艺绘制">
+                                                                <Grid>
+                                                                    <Button
+                                                                        x:Name="属性同步"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="0,5,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="属性同步_Click"
+                                                                        Content="属性同步"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="表格同步"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="92,5,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="表格同步_Click"
+                                                                        Content="表格同步"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="导出表格"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="184,5,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="导出表格_Click"
+                                                                        Content="导出表格"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="生成设备表"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="0,33,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="生成设备表_Click"
+                                                                        Content="生成设备表"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="绘制进口管道"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="0,33,0,0"
+                                                                        HorizontalAlignment="Center"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="绘制进口管道_Click"
+                                                                        Content="绘制进口管道"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="绘制出口管道"
+                                                                        Width="90"
+                                                                        Height="25"
+                                                                        Margin="184,33,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="绘制出口管道_Click"
+                                                                        Content="绘制出口管道"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                </Grid>
+
+                                                            </GroupBox>
+                                                        </Grid>
                                                         <WrapPanel
                                                             x:Name="CraftButtonsPanel"
-                                                            Grid.Row="0"
+                                                            Grid.Row="1"
                                                             Orientation="Vertical" />
-                                                        <Grid Grid.Row="1">
+                                                        <Grid Grid.Row="2">
                                                             <GroupBox
                                                                 x:Name="TJ工艺制图"
-                                                                Width="285"
-                                                                Height="140"
-                                                                HorizontalAlignment="Left"
-                                                                VerticalAlignment="Top"
                                                                 FontFamily="Microsoft YaHei UI"
                                                                 Header="TJ工艺制图">
                                                                 <Grid
@@ -340,6 +425,7 @@
                                                                         Click="吊顶_Btn_Clic"
                                                                         Content="吊顶"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="不吊顶"
@@ -351,6 +437,7 @@
                                                                         Click="不吊顶_Btn_Click"
                                                                         Content="不吊顶"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Label
                                                                         Width="62"
@@ -386,6 +473,7 @@
                                                                         Click="防撞护板_Btn_Clic"
                                                                         Content="防撞护板"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <TextBox
                                                                         x:Name="TextBox_楼层"
@@ -452,6 +540,7 @@
                                                                         Click="房间编号_Btn_Clic"
                                                                         Content="房间编号"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="编号检查"
@@ -463,6 +552,7 @@
                                                                         Click="编号检查_Btn_Click"
                                                                         Content="编号检查"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="冷藏库降板"
@@ -474,6 +564,7 @@
                                                                         Click="冷藏库降板_Btn_Click"
                                                                         Content="冷藏库降板"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal"
                                                                         RenderTransformOrigin="0.077,0.91" />
 
@@ -487,6 +578,7 @@
                                                                         Click="冷冻库降板_Btn_Click"
                                                                         Content="冷冻库降板"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
 
                                                                     <Button
@@ -499,6 +591,7 @@
                                                                         Click="特殊地面做法要求_Btn_Click"
                                                                         Content="特殊地面做法要求"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="排水沟"
@@ -510,6 +603,7 @@
                                                                         Click="排水沟_Btn_Click"
                                                                         Content="排水沟"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Label
                                                                         Width="24"
@@ -567,13 +661,9 @@
                                                                 </Grid>
                                                             </GroupBox>
                                                         </Grid>
-                                                        <Grid Grid.Row="2">
+                                                        <Grid Grid.Row="3">
                                                             <GroupBox
                                                                 x:Name="TJ建筑孔洞"
-                                                                Width="285"
-                                                                Height="75"
-                                                                HorizontalAlignment="Center"
-                                                                VerticalAlignment="Top"
                                                                 FontFamily="Microsoft YaHei UI"
                                                                 Header="TJ建筑孔洞">
                                                                 <Grid Height="50">
@@ -639,19 +729,16 @@
                                                                         Click="纵墙建筑开洞_Btn_Click"
                                                                         Content="纵墙建筑开洞"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
 
                                                                 </Grid>
 
                                                             </GroupBox>
                                                         </Grid>
-                                                        <Grid Grid.Row="3">
+                                                        <Grid Grid.Row="4">
                                                             <GroupBox
                                                                 x:Name="工艺标注"
-                                                                Width="285"
-                                                                Height="105"
-                                                                HorizontalAlignment="Center"
-                                                                VerticalAlignment="Top"
                                                                 VerticalContentAlignment="Bottom"
                                                                 FontFamily="Microsoft YaHei UI"
                                                                 Header="TJ工艺标注">
@@ -665,6 +752,7 @@
                                                                         Click="纯化水_Btn_Clic"
                                                                         Content="纯化水"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="纯蒸汽"
@@ -675,6 +763,7 @@
                                                                         Click="纯蒸汽_Btn_Click"
                                                                         Content="纯蒸汽"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="注射用水"
@@ -685,6 +774,7 @@
                                                                         Click="注射用水_Btn_Click"
                                                                         Content="注射用水"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="氧气"
@@ -696,6 +786,7 @@
                                                                         Click="氧气_Btn_Click"
                                                                         Content="氧气"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="氮气"
@@ -716,6 +807,7 @@
                                                                         Click="二氧化碳_Btn_Click"
                                                                         Content="二氧化碳"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="无菌压缩空气"
@@ -736,6 +828,7 @@
                                                                         Click="仪表压缩空气_Btn_Click"
                                                                         Content="仪表压缩空气"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="低压蒸汽"
@@ -745,6 +838,7 @@
                                                                         Background="#FFF3EEEE"
                                                                         Click="低压蒸汽_Btn_Click"
                                                                         Content="低压蒸汽"
+                                                                        FontSize="11"
                                                                         FontFamily="Microsoft YaHei UI"
                                                                         FontWeight="Normal" />
                                                                     <Button
@@ -756,6 +850,7 @@
                                                                         Click="低温循环上水_Btn_Click"
                                                                         Content="低温循环上水"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="常温循环上水"
@@ -766,6 +861,7 @@
                                                                         Click="常温循环上水_Btn_Click"
                                                                         Content="常温循环上水"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="凝结回水"
@@ -776,6 +872,7 @@
                                                                         Click="凝结回水_Btn_Click"
                                                                         Content="凝结回水"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
 
                                                                 </WrapPanel>
@@ -2290,7 +2387,7 @@
                                 FontSize="12"
                                 GridLinesVisibility="All"
                                 HeadersVisibility="Column"
-                                IsReadOnly="True">
+                                IsReadOnly="True" >
                                 <DataGrid.Columns>
                                     <DataGridTextColumn
                                         Width="*"
