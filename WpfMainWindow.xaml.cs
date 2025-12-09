@@ -1902,7 +1902,7 @@ namespace GB_NewCadPlus_III
 
             switch (folderName)
             {
-                case "公共图":
+                case "公用工具":
                     panel = PublicButtonsPanel;
                     break;
                 case "工艺":
@@ -7061,6 +7061,30 @@ namespace GB_NewCadPlus_III
             Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
         }
 
+        private void 加载当前图层_Btn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void 保存图层配置_Btn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void 加载本地图层_Btn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void 应用图层_Btn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void 还原图层_Btn_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 
     /// <summary>

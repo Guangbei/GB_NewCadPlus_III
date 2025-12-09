@@ -224,49 +224,136 @@
                             Background="Azure"
                             ItemContainerStyle="{StaticResource VerticalTabStyle}"
                             TabStripPlacement="Left">
-                            <TabItem
-                                x:Name="公用图"
-                                FontWeight="Bold"
-                                Header="公共图">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition />
-                                        <RowDefinition Height="4*" />
-                                    </Grid.RowDefinitions>
-                                    <WrapPanel Grid.Row="0">
-                                        <Button
-                                            x:Name="共用条件"
-                                            Width="88"
-                                            Height="20"
-                                            Margin="5,5,0,0"
-                                            Click="共用条件_Btn_Click"
-                                            Content="共用条件"
-                                            FontFamily="Microsoft YaHei UI Light" />
-                                        <Button
-                                            x:Name="所有条件开关"
-                                            Width="88"
-                                            Height="20"
-                                            Margin="5,5,0,0"
-                                            Click="所有条件开关_Btn_Click"
-                                            Content="所有条件开关"
-                                            FontFamily="Microsoft YaHei UI Light" />
 
-                                        <Button
-                                            x:Name="设备开关"
-                                            Width="88"
-                                            Height="20"
-                                            Margin="5,5,0,0"
-                                            Click="设备开关_Btn_Click"
-                                            Content="设备开关"
-                                            FontFamily="Microsoft YaHei UI Light" />
-                                    </WrapPanel>
-                                    <ScrollViewer
-                                        Grid.Row="1"
-                                        Margin="0"
-                                        VerticalScrollBarVisibility="Auto">
-                                        <WrapPanel x:Name="PublicButtonsPanel" Orientation="Vertical" />
-                                    </ScrollViewer>
+                            <TabItem
+                                x:Name="公用工具"
+                                Height="68"
+                                FontSize="12"
+                                FontWeight="Bold"
+                                Header="公用工具">
+
+                                <Grid>
+                                    <TabControl>
+                                        <TabItem
+                                            x:Name="公用图元"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Header="公用图元">
+                                            <WrapPanel x:Name="PublicButtonsPanel">
+                                                
+                                            </WrapPanel>
+                                        </TabItem>
+                                        <TabItem
+                                            x:Name="图层工具"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Header="图层工具">
+                                            <TabItem.Background>
+                                                <LinearGradientBrush EndPoint="0,1">
+                                                    <GradientStop Offset="0.596" Color="#FFF0F0F0" />
+                                                </LinearGradientBrush>
+                                            </TabItem.Background>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="60" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+                                                <WrapPanel
+                                                    Grid.Row="0"
+                                                    Grid.RowSpan="2"
+                                                    Height="60"
+                                                    Margin="0,0,0,0"
+                                                    VerticalAlignment="Top">
+                                                    <Button
+                                                        x:Name="加载当前图层"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="3,5,0,0"
+                                                        Background="AliceBlue"
+                                                        Click="加载当前图层_Btn_Click"
+                                                        Content="加载当前图层" />
+                                                    <Button
+                                                        x:Name="保存图层配置"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="5,5,0,0"
+                                                        Background="#FFF4F5E0"
+                                                        Click="保存图层配置_Btn_Click"
+                                                        Content="保存图层配置" />
+                                                    <Button
+                                                        x:Name="加载本地图层"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="5,5,0,0"
+                                                        Background="AliceBlue"
+                                                        Click="加载本地图层_Btn_Click"
+                                                        Content="加载本地图层" />
+                                                    <Button
+                                                        x:Name="应用图层"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="3,5,0,0"
+                                                        Background="#FFF4F5E0"
+                                                        Click="应用图层_Btn_Click"
+                                                        Content="应用图层" />
+
+                                                    <Button
+                                                        x:Name="还原图层"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="5,5,0,0"
+                                                        Background="AliceBlue"
+                                                        Click="还原图层_Btn_Click"
+                                                        Content="还原图层" />
+                                                    <Button
+                                                        x:Name="TEST"
+                                                        Width="95"
+                                                        Height="20"
+                                                        Margin="5,5,0,0"
+                                                        Background="#FFF4F5E0"
+                                                        Click="还原图层_Btn_Click"
+                                                        Content="..." />
+                                                </WrapPanel>
+                                                <ScrollViewer
+                                                    Grid.Row="1"
+                                                    HorizontalContentAlignment="Stretch"
+                                                    VerticalContentAlignment="Stretch">
+                                                    <DataGrid
+                                                        x:Name="LayerDataGrid"
+                                                        Margin="0"
+                                                        HorizontalContentAlignment="Stretch"
+                                                        VerticalContentAlignment="Stretch"
+                                                        AutoGenerateColumns="False"
+                                                        CanUserAddRows="False"
+                                                        CanUserDeleteRows="False"
+                                                        FontSize="11"
+                                                        GridLinesVisibility="All"
+                                                        HeadersVisibility="Column"
+                                                        IsReadOnly="True">
+                                                        <DataGrid.Columns>
+                                                            <DataGridTextColumn Width="40" Header="序号" />
+                                                            <DataGridTextColumn Width="80" Header="图层名称" />
+                                                            <DataGridTextColumn Width="40" Header="开关" />
+                                                            <DataGridTextColumn Width="40" Header="冻结" />
+                                                            <DataGridTextColumn Width="40" Header="颜色" />
+                                                            <DataGridTextColumn Width="40" Header="删除" />
+                                                        </DataGrid.Columns>
+                                                    </DataGrid>
+                                                </ScrollViewer>
+                                            </Grid>
+                                        </TabItem>
+
+                                        <TabItem
+                                            x:Name="常用工具3"
+                                            FontSize="12"
+                                            FontWeight="Bold"
+                                            Header="常用工具3">
+                                            <Grid />
+                                        </TabItem>
+                                    </TabControl>
+
                                 </Grid>
+
                             </TabItem>
                             <TabItem
                                 x:Name="工艺"
@@ -838,8 +925,8 @@
                                                                         Background="#FFF3EEEE"
                                                                         Click="低压蒸汽_Btn_Click"
                                                                         Content="低压蒸汽"
-                                                                        FontSize="11"
                                                                         FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
                                                                         FontWeight="Normal" />
                                                                     <Button
                                                                         x:Name="低温循环上水"
@@ -2387,7 +2474,7 @@
                                 FontSize="12"
                                 GridLinesVisibility="All"
                                 HeadersVisibility="Column"
-                                IsReadOnly="True" >
+                                IsReadOnly="True">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn
                                         Width="*"
