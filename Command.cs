@@ -844,7 +844,7 @@ namespace GB_NewCadPlus_III
         #endregion
 
         /*
-        SyncAttribute
+        SyncAttribute  GenerateEquipmentTable
          */
 
 

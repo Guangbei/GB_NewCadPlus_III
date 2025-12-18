@@ -1,6 +1,7 @@
 using GB_NewCadPlus_III.Helpers;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Runtime.CompilerServices;
@@ -9,13 +10,17 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Xml.Linq;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
+using Binding = System.Windows.Data.Binding;
 using Border = System.Windows.Controls.Border;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
+using ComboBox = System.Windows.Controls.ComboBox;
 using DataGrid = System.Windows.Controls.DataGrid;
 using DataTable = System.Data.DataTable;
 using FontFamily = System.Windows.Media.FontFamily;
@@ -28,7 +33,7 @@ using Point = System.Windows.Point;
 using TabControl = System.Windows.Controls.TabControl;
 using TextBox = System.Windows.Controls.TextBox;
 using UserControl = System.Windows.Controls.UserControl;
-
+//ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
 namespace GB_NewCadPlus_III
 {
     /// <summary>
@@ -37,7 +42,6 @@ namespace GB_NewCadPlus_III
     public partial class WpfMainWindow : UserControl
     {
         #region  私有字段和属性
-
 
         /// <summary>
         /// 选中的预览图片路径
@@ -144,6 +148,14 @@ namespace GB_NewCadPlus_III
         /// 引用文件referenceFile文件夹  
         /// </summary>
         public static string referenceFile = System.IO.Path.Combine(AppPath, "ReferenceFile");
+        /// <summary>
+        /// 层管理器
+        /// </summary>
+        private LayerManager _layerManager;
+        /// <summary>
+        /// 层数据源
+        /// </summary>
+        private ObservableCollection<LayerInfo> _layerData;
         #endregion
 
 
@@ -203,6 +215,88 @@ namespace GB_NewCadPlus_III
             {
                 Directory.CreateDirectory(_previewCachePath);
             }
+
+            _layerManager = new LayerManager();
+            _layerData = new ObservableCollection<LayerInfo>();
+            // 初始化DataGrid
+            InitializeLayerDataGrid();
+        }
+        /// <summary>
+        /// 初始化图层数据DataGrid表
+        /// </summary>
+        private void InitializeLayerDataGrid()
+        {
+            // 如果您使用的是DataGrid，可以这样设置
+            LayerDataGrid.AutoGenerateColumns = false;
+            LayerDataGrid.ItemsSource = _layerData;
+        }
+        /// <summary>
+        /// 初始化 LayerDictionary DataGrid 的数据源（在窗口初始化时调用）LayerDataGrid 加载本地图层
+        /// </summary>
+        private async Task InitializeLayerDictionaryDataGridSource()
+        {
+            // 绑定集合到 DataGrid
+            LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+
+            // 强制设置 ScrollViewer 行为（防止 XAML 未生效）
+            LayerDictionary_DataGrid.SetValue(ScrollViewer.VerticalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+            LayerDictionary_DataGrid.SetValue(ScrollViewer.HorizontalScrollBarVisibilityProperty, ScrollBarVisibility.Auto);
+            LayerDictionary_DataGrid.SetValue(ScrollViewer.CanContentScrollProperty, false); // 像素滚动更平滑
+
+            // 绑定编辑事件以便捕获 ComboBox 并处理 SelectionChanged
+            LayerDictionary_DataGrid.PreparingCellForEdit -= LayerDictionary_DataGrid_PreparingCellForEdit;
+            LayerDictionary_DataGrid.PreparingCellForEdit += LayerDictionary_DataGrid_PreparingCellForEdit;
+            LayerDictionary_DataGrid.CellEditEnding -= LayerDictionary_DataGrid_CellEditEnding;
+            LayerDictionary_DataGrid.CellEditEnding += LayerDictionary_DataGrid_CellEditEnding;
+
+            // 先尝试加载分类名
+            try
+            {
+                if ((_categoryNames == null || _categoryNames.Count == 0) && _databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    await LoadCategoryNamesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"初始化 CategoryNames 时出错: {ex.Message}");
+            }
+
+            // DataGridComboBoxColumn 在视觉树外，XAML 绑定有时无效 -> 在代码中分配 ItemsSource
+            try
+            {
+                var comboCol = LayerDictionary_DataGrid.Columns
+                    .OfType<DataGridComboBoxColumn>()
+                    .FirstOrDefault(c => (c.Header?.ToString() ?? string.Empty).IndexOf("专业", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                if (comboCol != null)
+                {
+                    comboCol.ItemsSource = _categoryNames;
+                    comboCol.SelectedItemBinding = new System.Windows.Data.Binding("Major")
+                    {
+                        Mode = BindingMode.TwoWay,
+                        UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+                    };
+                }
+                else
+                {
+                    if (LayerDictionary_DataGrid.Columns.Count > 1 && !(LayerDictionary_DataGrid.Columns[1] is DataGridComboBoxColumn))
+                    {
+                        var newCombo = new DataGridComboBoxColumn
+                        {
+                            Header = "专业",
+                            Width = 75,
+                            ItemsSource = _categoryNames,
+                            SelectedItemBinding = new Binding("Major") { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }
+                        };
+                        LayerDictionary_DataGrid.Columns[1] = newCombo;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"为 LayerDictionary_DataGrid 设置下拉数据源失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -244,6 +338,8 @@ namespace GB_NewCadPlus_III
                 // 继续其它 UI 初始化（保持原有逻辑）
                 AddContextMenuToTreeView(CategoryTreeView);
                 PropertiesDataGrid = FindVisualChild<DataGrid>(this, "PropertiesDataGrid");
+                // 初始化图层字典数据源（等待 CategoryNames 可用后绑定列的 ItemsSource）
+                await InitializeLayerDictionaryDataGridSource();
                 //Load();
             }
             catch (Exception ex)
@@ -425,10 +521,12 @@ namespace GB_NewCadPlus_III
         {
             try
             {
+                // 先加载分类名用于下拉绑定
+                await LoadCategoryNamesAsync();
                 await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, _categoryTreeView, _categoryTreeNodes, _databaseManager);
 
                 LogManager.Instance.LogInfo("数据库连接已重新初始化");
-                // 在树刷新后，主动刷新主分类面板，确保 TabControl 在登录后立即显示数据库内容
+                // 在树刷新后，主动刷新主分类面板
                 await RefreshAllCategoryPanelsAsync();
             }
             catch (Exception ex)
@@ -550,29 +648,6 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 LogManager.Instance.LogInfo($"初始化属性编辑失败: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// 初始化文件属性编辑网格
-        /// </summary>
-        private void InitializeFilePropertiesGrid()
-        {
-            try
-            {
-                var initialRows = new List<CategoryPropertyEditModel>
-        {
-            new CategoryPropertyEditModel(),
-            new CategoryPropertyEditModel(),
-            new CategoryPropertyEditModel()
-        };
-
-                CategoryPropertiesDataGrid.ItemsSource = initialRows;
-                LogManager.Instance.LogInfo("初始化文件属性编辑网格成功:InitializeFilePropertiesGrid()");
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"初始化文件属性编辑网格失败: {ex.Message}");
             }
         }
 
@@ -5072,23 +5147,29 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
+        /// 在 WpfMainWindow 类中添加并发保护字段（类顶部私有字段区）
+        /// </summary>
+        private readonly System.Threading.SemaphoreSlim _uploadSemaphore = new System.Threading.SemaphoreSlim(1, 1);
+
+        /// <summary>
         /// 上传文件并保存到数据库
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
         public async Task UploadFileAndSaveToDatabase(ImportEntityDto dto)
         {
-            List<string> uploadedFiles = new List<string>();
-            bool transactionSuccess = false;
+            await _uploadSemaphore.WaitAsync();
+            List<string> uploadedFiles = new List<string>(); // 上传成功的文件列表
+            bool transactionSuccess = false; // 事务成功标志
 
             try
             {
-                // 参数校验 ImportFromSelection_Btn_Click
+                // 基本校验
                 if (dto == null || dto.FileStorage == null || string.IsNullOrEmpty(dto.FileStorage.FilePath))
-                    throw new Exception("ImportEntityDto参数无效或文件路径为空");
+                    throw new ArgumentException("ImportEntityDto 参数无效或文件路径为空");
                 if (_databaseManager == null)
-                    throw new Exception("数据库管理器未初始化");
-             
+                    throw new InvalidOperationException("数据库管理器未初始化");
+
                 // 1. 上传主文件
                 var fileInfo = new FileInfo(dto.FileStorage.FilePath);
                 string fileName = fileInfo.Name;
@@ -5104,12 +5185,20 @@ namespace GB_NewCadPlus_III
                         description,
                         dto.FileStorage.CreatedBy ?? Environment.UserName
                     );
+
+                    if (uploadedStorage == null)
+                    {
+                        await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, dto.FileStorage, dto.FileAttribute);
+                        throw new Exception("上传文件失败：返回的上传信息为空。");
+                    }
+
                     // 用上传后的路径和信息覆盖
                     dto.FileStorage.FileStoredName = uploadedStorage.FileStoredName;
                     dto.FileStorage.FilePath = uploadedStorage.FilePath;
                     dto.FileStorage.FileSize = uploadedStorage.FileSize;
                     dto.FileStorage.FileType = uploadedStorage.FileType;
                     dto.FileStorage.FileHash = uploadedStorage.FileHash;
+                    dto.FileStorage.DisplayName = Path.GetFileNameWithoutExtension(dto.FileStorage.FileName) ?? dto.FileStorage.DisplayName;
                     uploadedFiles.Add(dto.FileStorage.FilePath);
                 }
 
@@ -5142,7 +5231,7 @@ namespace GB_NewCadPlus_III
                 }
                 LogManager.Instance.LogInfo("保存文件属性到数据库:成功");
 
-                // 获取属性ID并关联
+                // 获取属性ID并关联（尽量使用返回的 ID，如果 DatabaseManager 提供返回ID的重载建议改为使用）
                 var dbAttribute = await _databaseManager.GetFileAttributeAsync(dto.FileStorage.DisplayName);
                 if (dbAttribute == null || dbAttribute.Id == null)
                 {
@@ -5163,20 +5252,34 @@ namespace GB_NewCadPlus_III
                 }
                 LogManager.Instance.LogInfo("保存文件记录到数据库:成功");
 
-                // 5. 更新属性的FileStorageId
+                // 5. 更新属性的FileStorageId (通过哈希查找有风险，但保持现有逻辑)
                 var dbStorage = await _databaseManager.GetFileStorageAsync(dto.FileStorage.FileHash);
+                if (dbStorage == null || dbStorage.Id == 0)
+                {
+                    LogManager.Instance.LogInfo("获取存储记录失败");
+                    await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, dto.FileStorage, dto.FileAttribute);
+                    return;
+                }
                 dto.FileAttribute.FileStorageId = dbStorage.Id;
                 await _databaseManager.UpdateFileAttributeAsync(dto.FileAttribute);
 
                 // 6. 更新分类统计
-                await _databaseManager.UpdateCategoryStatisticsAsync(
-                    dto.FileStorage.CategoryId,
-                    dto.FileStorage.CategoryType);
+                await _databaseManager.UpdateCategoryStatisticsAsync(dto.FileStorage.CategoryId, dto.FileStorage.CategoryType);
 
                 transactionSuccess = true;
 
-                // 7. 刷新界面
-                await RefreshCurrentCategoryDisplayAsync(_selectedCategoryNode);
+                // 7. 刷新界面（确保在 UI 线程）
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        await RefreshCurrentCategoryDisplayAsync(_selectedCategoryNode);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Instance.LogError($"刷新分类显示失败: {ex.Message}");
+                    }
+                });
 
                 MessageBox.Show($"文件已成功上传并保存到服务器指定路径\n文件路径: {dto.FileStorage.FilePath}",
                     "成功", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -5184,7 +5287,8 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, dto.FileStorage, dto.FileAttribute);
-                throw new Exception($"文件上传和数据库保存失败: {ex.Message}", ex);
+                LogManager.Instance.LogError($"UploadFileAndSaveToDatabase 错误: {ex.Message}");
+                throw;
             }
             finally
             {
@@ -5192,6 +5296,7 @@ namespace GB_NewCadPlus_III
                 {
                     await FileManager.RollbackFileUpload(_databaseManager, uploadedFiles, dto.FileStorage, dto.FileAttribute);
                 }
+                _uploadSemaphore.Release();
             }
         }
         #endregion
@@ -5227,7 +5332,7 @@ namespace GB_NewCadPlus_III
         /// <param name="propertyName"></param>
         /// <param name="propertyValue"></param>
         /// <returns> </returns>
-        
+
         public void SetFileAttributeProperty(FileAttribute attribute, string propertyName, string propertyValue)
         {
             if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue))
@@ -5719,38 +5824,6 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 LogManager.Instance.LogError($"清空PropertiesDataGrid时出错: {ex.Message}");
-            }
-        }
-
-
-        /// <summary>
-        /// 直接刷新当前选中分类的文件显示
-        /// </summary>
-        private async Task RefreshCurrentCategoryFilesAsync()
-        {
-            try
-            {
-                if (_selectedCategoryNode == null)
-                    return;
-
-                // 获取当前选中的TabItem
-                if (MainTabControl?.SelectedItem is TabItem selectedTabItem)
-                {
-                    string header = selectedTabItem.Header.ToString().Trim();
-
-                    // 查找对应的面板
-                    WrapPanel panel = GetPanelByFolderName(header);
-                    if (panel != null)
-                    {
-                        // 重新加载按钮
-                        await LoadButtonsFromDatabase(header, panel);
-                        LogManager.Instance.LogInfo($"已刷新 {header} 分类的文件显示");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogInfo($"刷新当前分类文件显示时出错: {ex.Message}");
             }
         }
 
@@ -7016,6 +7089,9 @@ namespace GB_NewCadPlus_III
             }
         }
 
+        #region 图层管理器
+
+
         private void 属性同步_Click(object sender, RoutedEventArgs e)
         {
             Env.Document.SendStringToExecute("SyncPipeProperties ", false, false, false);
@@ -7025,7 +7101,7 @@ namespace GB_NewCadPlus_III
 
         private void 表格同步_Click(object sender, RoutedEventArgs e)
         {
-            Env.Document.SendStringToExecute("GenerateEquipmentTable ", false, false, false);
+            //Env.Document.SendStringToExecute("GenerateEquipmentTable ", false, false, false);
 
         }
 
@@ -7061,29 +7137,2548 @@ namespace GB_NewCadPlus_III
             Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
         }
 
+        #endregion
+
+        #region 图层管理器相关
+        /// <summary>
+        /// [加载当前图层]按键事件 - 完善版
+        /// </summary>
         private void 加载当前图层_Btn_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                var layers = _layerManager.LoadCurrentLayers();//层管理器加载当前图层
+                _layerData.Clear();
 
+                for (int i = 0; i < layers.Count; i++)
+                {
+                    layers[i].DisplayIndex = i + 1;
+                    _layerData.Add(layers[i]);
+                }
+
+                Env.Editor?.WriteMessage($"\n成功加载 {layers.Count} 个图层");
+            }
+            catch (Exception ex)
+            {
+                Env.Editor?.WriteMessage($"\n加载图层时出错: {ex.Message}");
+            }
         }
-
+        /// <summary>
+        /// [保存图层配置]按键事件 - 完善版
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void 保存图层配置_Btn_Click(object sender, RoutedEventArgs e)
         {
-
+            try
+            {
+                bool success = _layerManager.SaveLayersToExcel();
+                if (success)
+                {
+                    Env.Editor?.WriteMessage("\n图层配置已保存");
+                    MessageBox.Show("图层配置已保存", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    Env.Editor?.WriteMessage("\n保存图层配置失败");
+                    MessageBox.Show("保存图层配置失败", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Env.Editor?.WriteMessage($"\n保存配置时出错: {ex.Message}");
+                MessageBox.Show($"保存配置时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
-
+        /// <summary>
+        /// [加载本地图层]按键事件 - 完善版
+        /// </summary>
         private void 加载本地图层_Btn_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                var layers = _layerManager.LoadLayersFromExcel();
+                _layerData.Clear();
 
+                for (int i = 0; i < layers.Count; i++)
+                {
+                    layers[i].DisplayIndex = i + 1;
+                    _layerData.Add(layers[i]);
+                }
+
+                Env.Editor?.WriteMessage($"\n成功加载 {layers.Count} 个图层配置");
+                MessageBox.Show($"成功加载 {layers.Count} 个图层配置", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                Env.Editor?.WriteMessage($"\n加载本地配置时出错: {ex.Message}");
+                MessageBox.Show($"加载本地配置时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
-
+        /// <summary>
+        /// [应用图层]按键事件 - 完善版
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void 应用图层_Btn_Click(object sender, RoutedEventArgs e)
         {
+            try
+            {
+                _layerManager.CreateBeforeApplySnapshot();
+                bool success = _layerManager.ApplyLayers(_layerData);
+
+                if (success)
+                {
+                    Env.Editor?.WriteMessage("\n图层配置已应用");
+                    MessageBox.Show("图层配置已应用", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    Env.Editor?.WriteMessage("\n应用图层配置失败");
+                    MessageBox.Show("应用图层配置失败", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Env.Editor?.WriteMessage($"\n应用图层时出错: {ex.Message}");
+                MessageBox.Show($"应用图层时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        /// <summary>
+        /// [还原图层]按键事件 - 完善版
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void 还原图层_Btn_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                bool success = _layerManager.RestorePreviousState();
+                if (success)
+                {
+                    Env.Editor?.WriteMessage("\n已还原到应用前的图层状态");
+                    加载当前图层_Btn_Click(null, null); // 重新加载当前图层
+                    MessageBox.Show("已还原到应用前的图层状态", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    Env.Editor?.WriteMessage("\n还原图层状态失败");
+                    MessageBox.Show("还原图层状态失败", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Env.Editor?.WriteMessage($"\n还原图层时出错: {ex.Message}");
+                MessageBox.Show($"还原图层时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        /// <summary>
+        /// 图层管理器
+        /// </summary>
+        public class LayerManager
+        {
+            private List<LayerInfo> _layers;
+            private LayerStateSnapshot _beforeApplySnapshot;
+            private string _workingDirectory;
+
+            public LayerManager()
+            {
+                _layers = new List<LayerInfo>();
+                _workingDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                               "GB_NewCadPlus_III");
+                if (!Directory.Exists(_workingDirectory))
+                    Directory.CreateDirectory(_workingDirectory);
+            }
+
+            /// <summary>
+            /// 加载当前图纸的所有图层
+            /// </summary>
+            public List<LayerInfo> LoadCurrentLayers()
+            {
+                _layers.Clear();
+                var layers = new List<LayerInfo>();
+
+                Document doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null) return layers;
+
+                Database db = doc.Database;
+                Editor ed = doc.Editor;
+
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    LayerTable lt = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
+                    int index = 1;
+
+                    foreach (ObjectId layerId in lt)
+                    {
+                        LayerTableRecord layer = tr.GetObject(layerId, OpenMode.ForRead) as LayerTableRecord;
+                        if (layer != null)
+                        {
+                            var layerInfo = new LayerInfo
+                            {
+                                Index = index++,
+                                Name = layer.Name,
+                                IsOn = !layer.IsOff,
+                                IsFrozen = layer.IsFrozen,
+                                ColorIndex = layer.Color.ColorIndex,
+                                Color = layer.Color,
+                                ToDelete = false
+                            };
+                            layers.Add(layerInfo);
+                        }
+                    }
+                    tr.Commit();
+                }
+
+                // 按名称排序
+                layers.Sort((x, y) => string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase));
+                _layers = new List<LayerInfo>(layers);
+                return layers;
+            }
+
+            /// <summary>
+            /// 保存图层配置到Excel
+            /// </summary>
+            public bool SaveLayersToExcel(string fileName = "layer_config.xlsx")
+            {
+                try
+                {
+                    string filePath = Path.Combine(_workingDirectory, fileName);
+
+                    using (var package = new ExcelPackage())
+                    {
+                        var worksheet = package.Workbook.Worksheets.Add("图层配置");
+
+                        worksheet.Cells[1, 1].Value = "序号";
+                        worksheet.Cells[1, 2].Value = "图层名称";
+                        worksheet.Cells[1, 3].Value = "开关";
+                        worksheet.Cells[1, 4].Value = "冻结";
+                        worksheet.Cells[1, 5].Value = "颜色索引";
+                        worksheet.Cells[1, 6].Value = "删除";
+
+                        for (int i = 0; i < _layers.Count; i++)
+                        {
+                            var layer = _layers[i];
+                            int row = i + 2;
+
+                            worksheet.Cells[row, 1].Value = layer.Index;
+                            worksheet.Cells[row, 2].Value = layer.Name;
+                            worksheet.Cells[row, 3].Value = layer.IsOn;
+                            worksheet.Cells[row, 4].Value = layer.IsFrozen;
+                            worksheet.Cells[row, 5].Value = layer.ColorIndex;
+                            worksheet.Cells[row, 6].Value = layer.ToDelete;
+                        }
+
+                        FileInfo fileInfo = new FileInfo(filePath);
+                        package.SaveAs(fileInfo);
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                    ed?.WriteMessage($"\n保存图层配置时出错: {ex.Message}");
+                    return false;
+                }
+            }
+
+            /// <summary>
+            /// 从Excel加载图层配置
+            /// </summary>
+            public List<LayerInfo> LoadLayersFromExcel(string fileName = "layer_config.xlsx")
+            {
+                try
+                {
+                    string filePath = Path.Combine(_workingDirectory, fileName);
+                    if (!File.Exists(filePath))
+                    {
+                        Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                        ed?.WriteMessage("\n配置文件不存在");
+                        return new List<LayerInfo>();
+                    }
+
+                    using (var package = new ExcelPackage(new FileInfo(filePath)))
+                    {
+                        var worksheet = package.Workbook.Worksheets[0];
+                        var layers = new List<LayerInfo>();
+
+                        int rowCount = worksheet.Dimension?.Rows ?? 0;
+                        if (rowCount <= 1) return new List<LayerInfo>();
+
+                        for (int row = 2; row <= rowCount; row++)
+                        {
+                            try
+                            {
+                                var index = Convert.ToInt32(worksheet.Cells[row, 1].Value ?? 0);
+                                var name = worksheet.Cells[row, 2].Value?.ToString() ?? "";
+                                var isOn = Convert.ToBoolean(worksheet.Cells[row, 3].Value ?? true);
+                                var isFrozen = Convert.ToBoolean(worksheet.Cells[row, 4].Value ?? false);
+                                var colorIndex = Convert.ToInt16(worksheet.Cells[row, 5].Value ?? 7);
+                                var toDelete = Convert.ToBoolean(worksheet.Cells[row, 6].Value ?? false);
+
+                                var layerInfo = new LayerInfo
+                                {
+                                    Index = index,
+                                    Name = name,
+                                    IsOn = isOn,
+                                    IsFrozen = isFrozen,
+                                    ColorIndex = colorIndex,
+                                    ToDelete = toDelete,
+                                    Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
+                                        Autodesk.AutoCAD.Colors.ColorMethod.ByAci, colorIndex)
+                                };
+                                layers.Add(layerInfo);
+                            }
+                            catch (Exception rowEx)
+                            {
+                                Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                                ed?.WriteMessage($"\n读取第{row}行数据时出错: {rowEx.Message}");
+                            }
+                        }
+
+                        // 按名称排序
+                        layers.Sort((x, y) => string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase));
+                        _layers = new List<LayerInfo>(layers);
+                        return layers;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                    ed?.WriteMessage($"\n加载图层配置时出错: {ex.Message}");
+                    return new List<LayerInfo>();
+                }
+            }
+
+            /// <summary>
+            /// 创建应用前的状态快照
+            /// </summary>
+            public void CreateBeforeApplySnapshot()
+            {
+                _beforeApplySnapshot = new LayerStateSnapshot();
+                Document doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null) return;
+
+                Database db = doc.Database;
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    LayerTable lt = tr.GetObject(db.LayerTableId, OpenMode.ForRead) as LayerTable;
+                    foreach (ObjectId layerId in lt)
+                    {
+                        LayerTableRecord layer = tr.GetObject(layerId, OpenMode.ForRead) as LayerTableRecord;
+                        if (layer != null)
+                        {
+                            var layerInfo = new LayerInfo
+                            {
+                                Name = layer.Name,
+                                IsOn = !layer.IsOff,
+                                IsFrozen = layer.IsFrozen,
+                                ColorIndex = layer.Color.ColorIndex,
+                                ToDelete = false
+                            };
+                            _beforeApplySnapshot.Layers[layer.Name] = layerInfo;
+                        }
+                    }
+                    tr.Commit();
+                }
+            }
+
+            /// <summary>
+            /// 应用图层配置
+            /// </summary>
+            public bool ApplyLayers(ObservableCollection<LayerInfo> layerData)
+            {
+                try
+                {
+                    Document doc = Application.DocumentManager.MdiActiveDocument;
+                    if (doc == null) return false;
+
+                    Database db = doc.Database;
+                    Editor ed = doc.Editor;
+                    using (doc.LockDocument())
+                    using (var tr = new DBTrans())
+                    {
+                        foreach (var layerInfo in layerData)
+                        {
+                            if (tr.LayerTable.Has(layerInfo.Name))
+                            {
+                                var layerObjectId = tr.LayerTable[layerInfo.Name];
+
+                                if (layerInfo.ToDelete)
+                                {
+                                    DeleteAllEntitiesOnLayer(tr, db, layerObjectId, layerInfo.Name);
+                                    tr.LayerTable.Remove(layerObjectId);
+                                    continue;
+                                }
+                            }
+                        }
+                        tr.Commit();
+                        Env.Editor.Redraw();
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                    ed?.WriteMessage($"\n应用图层配置时出错: {ex.Message}");
+                    return false;
+                }
+            }
+
+            /// <summary>
+            /// 删除图层上的所有实体
+            /// </summary>
+            private int DeleteAllEntitiesOnLayer(DBTrans tr, Database db, ObjectId layerId, string layerName)
+            {
+                int deletedCount = 0;
+                try
+                {
+                    foreach (ObjectId blockTableId in tr.BlockTable)
+                    {
+                        BlockTableRecord blockTableRecord = tr.GetObject(blockTableId, OpenMode.ForWrite) as BlockTableRecord;
+                        var entitiesToDelete = new List<ObjectId>();
+
+                        foreach (ObjectId entId in blockTableRecord)
+                        {
+                            Entity ent = tr.GetObject(entId, OpenMode.ForRead) as Entity;
+                            if (ent != null && ent.LayerId == layerId)
+                            {
+                                entitiesToDelete.Add(entId);
+                            }
+                        }
+
+                        foreach (ObjectId entId in entitiesToDelete)
+                        {
+                            try
+                            {
+                                Entity ent = tr.GetObject(entId, OpenMode.ForWrite) as Entity;
+                                if (ent != null)
+                                {
+                                    ent.Erase(true);
+                                    deletedCount++;
+                                }
+                            }
+                            catch (Exception entDeleteEx)
+                            {
+                                Env.Editor?.WriteMessage($"\n删除实体时出错: {entDeleteEx.Message}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Env.Editor?.WriteMessage($"\n遍历实体时出错: {ex.Message}");
+                }
+                return deletedCount;
+            }
+
+
+            /// <summary>
+            /// 还原到应用前的状态
+            /// </summary>
+            public bool RestorePreviousState()
+            {
+                if (_beforeApplySnapshot == null || _beforeApplySnapshot.Layers.Count == 0)
+                {
+                    Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                    ed?.WriteMessage("\n没有可还原的图层状态");
+                    return false;
+                }
+
+                try
+                {
+                    Document doc = Application.DocumentManager.MdiActiveDocument;
+                    if (doc == null) return false;
+
+                    Database db = doc.Database;
+                    Editor ed = doc.Editor;
+
+                    using (Transaction tr = db.TransactionManager.StartTransaction())
+                    {
+                        LayerTable lt = tr.GetObject(db.LayerTableId, OpenMode.ForWrite) as LayerTable;
+
+                        foreach (var kvp in _beforeApplySnapshot.Layers)
+                        {
+                            string layerName = kvp.Key;
+                            LayerInfo originalState = kvp.Value;
+
+                            if (lt.Has(layerName))
+                            {
+                                LayerTableRecord layer = tr.GetObject(lt[layerName], OpenMode.ForWrite) as LayerTableRecord;
+                                layer.IsOff = !originalState.IsOn;
+                                layer.IsFrozen = originalState.IsFrozen;
+                                layer.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
+                                    Autodesk.AutoCAD.Colors.ColorMethod.ByAci, originalState.ColorIndex);
+                            }
+                            else
+                            {
+                                using (var newLayer = new LayerTableRecord())
+                                {
+                                    newLayer.Name = layerName;
+                                    newLayer.IsOff = !originalState.IsOn;
+                                    newLayer.IsFrozen = originalState.IsFrozen;
+                                    newLayer.Color = Autodesk.AutoCAD.Colors.Color.FromColorIndex(
+                                        Autodesk.AutoCAD.Colors.ColorMethod.ByAci, originalState.ColorIndex);
+
+                                    lt.Add(newLayer);
+                                    tr.AddNewlyCreatedDBObject(newLayer, true);
+                                }
+                            }
+                        }
+                        tr.Commit();
+                        ed.Regen();
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Editor ed = Application.DocumentManager.MdiActiveDocument?.Editor;
+                    ed?.WriteMessage($"\n还原图层状态时出错: {ex.Message}");
+                    return false;
+                }
+            }
+
+        }
+        #endregion
+
+        #region 管道表生成器
+        /// <summary>
+        /// 新增：保存最近一次生成的临时表文件路径（以便后续插入）
+        /// </summary>
+        private string _lastSavedPipeTablePath;
+        /// <summary>
+        /// 新增：记录上次生成表所涉及的图层列表（供插入时选择）
+        /// </summary>
+        private List<string> _lastSavedPipeTableLayers = new List<string>();
+
+        /*
+         BuildAttributeGroupKey
+         */
+
+        /// <summary>
+        /// 生成管道表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void 生成管道表_Click(object sender, RoutedEventArgs e)
+        {
+            Env.Document.SendStringToExecute("GeneratePipeTableFromSelection ", false, false, false);
+        
+        }
+
+        
+        /// <summary>
+        /// 插入管道表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void 插入管道表_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_lastSavedPipeTablePath) || !File.Exists(_lastSavedPipeTablePath))
+                {
+                    MessageBox.Show("未找到已保存的临时表文件，请先点击【生成管道表】并完成保存。", "未找到文件", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null)
+                {
+                    MessageBox.Show("未找到活动的 AutoCAD 文档。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                using (doc.LockDocument())
+                {
+                    var ed = doc.Editor;
+
+                    // 提示用户切换视口并确认
+                    var pko = new Autodesk.AutoCAD.EditorInput.PromptKeywordOptions("\n请将鼠标移动到目标视口（布局请先双击进入视口），然后选择：\n[继续] 继续 / [取消] 取消")
+                    {
+                        AllowNone = true
+                    };
+                    pko.Keywords.Add("继续");
+                    pko.Keywords.Add("取消");
+                    try { pko.Keywords.Default = "继续"; } catch { }
+
+                    var pkr = ed.GetKeywords(pko);
+                    if (pkr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK || string.Equals(pkr.StringResult, "取消", StringComparison.OrdinalIgnoreCase))
+                        return;
+
+                    // 拾取插入点
+                    var ppo = new Autodesk.AutoCAD.EditorInput.PromptPointOptions("\n请选择表格插入点（请在目标视口内拾取）：");
+                    var ppr = ed.GetPoint(ppo);
+                    if (ppr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    {
+                        MessageBox.Show("未选择插入点，操作已取消。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    // 如果是在布局中插入，提示用户输入视口比例分母以便缩放
+                    double insertionScale = 1.0;
+                    var scalePrompt = new Autodesk.AutoCAD.EditorInput.PromptDoubleOptions("\n如果在布局/纸空间插入，请输入视口比例的分母（例如 100 表示 1:100），回车表示 1：")
+                    {
+                        AllowNone = true,
+                        DefaultValue = 1.0,
+                        UseDefaultValue = true,
+                        AllowZero = false,
+                        AllowNegative = false
+                    };
+                    var scaleRes = ed.GetDouble(scalePrompt);
+                    if (scaleRes.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK && scaleRes.Value > 0.0)
+                        insertionScale = 1.0 / scaleRes.Value; // 实际缩放因子
+
+                    // 插入块（返回 BlockReference 的 ObjectId）
+                    var insertedBrId = AutoCadHelper.InsertBlockFromExternalDwg(_lastSavedPipeTablePath, Path.GetFileNameWithoutExtension(_lastSavedPipeTablePath), ppr.Value);
+
+                    if (insertedBrId == Autodesk.AutoCAD.DatabaseServices.ObjectId.Null)
+                    {
+                        MessageBox.Show("插入失败：未能将临时 DWG 中的块导入并插入。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // 如果需要缩放（例如布局视口按比例显示），调整已插入的 BlockReference 的 ScaleFactors
+                    if (Math.Abs(insertionScale - 1.0) > 1e-9)
+                    {
+                        try
+                        {
+                            using (var tr = doc.Database.TransactionManager.StartTransaction())
+                            {
+                                var br = tr.GetObject(insertedBrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockReference;
+                                if (br != null)
+                                {
+                                    br.ScaleFactors = new Autodesk.AutoCAD.Geometry.Scale3d(insertionScale, insertionScale, insertionScale);
+                                }
+                                tr.Commit();
+                            }
+                        }
+                        catch (Exception exScale)
+                        {
+                            LogManager.Instance.LogWarning($"调整插入比例时出错: {exScale.Message}");
+                        }
+                    }
+
+                    // 新增：将插入的表设置到“选定图元图层”中，并确保块定义内实体也使用该图层
+                    try
+                    {
+                        string targetLayer = null;
+                        if (_lastSavedPipeTableLayers != null && _lastSavedPipeTableLayers.Count > 0)
+                        {
+                            if (_lastSavedPipeTableLayers.Count == 1)
+                            {
+                                targetLayer = _lastSavedPipeTableLayers[0];
+                            }
+                            else
+                            {
+                                // 列出可选图层并让用户通过索引选择，避免输入图层名错误
+                                var listText = new StringBuilder();
+                                for (int i = 0; i < _lastSavedPipeTableLayers.Count; i++)
+                                {
+                                    listText.AppendLine($"{i + 1}. {_lastSavedPipeTableLayers[i]}");
+                                }
+                                ed.WriteMessage($"\n检测到生成表时涉及以下图层：\n{listText}\n请输入要用于表的图层序号（1 - {_lastSavedPipeTableLayers.Count}），回车使用默认第1项：");
+
+                                var pio = new Autodesk.AutoCAD.EditorInput.PromptIntegerOptions("\n请输入序号：")
+                                {
+                                    AllowNone = true,
+                                    DefaultValue = 1,
+                                    LowerLimit = 1,
+                                    UpperLimit = _lastSavedPipeTableLayers.Count,
+                                    UseDefaultValue = true
+                                };
+                                var pir = ed.GetInteger(pio);
+                                if (pir.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                                {
+                                    int idx = Math.Max(1, Math.Min(_lastSavedPipeTableLayers.Count, pir.Value));
+                                    targetLayer = _lastSavedPipeTableLayers[idx - 1];
+                                }
+                                else
+                                {
+                                    targetLayer = _lastSavedPipeTableLayers[0];
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(targetLayer))
+                        {
+                            using (var tr = doc.Database.TransactionManager.StartTransaction())
+                            {
+                                // 确保目标图层存在，否则创建
+                                var lt = (Autodesk.AutoCAD.DatabaseServices.LayerTable)tr.GetObject(doc.Database.LayerTableId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead);
+                                if (!lt.Has(targetLayer))
+                                {
+                                    lt.UpgradeOpen();
+                                    var ltr = new Autodesk.AutoCAD.DatabaseServices.LayerTableRecord
+                                    {
+                                        Name = targetLayer
+                                    };
+                                    lt.Add(ltr);
+                                    tr.AddNewlyCreatedDBObject(ltr, true);
+                                }
+
+                                // 设置 BlockReference 的图层，并把块定义中所有实体的 Layer 设置为目标图层
+                                var br = tr.GetObject(insertedBrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockReference;
+                                if (br != null)
+                                {
+                                    // 设置 BlockReference 层
+                                    br.Layer = targetLayer;
+
+                                    // 获取块定义（BlockTableRecord）并把其子实体层设置为目标图层
+                                    var btrId = br.BlockTableRecord;
+                                    if (btrId != Autodesk.AutoCAD.DatabaseServices.ObjectId.Null)
+                                    {
+                                        var btr = tr.GetObject(btrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockTableRecord;
+                                        if (btr != null)
+                                        {
+                                            foreach (ObjectId entId in btr)
+                                            {
+                                                try
+                                                {
+                                                    // 可能包含匿名/非实体项，安全转换
+                                                    var ent = tr.GetObject(entId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.Entity;
+                                                    if (ent != null)
+                                                    {
+                                                        // 跳过属性定义（AttributeDefinition）以免影响属性行为
+                                                        if (ent is Autodesk.AutoCAD.DatabaseServices.AttributeDefinition) continue;
+
+                                                        // 设置实体层为目标图层
+                                                        ent.Layer = targetLayer;
+                                                    }
+                                                }
+                                                catch
+                                                {
+                                                    // 忽略个别实体修改失败
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                tr.Commit();
+                            }
+                        }
+                    }
+                    catch (Exception exLayer)
+                    {
+                        LogManager.Instance.LogWarning($"设置插入表图层时出错: {exLayer.Message}");
+                    }
+
+                    MessageBox.Show("临时管道表已插入当前空间。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"插入管道表失败: {ex.Message}");
+                MessageBox.Show($"插入管道表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 表示管道汇总行
+        /// </summary>
+        private class PipeSummary
+        {
+            public int Seq { get; set; }
+            public string Name { get; set; }            // 示例可设为 "管道"
+            public int WidthSpec { get; set; }          // y（整型，单位：毫米整数）
+            public int ThicknessSpec { get; set; }      // z（整型）
+            public double QuantityMeters { get; set; }  // x 累加后以米为单位（double）
+            public string Remark { get; set; }
+
+            // 改为可写属性，兼容原先代码对 SpecString 的赋值需求
+            private string _specString;
+            public string SpecString
+            {
+                get
+                {
+                    // 如果没有显式设置，则返回基于宽厚的默认格式
+                    if (string.IsNullOrEmpty(_specString))
+                        return $"{WidthSpec} X {ThicknessSpec}";
+                    return _specString;
+                }
+                set => _specString = value;
+            }
+            // 新增：属性字典（属性名 -> 值）
+            public Dictionary<string, string> Attributes { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// 将管道汇总表生成到一个临时 DWG 文件（ModelSpace，表放在原点）。
+        /// 文件名格式：{layerPart}_{yyyyMMdd_HHmmss}.dwg，保存在 %TEMP%\GB_NewCadPlus_III 下。ParseLengthValueFromAttribute
+        /// 生成后会把路径写入字段 `_lastSavedPipeTablePath` 并提示用户下一步操作。
+        /// 列宽会根据表头与单元格内容自动计算（近似字符宽度）。
+        /// </summary>
+        private void SavePipeTableToTempDwg(List<PipeSummary> summaries, string material, double scaleDenom, List<string> attributesColumns = null)
+        {
+            try
+            {
+                if (summaries == null || summaries.Count == 0)
+                {
+                    MessageBox.Show("没有要保存的表数据。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(_lastSavedPipeTablePath) && File.Exists(_lastSavedPipeTablePath))
+                    {
+                        try { File.Delete(_lastSavedPipeTablePath); } catch { /* 忽略删除失败 */ }
+                    }
+                }
+                catch { }
+
+                string buttonFolderName = "生成管道表";
+                string tempDir = Path.Combine(Path.GetTempPath(), "GB_NewCadPlus_III", buttonFolderName);
+                if (!Directory.Exists(tempDir)) Directory.CreateDirectory(tempDir);
+
+                string firstLayer = summaries.FirstOrDefault()?.Name ?? "PipeTable";
+                string safeLayer = string.Concat(firstLayer.Split(Path.GetInvalidFileNameChars())).Trim();
+                if (string.IsNullOrWhiteSpace(safeLayer)) safeLayer = "PipeTable";
+
+                string fileName = $"{safeLayer}_{DateTime.Now:yyyyMMdd_HHmmss}.dwg";
+                string fullPath = Path.Combine(tempDir, fileName);
+                string blockName = Path.GetFileNameWithoutExtension(fileName);
+
+                using (var tempDb = new Autodesk.AutoCAD.DatabaseServices.Database(true, true))
+                {
+                    using (var tr = tempDb.TransactionManager.StartTransaction())
+                    {
+                        try
+                        {
+                            // 确保目标图层存在
+                            var ltForLayer = (Autodesk.AutoCAD.DatabaseServices.LayerTable)tr.GetObject(tempDb.LayerTableId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite);
+                            if (!ltForLayer.Has(safeLayer))
+                            {
+                                var ltr = new Autodesk.AutoCAD.DatabaseServices.LayerTableRecord { Name = safeLayer };
+                                ltForLayer.Add(ltr);
+                                tr.AddNewlyCreatedDBObject(ltr, true);
+                            }
+
+                            var bt = (Autodesk.AutoCAD.DatabaseServices.BlockTable)tr.GetObject(tempDb.BlockTableId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite);
+                            var btr = new Autodesk.AutoCAD.DatabaseServices.BlockTableRecord { Name = blockName };
+                            bt.Add(btr);
+                            tr.AddNewlyCreatedDBObject(btr, true);
+
+                            // 构建列头列表：序号 | 名称 | (属性列...) | 单位 | 数量 | 备注
+                            var attributeCols = attributesColumns ?? new List<string>();
+                            int fixedTailCols = 3; // 单位, 数量, 备注
+                            int cols = 2 + attributeCols.Count + fixedTailCols; // 序号 + 名称 + 属性列 + 尾部列
+                            int rows = summaries.Count + 1;
+
+                            var table = new Autodesk.AutoCAD.DatabaseServices.Table();
+                            table.SetSize(rows, cols);
+                            try { table.SetDatabaseDefaults(tempDb); } catch { }
+
+                            // 设置表图层
+                            try { table.Layer = safeLayer; } catch { }
+
+                            table.Position = new Autodesk.AutoCAD.Geometry.Point3d(0, 0, 0);
+
+                            double denom = (scaleDenom <= 0.0) ? 1.0 : scaleDenom;
+                            // 文本高度（与之前一致）
+                            double baseTextHeight = 200.0;
+                            double textHeight = baseTextHeight / denom;
+                            try { table.SetRowHeight(300.0 / denom); } catch { }
+
+                            // 帮助函数：估算字符串“宽度”（以字符为单位，中文略宽）
+                            double EstimateTextUnitLength(string s)
+                            {
+                                if (string.IsNullOrEmpty(s)) return 0.0;
+                                double len = 0.0;
+                                foreach (var ch in s)
+                                {
+                                    // 中文字符或全角字符视为 1.2 单位，拉丁字母与数字为 1.0 单位
+                                    if (ch >= 0x4E00 && ch <= 0x9FFF) len += 1.2;
+                                    else if (char.IsLetterOrDigit(ch) || char.IsPunctuation(ch) || char.IsWhiteSpace(ch)) len += 1.0;
+                                    else len += 1.0;
+                                }
+                                return len;
+                            }
+
+                            // 先收集每列的最大字符“宽度”
+                            var maxCharUnits = new double[cols];
+                            for (int c = 0; c < cols; c++) maxCharUnits[c] = 0.0;
+
+                            // 头部
+                            var headers = new List<string> { "序号", "名称" };
+                            headers.AddRange(attributeCols);
+                            headers.AddRange(new[] { "单位", "数量", "备注" });
+
+                            for (int c = 0; c < headers.Count && c < cols; c++)
+                            {
+                                var h = headers[c] ?? string.Empty;
+                                maxCharUnits[c] = Math.Max(maxCharUnits[c], EstimateTextUnitLength(h));
+                                table.Cells[0, c].TextString = h;
+                                try { table.Cells[0, c].Alignment = Autodesk.AutoCAD.DatabaseServices.CellAlignment.MiddleCenter; } catch { }
+                            }
+
+                            // 数据写入同时更新最大宽度需求
+                            for (int r = 0; r < summaries.Count; r++)
+                            {
+                                var s = summaries[r];
+                                int rowIndex = r + 1;
+                                // 序号
+                                var seqStr = s.Seq.ToString();
+                                maxCharUnits[0] = Math.Max(maxCharUnits[0], EstimateTextUnitLength(seqStr));
+                                table.Cells[rowIndex, 0].TextString = seqStr;
+
+                                // 名称
+                                var nameStr = s.Name ?? "管道";
+                                maxCharUnits[1] = Math.Max(maxCharUnits[1], EstimateTextUnitLength(nameStr));
+                                table.Cells[rowIndex, 1].TextString = nameStr;
+
+                                // 属性列
+                                for (int ai = 0; ai < attributeCols.Count; ai++)
+                                {
+                                    var colName = attributeCols[ai];
+                                    string value = "";
+                                    if (s.Attributes != null)
+                                    {
+                                        var foundKey = s.Attributes.Keys.FirstOrDefault(k => k.Equals(colName, StringComparison.OrdinalIgnoreCase) || k.IndexOf(colName, StringComparison.OrdinalIgnoreCase) >= 0);
+                                        if (foundKey != null) value = s.Attributes[foundKey] ?? string.Empty;
+                                    }
+                                    table.Cells[rowIndex, 2 + ai].TextString = value;
+                                    maxCharUnits[2 + ai] = Math.Max(maxCharUnits[2 + ai], EstimateTextUnitLength(value));
+                                }
+
+                                // 单位/数量/备注
+                                int unitCol = 2 + attributeCols.Count;
+                                var unitStr = "米";
+                                var qtyStr = s.QuantityMeters.ToString("F3");
+                                var remarkStr = string.IsNullOrEmpty(s.Remark) ? (string.IsNullOrEmpty(material) ? "请填写材料" : material) : s.Remark;
+
+                                table.Cells[rowIndex, unitCol].TextString = unitStr;
+                                table.Cells[rowIndex, unitCol + 1].TextString = qtyStr;
+                                table.Cells[rowIndex, unitCol + 2].TextString = remarkStr;
+
+                                maxCharUnits[unitCol] = Math.Max(maxCharUnits[unitCol], EstimateTextUnitLength(unitStr));
+                                maxCharUnits[unitCol + 1] = Math.Max(maxCharUnits[unitCol + 1], EstimateTextUnitLength(qtyStr));
+                                maxCharUnits[unitCol + 2] = Math.Max(maxCharUnits[unitCol + 2], EstimateTextUnitLength(remarkStr));
+
+                                for (int c = 0; c < cols; c++)
+                                {
+                                    try { table.Cells[rowIndex, c].Alignment = Autodesk.AutoCAD.DatabaseServices.CellAlignment.MiddleCenter; } catch { }
+                                    try { table.Cells[rowIndex, c].TextHeight = textHeight; } catch { }
+                                }
+                            }
+
+                            // 为所有单元设置文本高度（含表头）
+                            for (int r = 0; r < rows; r++)
+                                for (int c = 0; c < cols; c++)
+                                    try { table.Cells[r, c].TextHeight = textHeight; } catch { }
+
+                            // 根据每列需要的最大字符数计算列宽（经验系数）
+                            // charWidthFactor: 每个字符宽度近似为 textHeight * factor（基于视觉经验）
+                            double charWidthFactor = 0.6; // 经验值：字符宽约为文本高度的0.6倍（可微调）
+                            double minColWidth = 600.0 / denom; // 最小列宽（防止过窄）
+                            double maxColWidth = 8000.0 / denom; // 最大列宽限制
+
+                            for (int c = 0; c < cols; c++)
+                            {
+                                try
+                                {
+                                    double estimatedWidth = Math.Ceiling(maxCharUnits[c] * textHeight * charWidthFactor);
+                                    // 对于序号列设为较小最小宽度
+                                    if (c == 0) estimatedWidth = Math.Max(estimatedWidth, 500.0 / denom);
+                                    // 名称与备注列默认更宽一些
+                                    if (c == 1 || (c == cols - 1)) estimatedWidth = Math.Max(estimatedWidth, 1200.0 / denom);
+
+                                    double finalWidth = Math.Max(minColWidth, Math.Min(maxColWidth, estimatedWidth));
+                                    table.SetColumnWidth(c, finalWidth);
+                                }
+                                catch
+                                {
+                                    // 忽略单列设置失败，继续下一列
+                                }
+                            }
+
+                            // 把 table 加入块定义
+                            btr.AppendEntity(table);
+                            tr.AddNewlyCreatedDBObject(table, true);
+
+                            // 确保块定义内实体使用 safeLayer
+                            try
+                            {
+                                foreach (ObjectId entId in btr)
+                                {
+                                    try
+                                    {
+                                        var ent = tr.GetObject(entId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.Entity;
+                                        if (ent != null && !(ent is Autodesk.AutoCAD.DatabaseServices.AttributeDefinition))
+                                        {
+                                            ent.Layer = safeLayer;
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                            catch { }
+
+                            tr.Commit();
+                        }
+                        catch (Exception exInner)
+                        {
+                            try { tr.Abort(); } catch { }
+                            LogManager.Instance.LogWarning($"在临时数据库中创建表时出错: {exInner.Message}");
+                            throw;
+                        }
+                    }
+
+                    try
+                    {
+                        tempDb.SaveAs(fullPath, Autodesk.AutoCAD.DatabaseServices.DwgVersion.Current);
+                    }
+                    catch (Exception exSave)
+                    {
+                        LogManager.Instance.LogError($"保存临时 DWG 时出错: {exSave.Message}");
+                        throw;
+                    }
+                }
+
+                _lastSavedPipeTablePath = fullPath;
+                MessageBox.Show($"管道表已生成并保存到临时文件：\n{fullPath}\n\n下一步：切换到目标视口（布局视口请双击进入），点击“插入管道表”并拾取插入点。", "已保存", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"生成管道表时出错: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 帮助：从实体中提取属性（AttributeReference / ExtensionDictionary Xrecord / RegApp XData）
+        /// </summary>
+        /// <param name="tr"></param>
+        /// <param name="ent"></param>
+        /// <returns></returns>
+        private Dictionary<string, string> GetEntityAttributeMap(Autodesk.AutoCAD.DatabaseServices.Transaction tr, Autodesk.AutoCAD.DatabaseServices.Entity ent)
+        {
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                if (ent == null) return map;
+
+                // 1) 若是块参照，读取 AttributeReference（标签 -> 值）
+                if (ent is Autodesk.AutoCAD.DatabaseServices.BlockReference br)
+                {
+                    try
+                    {
+                        var attCol = br.AttributeCollection;
+                        foreach (ObjectId attId in attCol)
+                        {
+                            try
+                            {
+                                var ar = tr.GetObject(attId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead) as Autodesk.AutoCAD.DatabaseServices.AttributeReference;
+                                if (ar != null)
+                                {
+                                    var tag = (ar.Tag ?? string.Empty).Trim();
+                                    var val = (ar.TextString ?? string.Empty).Trim();
+                                    if (!string.IsNullOrEmpty(tag))
+                                    {
+                                        if (!map.ContainsKey(tag)) map[tag] = val;
+                                    }
+                                }
+                            }
+                            catch { /* 忽略单个属性读取失败 */ }
+                        }
+                    }
+                    catch { /* 忽略块参照属性读取异常 */ }
+                }
+
+                // 2) ExtensionDictionary 中的 Xrecord（键名 -> 以 | 分隔的值）
+                try
+                {
+                    if (ent.ExtensionDictionary != Autodesk.AutoCAD.DatabaseServices.ObjectId.Null)
+                    {
+                        var extDict = tr.GetObject(ent.ExtensionDictionary, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead) as Autodesk.AutoCAD.DatabaseServices.DBDictionary;
+                        if (extDict != null)
+                        {
+                            foreach (var entry in extDict)
+                            {
+                                try
+                                {
+                                    var xrec = tr.GetObject(entry.Value, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead) as Autodesk.AutoCAD.DatabaseServices.Xrecord;
+                                    if (xrec != null)
+                                    {
+                                        var vals = new List<string>();
+                                        if (xrec.Data != null)
+                                        {
+                                            foreach (Autodesk.AutoCAD.DatabaseServices.TypedValue tv in xrec.Data)
+                                            {
+                                                if (tv.Value != null) vals.Add(tv.Value.ToString());
+                                            }
+                                        }
+                                        var key = entry.Key ?? string.Empty;
+                                        if (!string.IsNullOrWhiteSpace(key))
+                                        {
+                                            var value = string.Join("|", vals);
+                                            if (!map.ContainsKey(key)) map[key] = value;
+                                        }
+                                    }
+                                }
+                                catch { /* 忽略单个 Xrecord 读取失败 */ }
+                            }
+                        }
+                    }
+                }
+                catch { /* 忽略 ExtensionDictionary 读取错误 */ }
+
+                // 3) 遍历注册应用（RegAppTable），读取 XData（AppName::TypedValues）
+                try
+                {
+                    var db = ent.Database;
+                    var rat = (Autodesk.AutoCAD.DatabaseServices.RegAppTable)tr.GetObject(db.RegAppTableId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead);
+                    foreach (ObjectId appId in rat)
+                    {
+                        try
+                        {
+                            var app = tr.GetObject(appId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead) as Autodesk.AutoCAD.DatabaseServices.RegAppTableRecord;
+                            if (app == null) continue;
+                            var appName = app.Name;
+                            // GetXDataForApplication 返回 ResultBuffer（可能为 null）
+                            var rb = ent.GetXDataForApplication(appName);
+                            if (rb != null)
+                            {
+                                var vals = new List<string>();
+                                foreach (var tv in rb)
+                                {
+                                    if (tv.Value != null) vals.Add(tv.Value.ToString());
+                                }
+                                if (vals.Count > 0)
+                                {
+                                    var key = $"XDATA:{appName}";
+                                    var value = string.Join("|", vals);
+                                    if (!map.ContainsKey(key)) map[key] = value;
+                                }
+                            }
+                        }
+                        catch { /* 忽略某个 RegApp 读取失败 */ }
+                    }
+                }
+                catch { /* 忽略 RegApp 读取失败 */ }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"GetEntityAttributeMap 异常: {ex.Message}");
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// 帮助：基于已知关键字优先级构建分组键（属性存在时）
+        /// </summary>
+        /// <param name="attrMap"></param>
+        /// <returns></returns>
+        private string BuildAttributeGroupKey(Dictionary<string, string> attrMap)
+        {
+            if (attrMap == null || attrMap.Count == 0) return string.Empty;
+
+            // 关注的属性顺序（优先级）：可以按需扩展
+            var priorityKeys = new[]
+            {
+            "直径", "外径", "内径", "厚度", "规格", "型号",
+            "宽度", "高度",
+            "材料", "介质",
+            "标准号", "标准",
+            "功率", "容积", "压力", "温度",
+            "材质" // 兼容不同命名
+        };
+
+            var parts = new List<string>();
+            foreach (var pk in priorityKeys)
+            {
+                // 找到 attrMap 中包含 pk 的键（不区分大小写，包含匹配）
+                var found = attrMap.Keys.FirstOrDefault(k => k.IndexOf(pk, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (!string.IsNullOrEmpty(found))
+                {
+                    var v = (attrMap[found] ?? string.Empty).Trim();
+                    parts.Add($"{pk}:{v}");
+                }
+            }
+
+            // 若没有匹配到优先字段，则把所有属性按键排序并拼接，保证分组稳定性
+            if (parts.Count == 0)
+            {
+                foreach (var kv in attrMap.OrderBy(k => k.Key))
+                {
+                    parts.Add($"{kv.Key}:{(kv.Value ?? string.Empty).Trim()}");
+                }
+            }
+
+            return string.Join("|", parts);
+        }
+        /// <summary>
+        /// 帮助：解析属性字符串中的长度值
+        /// </summary>
+        /// <param name="rawValue"></param>
+        /// <returns></returns>
+        private double ParseLengthValueFromAttribute(string rawValue)
+        {
+            // 解析属性字符串中的数值并返回以米为单位的长度。
+            // 支持带单位的字符串："2000mm", "2000 mm", "2.5m", "2.5 米", "2500" 等。
+            // 规则（启发式）：
+            // - 如果字符串中包含 "mm" 或 "毫米" -> 视为毫米，除以1000 返回米。
+            // - 如果包含 "m" 或 "米"（且不包含 mm/毫米） -> 视为米。
+            // - 否则，若解析出的数值 >= 1000 则假定为毫米并除以1000；否则假定为米。
+            if (string.IsNullOrWhiteSpace(rawValue))
+                return double.NaN;
+
+            try
+            {
+                var s = rawValue.Trim();
+                var lower = s.ToLowerInvariant();
+
+                bool containsMm = lower.Contains("mm") || lower.Contains("毫米");
+                bool containsM = (lower.Contains("m") && !containsMm) || lower.Contains("米");
+
+                // 提取第一个数值（支持小数）
+                var m = System.Text.RegularExpressions.Regex.Match(lower, @"[-+]?[0-9]*\.?[0-9]+");
+                if (!m.Success)
+                    return double.NaN;
+
+                if (!double.TryParse(m.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value))
+                    return double.NaN;
+
+                if (containsMm)
+                    return value / 1000.0;
+
+                if (containsM)
+                    return value;
+
+                // 无明显单位时根据数值启发式判断：大于等于1000视作mm
+                if (value >= 1000.0)
+                    return value / 1000.0;
+
+                return value;
+            }
+            catch
+            {
+                return double.NaN;
+            }
+        }
+
+        #endregion
+
+        /*
+
+        属性同步_Click
+         
+         */
+
+
+
+        #region 图层字典
+        /// <summary>
+        /// 在类成员区域添加 CategoryNames 集合与加载方法
+        /// </summary>
+        private readonly ObservableCollection<string> _categoryNames = new ObservableCollection<string>();
+      
+        /// <summary>
+        /// UI 绑定集合：用于绑定到 LayerDictionary_DataGrid.ItemsSource
+        /// </summary>
+        private ObservableCollection<LayerDictionaryRow> _layerDictionaryRows = new ObservableCollection<LayerDictionaryRow>();
+
+        /// <summary>
+        /// 从数据库加载 cad_categories 表的 name 列并填充 CategoryNames
+        /// </summary>
+        private async Task LoadCategoryNamesAsync()
+        {
+            try
+            {
+                if (_databaseManager == null || !_databaseManager.IsDatabaseAvailable)
+                    return;
+
+                var cats = await _databaseManager.GetAllCadCategoriesAsync();
+                // 保持 UI 线程安全更新集合
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    _categoryNames.Clear();
+                    if (cats == null) return;
+                    foreach (var c in cats.OrderBy(x => x.Name ?? x.DisplayName))
+                    {
+                        // 优先使用 Name 列（题述即为分类），若为空使用 DisplayName 作为回退
+                        var name = string.IsNullOrWhiteSpace(c.Name) ? (c.DisplayName ?? string.Empty) : c.Name;
+                        if (!string.IsNullOrWhiteSpace(name) && !_categoryNames.Contains(name))
+                            _categoryNames.Add(name);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"LoadCategoryNamesAsync 失败: {ex.Message}");
+            }
+        }
+             
+        private void 图层字典_Btn_Click(object sender, RoutedEventArgs e)
+        {
 
         }
 
-        private void 还原图层_Btn_Click(object sender, RoutedEventArgs e)
+        private async void 加载标准图层字典_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_databaseManager == null) // 未连接数据库时提示
+                {
+                    MessageBox.Show("未连接数据库，无法加载图层字典。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string currentUser = VariableDictionary._userName ?? ""; // 当前登录用户名
+                // 如果是管理员用户，直接加载该管理员的个人数据（sa/root/admin）
+                if (IsAdminUser(currentUser))
+                {
+                    var list = await _databaseManager.GetLayerDictionaryByUsernameAsync(currentUser).ConfigureAwait(false); // 获取数据
+                    Dispatcher.Invoke(() => PopulateLayerDictionaryRowsFromEntries(list)); // 在 UI 线程填充
+                    return;
+                }
+
+                // 非管理员：尝试按用户所属部门/专业筛选管理员发布的标准字典
+                var user = await _databaseManager.GetUserByUsernameAsync(currentUser).ConfigureAwait(false); // 获取用户信息
+                string deptName = null; // 用于作为 major 过滤
+                if (user != null && user.DepartmentId.HasValue && user.DepartmentId.Value > 0)
+                {
+                    var depts = await _databaseManager.GetAllDepartmentsAsync().ConfigureAwait(false); // 读取所有部门
+                    var dept = depts?.FirstOrDefault(d => d.Id == user.DepartmentId.Value); // 寻找当前用户部门
+                    deptName = dept?.Name ?? dept?.DisplayName; // 使用部门名或显示名作为专业标识
+                }
+
+                var standards = await _databaseManager.GetStandardLayerDictionaryByMajorAsync(deptName).ConfigureAwait(false); // 获取标准字典
+                Dispatcher.Invoke(() => PopulateLayerDictionaryRowsFromEntries(standards)); // 填充到 Grid
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"加载标准图层字典 出错: {ex.Message}"); // 日志记录
+                MessageBox.Show($"加载标准图层字典失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error); // 提示用户
+            }
+        }
+
+        private async void 加载个人图层字典_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_databaseManager == null) // 检查 DB
+                {
+                    MessageBox.Show("未连接数据库，无法加载图层字典。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+                string currentUser = VariableDictionary._userName ?? ""; // 当前用户名
+                var list = await _databaseManager.GetLayerDictionaryByUsernameAsync(currentUser).ConfigureAwait(false); // 查询个人字典
+                Dispatcher.Invoke(() => PopulateLayerDictionaryRowsFromEntries(list)); // 更新 UI
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"加载个人图层字典 出错: {ex.Message}"); // 日志
+                MessageBox.Show($"加载个人图层字典失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error); // 提示
+            }
+        }
+
+        private void 当前图纸图层_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (_layerManager == null) // 若未实现图层管理器，提示
+                {
+                    MessageBox.Show("未找到图层管理器，无法读取当前图层。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var layers = _layerManager.LoadCurrentLayers(); // 假定返回 List<LayerInfo>（包含 Name 属性）
+                if (layers == null || layers.Count == 0)
+                {
+                    MessageBox.Show("当前图纸未检测到图层。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // 按名称排序、去重后加入 DataGrid
+                var ordered = layers.Select(l => l.Name).Where(n => !string.IsNullOrEmpty(n)).Distinct().OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
+
+                foreach (var name in ordered)
+                {
+                    _layerDictionaryRows.Add(new LayerDictionaryRow
+                    {
+                        Id = 0, // 新行
+                        Major = "", // 用户可手动填写专业
+                        LayerName = name, // 填充原图层名
+                        DicLayerName = "" // 解释名留空，供用户编辑
+                    });
+                }
+
+                // 重新编号从 1 开始
+                ReindexLayerDictionaryRows();
+
+                if (LayerDictionary_DataGrid.ItemsSource == null) // 绑定检查
+                    LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"当前图纸图层 加载失败: {ex.Message}"); // 记录日志
+                MessageBox.Show($"加载当前图纸图层失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error); // 提示
+            }
+        }
+
+        private async void 添加一行_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 确保 CategoryNames 已加载，以便新行的专业下拉能立即显示内容
+                if ((_categoryNames == null || _categoryNames.Count == 0) && _databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    await LoadCategoryNamesAsync();
+                    // 如果 DataGrid 的 ComboColumn 是通过代码设置的，确保重新应用一次（防止先前为空）
+                    try
+                    {
+                        var comboCol = LayerDictionary_DataGrid.Columns
+                            .OfType<DataGridComboBoxColumn>()
+                            .FirstOrDefault(c => (c.Header?.ToString() ?? string.Empty).IndexOf("专业", StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (comboCol != null)
+                            comboCol.ItemsSource = _categoryNames;
+                    }
+                    catch { /* 忽略 */ }
+                }
+
+                var newRow = new LayerDictionaryRow
+                {
+                    Id = 0, // 新行未持久化
+                    Major = _categoryNames.FirstOrDefault() ?? "", // 默认选中第一个分类（若存在），提升 UX
+                    LayerName = "", // 默认空
+                    DicLayerName = "" // 默认空
+                };
+                _layerDictionaryRows.Add(newRow); // 添加到集合，UI 自动更新
+
+                // 重新生成并刷新序号（从 1 开始）
+                ReindexLayerDictionaryRows();
+
+                // 如果 ItemsSource 尚未绑定，则重新绑定（通常已在初始化时绑定）
+                if (LayerDictionary_DataGrid.ItemsSource == null)
+                    LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+
+                // 将新行滚动至可见并启用编辑第一可编辑单元格（Major）
+                try
+                {
+                    var rowIndex = _layerDictionaryRows.IndexOf(newRow);
+                    if (rowIndex >= 0)
+                    {
+                        LayerDictionary_DataGrid.ScrollIntoView(newRow);
+                        LayerDictionary_DataGrid.UpdateLayout();
+                        var row = (DataGridRow)LayerDictionary_DataGrid.ItemContainerGenerator.ContainerFromIndex(rowIndex);
+                        if (row != null)
+                        {
+                            LayerDictionary_DataGrid.SelectedItem = newRow;
+                            LayerDictionary_DataGrid.CurrentCell = new DataGridCellInfo(newRow, LayerDictionary_DataGrid.Columns[1]);
+                            LayerDictionary_DataGrid.BeginEdit();
+                        }
+                    }
+                }
+                catch { /* 忽略编辑辅助失败 */ }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"添加一行 出错: {ex.Message}"); // 记录异常
+            }
+        }
+
+        private async void 删除选中行_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var selected = LayerDictionary_DataGrid.SelectedItems.Cast<LayerDictionaryRow>().ToList(); // 获取选中项
+                if (selected == null || selected.Count == 0)
+                {
+                    MessageBox.Show("请先选择要删除的行。", "提示", MessageBoxButton.OK, MessageBoxImage.Information); // 无选中时提示
+                    return;
+                }
+
+                // 从 UI 集合中移除选中行
+                foreach (var s in selected)
+                {
+                    _layerDictionaryRows.Remove(s);
+                }
+
+                // 重新编号使序号从1开始连续
+                ReindexLayerDictionaryRows();
+
+                // 若选中行已经存在数据库 id，则删除数据库中对应记录
+                var idsToDelete = selected.Where(x => x.Id > 0).Select(x => x.Id).ToList();
+                if (idsToDelete.Count > 0 && _databaseManager != null)
+                {
+                    await _databaseManager.DeleteLayerDictionaryEntriesAsync(idsToDelete).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"删除选中行 出错: {ex.Message}"); // 日志
+                MessageBox.Show($"删除选中行失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error); // 提示
+            }
+        }
+
+        private async void 保存图层字典_Click(object sender, RoutedEventArgs e)
         {
 
+            try
+            {
+                if (_databaseManager == null) // 检查 DB
+                {
+                    MessageBox.Show("未连接数据库，无法保存图层字典。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string username = VariableDictionary._userName ?? ""; // 当前用户名
+                var rows = _layerDictionaryRows.ToList(); // 从 ObservableCollection 获取快照
+
+                // 将 UI 行转换为数据库实体 LayerDictionaryEntry
+                // 说明：LayerDictionaryEntry 使用 Mappings（List<LayerMapping>） / MappingsJson 存储任意数量的映射对
+                var entries = new List<LayerDictionaryEntry>();
+                int seq = 1;
+
+                // 逐行保存：每行生成一条数据库记录，记录中 mappings 包含单个映射对
+                foreach (var r in rows)
+                {
+                    // 若行中既没有原图层也没有解释名，则跳过（避免写入空记录）
+                    if (string.IsNullOrWhiteSpace(r.LayerName) && string.IsNullOrWhiteSpace(r.DicLayerName))
+                        continue;
+
+                    var entry = new LayerDictionaryEntry
+                    {
+                        Seq = seq++, // 自动分配序号
+                        Major = r.Major, // 专业字段
+                        Username = username, // 所属用户
+                        UserId = null, // 可选，不填
+                        Source = r.Source ?? "personal", // 来源
+                        CreatedBy = username // 创建者记录
+                    };
+
+                    // 使用运行时列表 Mappings，LayerDictionaryEntry 的 setter 会序列化为 MappingsJson
+                    entry.Mappings = new List<LayerMapping>
+                    {
+                        new LayerMapping
+                        {
+                            Original = r.LayerName ?? string.Empty,
+                            Dic = r.DicLayerName ?? string.Empty
+                        }
+                    };
+
+                    entries.Add(entry); // 加入待保存列表
+                }
+
+                if (entries.Count == 0)
+                {
+                    Dispatcher.Invoke(() => MessageBox.Show("没有可保存的映射行，请先添加或填写映射。", "提示", MessageBoxButton.OK, MessageBoxImage.Information));
+                    return;
+                }
+
+                // 调用数据库扩展方法保存（覆盖当前用户所有记录）
+                var ok = await _databaseManager.SaveLayerDictionaryForUserAsync(username, entries).ConfigureAwait(false);
+                if (ok)
+                {
+                    Dispatcher.Invoke(() => MessageBox.Show("保存图层字典成功。", "完成", MessageBoxButton.OK, MessageBoxImage.Information)); // 成功提示
+                }
+                else
+                {
+                    Dispatcher.Invoke(() => MessageBox.Show("保存图层字典失败，请查看日志。", "失败", MessageBoxButton.OK, MessageBoxImage.Error)); // 失败提示
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"保存图层字典 出错: {ex.Message}"); // 记录日志
+                MessageBox.Show($"保存图层字典失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error); // 提示用户
+            }
+        }
+
+        /// <summary>
+        /// 将数据库实体列表转换并填充到 _layerDictionaryRows（用于显示）
+        /// </summary>
+        private void PopulateLayerDictionaryRowsFromEntries(List<LayerDictionaryEntry> entries)
+        {
+            _layerDictionaryRows.Clear(); // 先清空集合
+            if (entries == null || entries.Count == 0)
+            {
+                // 确保 DataGrid 刷新显示空集合
+                LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+                LayerDictionary_DataGrid.Items.Refresh();
+                return; // 若无数据则返回
+            }
+
+            // 仍按原逻辑展平 Mappings -> 多行
+            foreach (var e in entries)
+            {
+                var mappings = e.Mappings ?? new List<LayerMapping>();
+
+                if ((mappings == null || mappings.Count == 0) && e != null)
+                {
+                    string GetPropAsString(object obj, string propName)
+                    {
+                        try
+                        {
+                            var pi = obj.GetType().GetProperty(propName);
+                            if (pi == null) return string.Empty;
+                            var v = pi.GetValue(obj);
+                            return v?.ToString() ?? string.Empty;
+                        }
+                        catch
+                        {
+                            return string.Empty;
+                        }
+                    }
+
+                    var o1 = GetPropAsString(e, "OriginalLayer1");
+                    var d1 = GetPropAsString(e, "DicLayer1");
+                    if (!string.IsNullOrEmpty(o1) || !string.IsNullOrEmpty(d1))
+                    {
+                        mappings = new List<LayerMapping> { new LayerMapping { Original = o1, Dic = d1 } };
+                    }
+                    else
+                    {
+                        var o2 = GetPropAsString(e, "Original");
+                        var d2 = GetPropAsString(e, "Dic");
+                        if (!string.IsNullOrEmpty(o2) || !string.IsNullOrEmpty(d2))
+                            mappings = new List<LayerMapping> { new LayerMapping { Original = o2, Dic = d2 } };
+                    }
+                }
+
+                if (mappings == null || mappings.Count == 0)
+                {
+                    _layerDictionaryRows.Add(new LayerDictionaryRow
+                    {
+                        Id = e.Id,
+                        Major = e.Major ?? string.Empty,
+                        LayerName = string.Empty,
+                        DicLayerName = string.Empty,
+                        Source = e.Source ?? "personal"
+                    });
+                    continue;
+                }
+
+                foreach (var m in mappings)
+                {
+                    _layerDictionaryRows.Add(new LayerDictionaryRow
+                    {
+                        Id = e.Id,
+                        Major = e.Major ?? string.Empty,
+                        LayerName = m?.Original ?? string.Empty,
+                        DicLayerName = m?.Dic ?? string.Empty,
+                        Source = e.Source ?? "personal"
+                    });
+                }
+            }
+
+            // 绑定并重新编号（从1开始）
+            LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+            ReindexLayerDictionaryRows();
+        }
+
+        /// <summary>
+        /// 判断是否为管理员用户（sa/root/admin）
+        /// </summary>
+        private static bool IsAdminUser(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return false; // 空用户名不是管理员
+            var low = username.Trim().ToLowerInvariant(); // 规范为小写比较
+            return low == "sa" || low == "root" || low == "admin"; // 三个默认管理员用户名
+        }
+
+        /// <summary>
+        /// 重新生成 _layerDictionaryRows 的显示序号，从 1 开始连续编号并刷新 DataGrid 显示
+        /// 在添加/删除/填充后都应调用此方法以保证序号连续且从 1 开始
+        /// </summary>
+        private void ReindexLayerDictionaryRows()
+        {
+            try
+            {
+                if (_layerDictionaryRows == null) return;
+                int idx = 1;
+                foreach (var row in _layerDictionaryRows)
+                {
+                    row.DisplayIndex = idx++;
+                }
+
+                // 确保 DataGrid 绑定并刷新显示
+                if (LayerDictionary_DataGrid.ItemsSource == null)
+                    LayerDictionary_DataGrid.ItemsSource = _layerDictionaryRows;
+
+                LayerDictionary_DataGrid.Items.Refresh();
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"ReindexLayerDictionaryRows 出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// PreparingCellForEdit：当开始编辑单元格时，如果是 ComboBoxColumn，查找 ComboBox 并订阅 SelectionChanged
+        /// </summary>
+        private void LayerDictionary_DataGrid_PreparingCellForEdit(object sender, DataGridPreparingCellForEditEventArgs e)
+        {
+            try
+            {
+                if (e.Column is DataGridComboBoxColumn)
+                {
+                    // EditingElement 有时是 ComboBox 或 ContentPresenter，尝试直接转换或在视觉树中查找
+                    ComboBox combo = e.EditingElement as ComboBox ?? FindVisualChildByType<ComboBox>(e.EditingElement);
+                    if (combo != null)
+                    {
+                        // 避免重复订阅
+                        combo.SelectionChanged -= LayerDictionaryComboBox_SelectionChanged;
+                        combo.SelectionChanged += LayerDictionaryComboBox_SelectionChanged;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"PreparingCellForEdit 异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// CellEditEnding：编辑结束时从编辑元素上解绑事件（防止内存泄漏或重复处理）
+        /// </summary>
+        private void LayerDictionary_DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            try
+            {
+                if (!(e.Column is DataGridComboBoxColumn)) return;
+
+                // 尝试从编辑元素读取新值（编辑元素通常是 ComboBox 或 ContentPresenter）
+                object newValue = null;
+                ComboBox combo = e.EditingElement as ComboBox ?? FindVisualChildByType<ComboBox>(e.EditingElement);
+                if (combo != null)
+                {
+                    newValue = combo.SelectedItem ?? combo.SelectedValue ?? combo.Text;
+                }
+                else
+                {
+                    // 兜底：从行绑定对象读取（如果绑定尚未更新，这里可能仍是旧值，但我们还是尝试）
+                    if (e.Row?.Item is LayerDictionaryRow row)
+                        newValue = row.Major;
+                }
+
+                if (newValue == null) return;
+
+                // 复制选中项列表，避免在遍历时集合改变
+                var selectedItems = LayerDictionary_DataGrid.SelectedItems.Cast<object>().ToList();
+
+                // 延迟应用，确保 DataGrid 自身完成数据绑定/提交
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        var text = newValue.ToString();
+                        bool changed = false;
+                        foreach (var it in selectedItems)
+                        {
+                            if (it is LayerDictionaryRow r)
+                            {
+                                if (!string.Equals(r.Major ?? string.Empty, text, StringComparison.Ordinal))
+                                {
+                                    r.Major = text;
+                                    changed = true;
+                                }
+                            }
+                        }
+
+                        if (changed)
+                        {
+                            // 刷新 DataGrid 显示并结束任何编辑状态
+                            LayerDictionary_DataGrid.CommitEdit(DataGridEditingUnit.Row, true);
+                            LayerDictionary_DataGrid.Items.Refresh();
+                        }
+                    }
+                    catch (Exception exInner)
+                    {
+                        LogManager.Instance.LogInfo($"批量更新 Major 失败: {exInner.Message}");
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"CellEditEnding 处理失败: {ex.Message}");
+            }
+            finally
+            {
+                // 尝试解绑编辑元素上的事件，避免重复订阅（防御性）
+                try
+                {
+                    if (e.EditingElement != null)
+                    {
+                        var cb = e.EditingElement as ComboBox ?? FindVisualChildByType<ComboBox>(e.EditingElement);
+                        if (cb != null)
+                            cb.SelectionChanged -= LayerDictionaryComboBox_SelectionChanged;
+                    }
+                }
+                catch { /* 忽略解绑异常 */ }
+            }
+        }
+
+        /// <summary>
+        /// ComboBox SelectionChanged：将所选值应用到所有当前选中的行（批量修改 Major）
+        /// </summary>
+        private void LayerDictionaryComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                var combo = sender as ComboBox;
+                if (combo == null) return;
+
+                // 获取选择值（SelectedItem 优先）
+                var selectedValue = combo.SelectedItem ?? combo.SelectedValue;
+                if (selectedValue == null) return;
+
+                // 如果没有选中任何行，则只更新当前编辑行（保留默认行为）
+                if (LayerDictionary_DataGrid.SelectedItems == null || LayerDictionary_DataGrid.SelectedItems.Count == 0)
+                {
+                    // 若编辑单元格的 DataContext 可用，则更新该行
+                    var rowContext = combo.DataContext as LayerDictionaryRow;
+                    if (rowContext != null)
+                    {
+                        rowContext.Major = selectedValue.ToString();
+                        LayerDictionary_DataGrid.Items.Refresh();
+                    }
+                    return;
+                }
+
+                // 将选择值写入所有被选中的行（批量修改）
+                var changed = false;
+                foreach (var it in LayerDictionary_DataGrid.SelectedItems)
+                {
+                    if (it is LayerDictionaryRow row)
+                    {
+                        // 仅当值不同才赋值
+                        var newVal = selectedValue.ToString();
+                        if (!string.Equals(row.Major ?? string.Empty, newVal, StringComparison.Ordinal))
+                        {
+                            row.Major = newVal;
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (changed)
+                {
+                    // 刷新显示
+                    LayerDictionary_DataGrid.Items.Refresh();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"LayerDictionaryComboBox_SelectionChanged 异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 通用 VisualTree 查找指定类型子元素（递归）
+        /// </summary>
+        private T FindVisualChildByType<T>(DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null) return null;
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T typed) return typed;
+                var result = FindVisualChildByType<T>(child);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 构建图层字典映射表（优先级：UI 编辑的行 > 个人字典 > 标准字典）
+        /// 返回字典：Original -> Dic（不区分大小写）
+        /// 设计要点：
+        /// - 不在关键点使用 ConfigureAwait(false)；
+        /// - 只用 Dispatcher 在开始时同步读取 UI （_layerDictionaryRows），避免在后续数据库读取时触发跨线程问题；
+        /// - 该方法可以在进入 AutoCAD document lock 之前安全 await 执行（不会访问 AutoCAD API）。
+        /// </summary>
+        private async Task<Dictionary<string, string>> BuildLayerDictionaryMapAsync()
+        {
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                // 1) 同步从 UI 读取当前表格（在 UI 线程上执行）
+                try
+                {
+                    // 使用同步 Dispatcher.Invoke，确保立即获得最新 UI 数据（不会产生 await 导致线程切换）
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (_layerDictionaryRows != null)
+                        {
+                            foreach (var row in _layerDictionaryRows)
+                            {
+                                if (row == null) continue;
+                                var orig = (row.LayerName ?? string.Empty).Trim();
+                                var dic = (row.DicLayerName ?? string.Empty).Trim();
+                                if (string.IsNullOrEmpty(orig)) continue;
+                                // UI 编辑优先，直接写入/覆盖映射
+                                map[orig] = string.IsNullOrEmpty(dic) ? orig : dic;
+                            }
+                        }
+                    }, System.Windows.Threading.DispatcherPriority.Send);
+                }
+                catch (Exception uiEx)
+                {
+                    LogManager.Instance.LogInfo($"BuildLayerDictionaryMapAsync: 读取 UI 数据失败: {uiEx.Message}");
+                    // 继续尝试从数据库加载
+                }
+
+                // 如果没有可用的数据库，直接返回基于 UI 的 map
+                if (_databaseManager == null || !_databaseManager.IsDatabaseAvailable)
+                    return map;
+
+                // 当前用户名（可能为空）
+                string username = VariableDictionary._userName ?? string.Empty;
+
+                // 2) 个人字典（覆盖标准字典）
+                try
+                {
+                    // 注意：这里不要使用 ConfigureAwait(false)，需要保持异常与上下文的自然传播与记录。
+                    var personal = await _databaseManager.GetLayerDictionaryByUsernameAsync(username);
+                    if (personal != null)
+                    {
+                        foreach (var entry in personal)
+                        {
+                            var mappings = entry.Mappings ?? new List<LayerMapping>();
+                            // 兼容旧结构：若 mappings 为空，可以尝试从其它属性回退解析（省略复杂回退）
+                            foreach (var m in mappings)
+                            {
+                                if (m == null) continue;
+                                var orig = (m.Original ?? string.Empty).Trim();
+                                var dic = (m.Dic ?? string.Empty).Trim();
+                                if (string.IsNullOrEmpty(orig)) continue;
+                                // 个人映射优先，直接覆盖
+                                map[orig] = string.IsNullOrEmpty(dic) ? orig : dic;
+                            }
+                        }
+                    }
+                }
+                catch (Exception exPersonal)
+                {
+                    LogManager.Instance.LogInfo($"BuildLayerDictionaryMapAsync: 读取个人图层字典失败: {exPersonal.Message}");
+                }
+
+                // 3) 标准字典（仅当键不存在时写入，不覆盖 UI/个人）
+                try
+                {
+                    string deptName = null;
+                    try
+                    {
+                        var user = await _databaseManager.GetUserByUsernameAsync(username);
+                        if (user != null && user.DepartmentId.HasValue && user.DepartmentId.Value > 0)
+                        {
+                            var depts = await _databaseManager.GetAllDepartmentsAsync();
+                            var dept = depts?.FirstOrDefault(d => d.Id == user.DepartmentId.Value);
+                            deptName = dept?.Name ?? dept?.DisplayName;
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略部门解析错误，继续使用 null
+                    }
+
+                    var standards = await _databaseManager.GetStandardLayerDictionaryByMajorAsync(deptName);
+                    if (standards != null)
+                    {
+                        foreach (var entry in standards)
+                        {
+                            var mappings = entry.Mappings ?? new List<LayerMapping>();
+                            foreach (var m in mappings)
+                            {
+                                if (m == null) continue;
+                                var orig = (m.Original ?? string.Empty).Trim();
+                                var dic = (m.Dic ?? string.Empty).Trim();
+                                if (string.IsNullOrEmpty(orig)) continue;
+                                // 仅在不存在时写入，避免覆盖 UI/个人映射
+                                if (!map.ContainsKey(orig))
+                                    map[orig] = string.IsNullOrEmpty(dic) ? orig : dic;
+                            }
+                        }
+                    }
+                }
+                catch (Exception exStd)
+                {
+                    LogManager.Instance.LogInfo($"BuildLayerDictionaryMapAsync: 读取标准图层字典失败: {exStd.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"BuildLayerDictionaryMapAsync 异常: {ex.Message}");
+            }
+
+            return map;
+        }
+
+        #endregion
+
+        private async void 生成暖通管道表_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null)
+                {
+                    MessageBox.Show("未找到活动的 AutoCAD 文档。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // 在进入锁前准备图层映射（异步完成）
+                Dictionary<string, string> layerMap;
+                try
+                {
+                    layerMap = await BuildLayerDictionaryMapAsync();
+                    if (layerMap == null) layerMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+                catch (Exception exMap)
+                {
+                    LogManager.Instance.LogWarning($"构建图层映射失败（继续执行）：{exMap.Message}");
+                    layerMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                using (doc.LockDocument())
+                {
+                    var ed = doc.Editor;
+
+                    var hint = "\n开始生成管道表：\n1) 在视口内选择管道图元（选择完成后按 Enter/空格或右键结束选择）";
+                    ed.WriteMessage(hint);
+
+                    var pso = new Autodesk.AutoCAD.EditorInput.PromptSelectionOptions
+                    {
+                        MessageForAdding = "\n请选择要统计的管道图元：",
+                        AllowDuplicates = false,
+                        RejectObjectsFromNonCurrentSpace = false
+                    };
+                    var psr = ed.GetSelection(pso);
+                    if (psr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK || psr.Value == null)
+                    {
+                        ed.WriteMessage("\n未选择实体或已取消。");
+                        return;
+                    }
+
+                    var selIds = psr.Value.GetObjectIds();
+                    if (selIds == null || selIds.Length == 0)
+                    {
+                        MessageBox.Show("未选择任何实体。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    double unitToMeters = 1000.0;
+                    var pdo = new Autodesk.AutoCAD.EditorInput.PromptDoubleOptions("\n请输入图形单位到米的换算分母（例如：图形单位为毫米请输入1000，回车使用默认1000）：")
+                    {
+                        AllowNone = true,
+                        DefaultValue = unitToMeters,
+                        UseDefaultValue = true,
+                        AllowZero = false,
+                        AllowNegative = false
+                    };
+                    var pdr = ed.GetDouble(pdo);
+                    if (pdr.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK && pdr.Value > 0.0)
+                        unitToMeters = pdr.Value;
+
+                    // 先在事务中遍历实体、提取属性并收集要统计的字段
+                    var globalAttributeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var summariesMap = new Dictionary<string, PipeSummary>(StringComparer.OrdinalIgnoreCase);
+                    bool anyAttributesFound = false;
+
+                    using (var tr = doc.Database.TransactionManager.StartTransaction())
+                    {
+                        foreach (var id in selIds)
+                        {
+                            try
+                            {
+                                var ent = tr.GetObject(id, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead) as Autodesk.AutoCAD.DatabaseServices.Entity;
+                                if (ent == null) continue;
+
+                                dynamic ext;
+                                try
+                                {
+                                    ext = ent.GeometricExtents;
+                                }
+                                catch
+                                {
+                                    continue;
+                                }
+
+                                 double sizeX = Math.Abs((double)ext.MaxPoint.X - (double)ext.MinPoint.X);
+                                double sizeY = Math.Abs((double)ext.MaxPoint.Y - (double)ext.MinPoint.Y);
+                                double sizeZ = Math.Abs((double)ext.MaxPoint.Z - (double)ext.MinPoint.Z);
+                                if (sizeX <= 0.0) continue;
+
+                                double sizeY_m = sizeY / unitToMeters;
+                                double sizeZ_m = sizeZ / unitToMeters;
+                                int roundedY = (int)Math.Round(sizeY_m * 1000.0);
+                                int roundedZ = (int)Math.Round(sizeZ_m * 1000.0);
+
+                                // 原始图层名
+                                string originalLayer = string.IsNullOrEmpty(ent.Layer) ? "无图层" : ent.Layer;
+                                string mappedLayer = originalLayer;
+                                if (layerMap != null && layerMap.TryGetValue(originalLayer.Trim(), out var val) && !string.IsNullOrWhiteSpace(val))
+                                    mappedLayer = val;
+                                else if (layerMap != null && layerMap.Count > 0)
+                                {
+                                    foreach (var kv in layerMap)
+                                    {
+                                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+                                        if (originalLayer.IndexOf(kv.Key, StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            mappedLayer = string.IsNullOrWhiteSpace(kv.Value) ? kv.Key : kv.Value;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // 读取实体属性
+                                var attrMap = GetEntityAttributeMap(tr, ent);
+                                if (attrMap != null && attrMap.Count > 0)
+                                {
+                                    anyAttributesFound = true;
+                                    foreach (var k in attrMap.Keys) globalAttributeKeys.Add(k);
+                                }
+
+                                // 生成分组键：如果有属性则按属性组合，否则按尺寸组合（保留原逻辑）
+                                string specKey;
+                                if (anyAttributesFound && attrMap != null && attrMap.Count > 0)
+                                {
+                                    // 使用属性组合键
+                                    specKey = BuildAttributeGroupKey(attrMap);
+                                }
+                                else
+                                {
+                                    specKey = $"{roundedY}_{roundedZ}";
+                                }
+
+                                // 计算实体长度：优先使用属性中包含 "长度" 的字段（若能解析出有效数值），否则使用几何尺寸
+                                double length_m = double.NaN;
+                                bool usedAttrLength = false;
+                                if (attrMap != null && attrMap.Count > 0)
+                                {
+                                    // 查找属性键中包含 "长度" 的项（不区分大小写）
+                                    foreach (var key in attrMap.Keys)
+                                    {
+                                        if (key != null && key.IndexOf("长度", StringComparison.OrdinalIgnoreCase) >= 0)
+                                        {
+                                            var raw = attrMap[key];
+                                            var parsed = ParseLengthValueFromAttribute(raw);
+                                            if (!double.IsNaN(parsed) && parsed > 0.0)
+                                            {
+                                                length_m = parsed; // 已是米单位（Parse 方法保证）
+                                                usedAttrLength = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (!usedAttrLength)
+                                {
+                                    // 回退到几何长度（以 X 方向为长度）
+                                    length_m = sizeX / unitToMeters;
+                                }
+
+                                if (!summariesMap.TryGetValue(specKey, out PipeSummary summary))
+                                {
+                                    summary = new PipeSummary
+                                    {
+                                        Seq = 0,
+                                        Name = mappedLayer,
+                                        WidthSpec = roundedY,
+                                        ThicknessSpec = roundedZ,
+                                        QuantityMeters = 0.0,
+                                        Remark = "",
+                                        SpecString = anyAttributesFound ? specKey : $"{roundedY} X {roundedZ}"
+                                    };
+                                    // 若实体有属性则保存属性字典（优先权：属性键原样保存）
+                                    if (attrMap != null && attrMap.Count > 0)
+                                    {
+                                        foreach (var kv in attrMap)
+                                        {
+                                            if (!summary.Attributes.ContainsKey(kv.Key))
+                                                summary.Attributes[kv.Key] = kv.Value;
+                                        }
+                                    }
+                                    summariesMap[specKey] = summary;
+                                }
+
+                                // 累加长度（若属性提供长度则使用属性长度，否则使用几何长度）
+                                if (!double.IsNaN(length_m) && length_m > 0.0)
+                                {
+                                    summary.QuantityMeters += length_m;
+                                }
+                            }
+                            catch (Exception exEnt)
+                            {
+                                LogManager.Instance.LogWarning($"处理实体 {id} 时出错: {exEnt.Message}");
+                            }
+                        }
+
+                        tr.Commit();
+                    }
+
+                    if (summariesMap.Count == 0)
+                    {
+                        MessageBox.Show("所选实体未能提取到尺寸信息，无法生成表格。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    var summaries = summariesMap.Values
+                        .OrderBy(s => s.WidthSpec)
+                        .ThenBy(s => s.ThicknessSpec)
+                        .ToList();
+
+                    for (int i = 0; i < summaries.Count; i++) summaries[i].Seq = i + 1;
+
+                    // 属性列列表（按稳定顺序：优先常见字段，其余按字典序）
+                    List<string> attributeColumns = null;
+                    if (anyAttributesFound && globalAttributeKeys.Count > 0)
+                    {
+                        var priority = new[] { "直径", "外径", "内径", "厚度", "规格", "型号", "宽度", "高度", "材料", "介质", "标准号", "功率", "容积", "压力", "温度", "材质" };
+                        attributeColumns = new List<string>();
+                        foreach (var p in priority)
+                        {
+                            var match = globalAttributeKeys.FirstOrDefault(k => k.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0);
+                            if (match != null)
+                            {
+                                attributeColumns.Add(match);
+                            }
+                        }
+                        // 添加剩余未包含的属性（按字母顺序）
+                        var remaining = globalAttributeKeys.Except(attributeColumns, StringComparer.OrdinalIgnoreCase).OrderBy(k => k, StringComparer.OrdinalIgnoreCase);
+                        attributeColumns.AddRange(remaining);
+                    }
+
+                    // 保存已映射的图层列表
+                    _lastSavedPipeTableLayers = summaries
+                        .Select(s => s.Name ?? "无图层")
+                        .Where(n => !string.IsNullOrWhiteSpace(n))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    var promptMat = new Autodesk.AutoCAD.EditorInput.PromptStringOptions("\n请输入材料（将作为备注默认值，可回车留空）：")
+                    {
+                        AllowSpaces = true,
+                        DefaultValue = ""
+                    };
+                    var presMat = ed.GetString(promptMat);
+                    string material = (presMat.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK) ? presMat.StringResult : string.Empty;
+                    foreach (var s in summaries) s.Remark = string.IsNullOrEmpty(material) ? "请填写材料" : material;
+
+                    // 调用保存（支持动态属性列）
+                    SavePipeTableToTempDwg(summaries, material, 1.0, attributeColumns);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"生成管道表失败: {ex.Message}");
+                MessageBox.Show($"生成管道表时发生错误: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void 生成暖通设备表_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void 插入暖通管道表_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_lastSavedPipeTablePath) || !File.Exists(_lastSavedPipeTablePath))
+                {
+                    MessageBox.Show("未找到已保存的临时表文件，请先点击【生成管道表】并完成保存。", "未找到文件", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var doc = Application.DocumentManager.MdiActiveDocument;
+                if (doc == null)
+                {
+                    MessageBox.Show("未找到活动的 AutoCAD 文档。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                using (doc.LockDocument())
+                {
+                    var ed = doc.Editor;
+
+                    // 提示用户切换视口并确认
+                    var pko = new Autodesk.AutoCAD.EditorInput.PromptKeywordOptions("\n请将鼠标移动到目标视口（布局请先双击进入视口），然后选择：\n[继续] 继续 / [取消] 取消")
+                    {
+                        AllowNone = true
+                    };
+                    pko.Keywords.Add("继续");
+                    pko.Keywords.Add("取消");
+                    try { pko.Keywords.Default = "继续"; } catch { }
+
+                    var pkr = ed.GetKeywords(pko);
+                    if (pkr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK || string.Equals(pkr.StringResult, "取消", StringComparison.OrdinalIgnoreCase))
+                        return;
+
+                    // 拾取插入点
+                    var ppo = new Autodesk.AutoCAD.EditorInput.PromptPointOptions("\n请选择表格插入点（请在目标视口内拾取）：");
+                    var ppr = ed.GetPoint(ppo);
+                    if (ppr.Status != Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                    {
+                        MessageBox.Show("未选择插入点，操作已取消。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    // 如果是在布局中插入，提示用户输入视口比例分母以便缩放
+                    double insertionScale = 1.0;
+                    var scalePrompt = new Autodesk.AutoCAD.EditorInput.PromptDoubleOptions("\n如果在布局/纸空间插入，请输入视口比例的分母（例如 100 表示 1:100），回车表示 1：")
+                    {
+                        AllowNone = true,
+                        DefaultValue = 1.0,
+                        UseDefaultValue = true,
+                        AllowZero = false,
+                        AllowNegative = false
+                    };
+                    var scaleRes = ed.GetDouble(scalePrompt);
+                    if (scaleRes.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK && scaleRes.Value > 0.0)
+                        insertionScale = 1.0 / scaleRes.Value; // 实际缩放因子
+
+                    // 插入块（返回 BlockReference 的 ObjectId）
+                    var insertedBrId = AutoCadHelper.InsertBlockFromExternalDwg(_lastSavedPipeTablePath, Path.GetFileNameWithoutExtension(_lastSavedPipeTablePath), ppr.Value);
+
+                    if (insertedBrId == Autodesk.AutoCAD.DatabaseServices.ObjectId.Null)
+                    {
+                        MessageBox.Show("插入失败：未能将临时 DWG 中的块导入并插入。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+
+                    // 如果需要缩放（例如布局视口按比例显示），调整已插入的 BlockReference 的 ScaleFactors
+                    if (Math.Abs(insertionScale - 1.0) > 1e-9)
+                    {
+                        try
+                        {
+                            using (var tr = doc.Database.TransactionManager.StartTransaction())
+                            {
+                                var br = tr.GetObject(insertedBrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockReference;
+                                if (br != null)
+                                {
+                                    br.ScaleFactors = new Autodesk.AutoCAD.Geometry.Scale3d(insertionScale, insertionScale, insertionScale);
+                                }
+                                tr.Commit();
+                            }
+                        }
+                        catch (Exception exScale)
+                        {
+                            LogManager.Instance.LogWarning($"调整插入比例时出错: {exScale.Message}");
+                        }
+                    }
+
+                    // 新增：将插入的表设置到“选定图元图层”中，并确保块定义内实体也使用该图层
+                    try
+                    {
+                        string targetLayer = null;
+                        if (_lastSavedPipeTableLayers != null && _lastSavedPipeTableLayers.Count > 0)
+                        {
+                            if (_lastSavedPipeTableLayers.Count == 1)
+                            {
+                                targetLayer = _lastSavedPipeTableLayers[0];
+                            }
+                            else
+                            {
+                                // 列出可选图层并让用户通过索引选择，避免输入图层名错误
+                                var listText = new StringBuilder();
+                                for (int i = 0; i < _lastSavedPipeTableLayers.Count; i++)
+                                {
+                                    listText.AppendLine($"{i + 1}. {_lastSavedPipeTableLayers[i]}");
+                                }
+                                ed.WriteMessage($"\n检测到生成表时涉及以下图层：\n{listText}\n请输入要用于表的图层序号（1 - {_lastSavedPipeTableLayers.Count}），回车使用默认第1项：");
+
+                                var pio = new Autodesk.AutoCAD.EditorInput.PromptIntegerOptions("\n请输入序号：")
+                                {
+                                    AllowNone = true,
+                                    DefaultValue = 1,
+                                    LowerLimit = 1,
+                                    UpperLimit = _lastSavedPipeTableLayers.Count,
+                                    UseDefaultValue = true
+                                };
+                                var pir = ed.GetInteger(pio);
+                                if (pir.Status == Autodesk.AutoCAD.EditorInput.PromptStatus.OK)
+                                {
+                                    int idx = Math.Max(1, Math.Min(_lastSavedPipeTableLayers.Count, pir.Value));
+                                    targetLayer = _lastSavedPipeTableLayers[idx - 1];
+                                }
+                                else
+                                {
+                                    targetLayer = _lastSavedPipeTableLayers[0];
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(targetLayer))
+                        {
+                            using (var tr = doc.Database.TransactionManager.StartTransaction())
+                            {
+                                // 确保目标图层存在，否则创建
+                                var lt = (Autodesk.AutoCAD.DatabaseServices.LayerTable)tr.GetObject(doc.Database.LayerTableId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForRead);
+                                if (!lt.Has(targetLayer))
+                                {
+                                    lt.UpgradeOpen();
+                                    var ltr = new Autodesk.AutoCAD.DatabaseServices.LayerTableRecord
+                                    {
+                                        Name = targetLayer
+                                    };
+                                    lt.Add(ltr);
+                                    tr.AddNewlyCreatedDBObject(ltr, true);
+                                }
+
+                                // 设置 BlockReference 的图层，并把块定义中所有实体的 Layer 设置为目标图层
+                                var br = tr.GetObject(insertedBrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockReference;
+                                if (br != null)
+                                {
+                                    // 设置 BlockReference 层
+                                    br.Layer = targetLayer;
+
+                                    // 获取块定义（BlockTableRecord）并把其子实体层设置为目标图层
+                                    var btrId = br.BlockTableRecord;
+                                    if (btrId != Autodesk.AutoCAD.DatabaseServices.ObjectId.Null)
+                                    {
+                                        var btr = tr.GetObject(btrId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.BlockTableRecord;
+                                        if (btr != null)
+                                        {
+                                            foreach (ObjectId entId in btr)
+                                            {
+                                                try
+                                                {
+                                                    // 可能包含匿名/非实体项，安全转换
+                                                    var ent = tr.GetObject(entId, Autodesk.AutoCAD.DatabaseServices.OpenMode.ForWrite) as Autodesk.AutoCAD.DatabaseServices.Entity;
+                                                    if (ent != null)
+                                                    {
+                                                        // 跳过属性定义（AttributeDefinition）以免影响属性行为
+                                                        if (ent is Autodesk.AutoCAD.DatabaseServices.AttributeDefinition) continue;
+
+                                                        // 设置实体层为目标图层
+                                                        ent.Layer = targetLayer;
+                                                    }
+                                                }
+                                                catch
+                                                {
+                                                    // 忽略个别实体修改失败
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                tr.Commit();
+                            }
+                        }
+                    }
+                    catch (Exception exLayer)
+                    {
+                        LogManager.Instance.LogWarning($"设置插入表图层时出错: {exLayer.Message}");
+                    }
+
+                    MessageBox.Show("临时管道表已插入当前空间。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"插入管道表失败: {ex.Message}");
+                MessageBox.Show($"插入管道表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void 导出暖通表格_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+    }
+    /// <summary>
+    /// DataGrid 绑定使用的行模型（用于 LayerDictionary_DataGrid）
+    /// </summary>
+    public class LayerDictionaryRow
+    {
+        public int Id { get; set; } // 数据库 id，0 表示新行（未持久化）
+        public int DisplayIndex { get; set; } // 显示序号
+        public string Major { get; set; } = ""; // 专业列（可填写或来自部门）
+        public string LayerName { get; set; } = ""; // 原图层名（只读显示）
+        public string DicLayerName { get; set; } = ""; // 解释图层名（可编辑）
+        public string Source { get; set; } = "personal"; // 来源（personal/standard）
+    }
+    /// <summary>
+    /// 图层信息类
+    /// </summary>
+    public class LayerInfo : INotifyPropertyChanged
+    {
+        private int _index;              // 原始序号
+        private int _displayIndex;       // 显示序号
+        private string _name;
+        private bool _isOn;
+        private bool _isFrozen;
+        private short _colorIndex;
+        private bool _toDelete;
+        private Autodesk.AutoCAD.Colors.Color _color;
+
+        public int Index
+        {
+            get => _index;
+            set { _index = value; OnPropertyChanged(); }
+        }
+
+        public int DisplayIndex
+        {
+            get => _displayIndex;
+            set { _displayIndex = value; OnPropertyChanged(); }
+        }
+
+        public string Name
+        {
+            get => _name;
+            set { _name = value; OnPropertyChanged(); }
+        }
+
+        public bool IsOn
+        {
+            get => _isOn;
+            set { _isOn = value; OnPropertyChanged(); }
+        }
+
+        public bool IsFrozen
+        {
+            get => _isFrozen;
+            set { _isFrozen = value; OnPropertyChanged(); }
+        }
+
+        public short ColorIndex
+        {
+            get => _colorIndex;
+            set { _colorIndex = value; OnPropertyChanged(); }
+        }
+
+        public bool ToDelete
+        {
+            get => _toDelete;
+            set { _toDelete = value; OnPropertyChanged(); }
+        }
+
+        public Autodesk.AutoCAD.Colors.Color Color
+        {
+            get => _color;
+            set { _color = value; OnPropertyChanged(); }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    /// <summary>
+    /// 图层状态快照类（用于还原功能）
+    /// </summary>
+    public class LayerStateSnapshot
+    {
+        public Dictionary<string, LayerInfo> Layers { get; set; }
+        public DateTime Timestamp { get; set; }
+
+        public LayerStateSnapshot()
+        {
+            Layers = new Dictionary<string, LayerInfo>();
+            Timestamp = DateTime.Now;
         }
     }
 

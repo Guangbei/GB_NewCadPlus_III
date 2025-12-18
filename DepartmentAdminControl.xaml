@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
     x:Class="GB_NewCadPlus_III.DepartmentAdminControl"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -9,6 +9,7 @@
     Height="650"
     d:Name="DepartmentAdminControl"
     mc:Ignorable="d">
+    <!--  clr-namespace:GB_NewCadPlus_III  -->
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

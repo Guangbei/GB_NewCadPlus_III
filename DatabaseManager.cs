@@ -1747,8 +1747,6 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"获取文件详细信息时出错: {ex.Message}");
                 return null;
             }
-
-
         }
 
         /// <summary>

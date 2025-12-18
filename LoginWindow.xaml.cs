@@ -1,4 +1,4 @@
-﻿using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Text;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -282,33 +282,63 @@ namespace GB_NewCadPlus_III
             VariableDictionary._serverPort = int.TryParse(TxtServerPort.Text.Trim(), out int port) ? port : 3306;
             VariableDictionary._userName = TxtUsername.Text.Trim();
             VariableDictionary._passWord = PwdBox.Password.Trim();
-            BtnLogin.IsEnabled = false;//禁用登录按钮 禁用登录按钮以防重复点击
+
+            BtnLogin.IsEnabled = false;
             TxtStatus.Text = "正在连接并验证用户...";
+
             try
             {
-                var svc = new MySqlAuthService(VariableDictionary._serverIP, VariableDictionary._serverPort.ToString());//创建MySqlAuthService对象
-                svc.EnsureUserTableExists();//确保用户表存在
-
-                //var username = TxtUsername.Text.Trim();//获取用户名
-                //var password = PwdBox.Password ?? "";//获取密码
-
-                var ok = svc.AuthenticateUser(VariableDictionary._userName, VariableDictionary._passWord);//验证用户身份
-                if (ok)
+                // 在后台线程执行认证和与 DB 相关的耗时工作，避免在 UI 线程中直接调用可能会访问 UI 的库或阻塞 UI。
+                var authOk = await Task.Run(() =>
                 {
-                    if (ChkSavePassword.IsChecked == true)//如果选择保存密码
-                        SaveConfig(true);//保存登录配置
-                    else
-                        SaveConfig(false);//保存登录配置
-
-                    TxtStatus.Text = "登录成功。";//显示登录成功消息
-
-                    // 尝试基于当前服务器配置构造 DatabaseManager 并返回给调用者
                     try
                     {
-                        string newConnectionString = $"Server={VariableDictionary._serverIP};Port={VariableDictionary._serverPort.ToString()};Database=cad_sw_library;Uid=root;Pwd=root;";
-                        var db = new DatabaseManager(newConnectionString);
-                        if (db.IsDatabaseAvailable)
+                        var svc = new MySqlAuthService(VariableDictionary._serverIP, VariableDictionary._serverPort.ToString());
+                        // EnsureUserTableExists 也可能会做 I/O 操作，放到后台执行更安全
+                        svc.EnsureUserTableExists();
+                        return svc.AuthenticateUser(VariableDictionary._userName, VariableDictionary._passWord);
+                    }
+                    catch (Exception exInner)
+                    {
+                        LogManager.Instance.LogInfo($"后台认证出错: {exInner.Message}");
+                        throw;
+                    }
+                });
+
+                if (authOk)
+                {
+                    // 认证成功：保存配置（UI 操作/文件写入在 UI 线程执行以保证安全）
+                    if (ChkSavePassword.IsChecked == true)
+                        SaveConfig(true);
+                    else
+                        SaveConfig(false);
+
+                    TxtStatus.Text = "登录成功。";
+
+                    try
+                    {
+                        // 创建 DatabaseManager 可能也需要一定时间，放到后台执行，但不要用 ConfigureAwait(false) 以便 await 后在 UI 线程继续运行并访问控件。
+                        var db = await Task.Run(() =>
                         {
+                            try
+                            {
+                                string newConnectionString = $"Server={VariableDictionary._serverIP};Port={VariableDictionary._serverPort};Database=cad_sw_library;Uid=root;Pwd=root;";
+                                return new DatabaseManager(newConnectionString);
+                            }
+                            catch (Exception exDbCreate)
+                            {
+                                LogManager.Instance.LogInfo($"后台构造 DatabaseManager 失败: {exDbCreate.Message}");
+                                return null;
+                            }
+                        });
+
+                        if (db != null && db.IsDatabaseAvailable)
+                        {
+                            // 注意：这里直接 await，不使用 ConfigureAwait(false)，保证后续对 UI 的访问安全
+                            var ensureOk = await db.CreateLayerDictionaryTableIfNotExistsAsync();
+                            if (!ensureOk)
+                                LogManager.Instance.LogInfo("确保 layer_dictionary 表失败（但已继续登录）。");
+
                             CreatedDatabaseManager = db;
                             TxtStatus.Text += " 已连接数据库。";
                         }
@@ -318,23 +348,23 @@ namespace GB_NewCadPlus_III
                             TxtStatus.Text += " 但未能连接数据库（请在设置中检查数据库凭据）。";
                         }
                     }
-                    catch
+                    catch (Exception exDb)
                     {
                         CreatedDatabaseManager = null;
-                        TxtStatus.Text += " 但创建 DatabaseManager 时出错。";
+                        TxtStatus.Text += " 创建 DatabaseManager 时出错：" + exDb.Message;
+                        LogManager.Instance.LogInfo($"创建 DatabaseManager 出错: {exDb.Message}");
                     }
 
-                    // 登录成功后关闭登录窗口并让调用方继续（例如 MainWindow 打开）
-                    DialogResult = true;//设置对话框结果为 true
-                    Close();//关闭登录窗口
+                    // 登录成功后关闭窗口（在 UI 线程）
+                    DialogResult = true;
+                    Close();
                 }
                 else
                 {
-                    // 若没有该用户，提示注册
+                    // 认证失败：在 UI 线程交互
                     var res = MessageBox.Show("用户不存在或密码错误。是否注册新用户？", "登录失败", MessageBoxButton.YesNo, MessageBoxImage.Question);
                     if (res == MessageBoxResult.Yes)
                     {
-                        // 构造部门列表传给注册窗口
                         var deptList = new List<(int Id, string Name)>();
                         try
                         {
@@ -356,27 +386,24 @@ namespace GB_NewCadPlus_III
                         }
                         catch { }
 
-                        var regWin = new RegisterUserWindow(VariableDictionary._serverIP, VariableDictionary._serverPort, deptList);
-                        regWin.Owner = this;
+                        var regWin = new RegisterUserWindow(VariableDictionary._serverIP, VariableDictionary._serverPort, deptList) { Owner = this };
                         var regRes = regWin.ShowDialog();
                         if (regRes == true && regWin.RegistrationSucceeded)
-                        {
                             TxtStatus.Text = "注册成功，请使用新用户登录。";
-                        }
                         else
-                        {
                             TxtStatus.Text = "未注册。";
-                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                TxtStatus.Text = "登录过程中出现异常：" + ex.Message;//显示异常消息
+                // 捕获后台任务抛出的异常（包括跨线程访问异常）
+                TxtStatus.Text = "登录过程中出现异常：" + ex.Message;
+                LogManager.Instance.LogInfo($"BtnLogin_Click 异常: {ex.Message}");
             }
             finally
             {
-                BtnLogin.IsEnabled = true;//启用登录按钮
+                BtnLogin.IsEnabled = true;
             }
         }
         /// <summary>

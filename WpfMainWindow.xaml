@@ -239,9 +239,7 @@
                                             FontSize="12"
                                             FontWeight="Bold"
                                             Header="公用图元">
-                                            <WrapPanel x:Name="PublicButtonsPanel">
-                                                
-                                            </WrapPanel>
+                                            <WrapPanel x:Name="PublicButtonsPanel" />
                                         </TabItem>
                                         <TabItem
                                             x:Name="图层工具"
@@ -255,8 +253,9 @@
                                             </TabItem.Background>
                                             <Grid>
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="60" />
+                                                    <RowDefinition Height="55" />
                                                     <RowDefinition Height="*" />
+                                                    <RowDefinition Height="auto" />
                                                 </Grid.RowDefinitions>
                                                 <WrapPanel
                                                     Grid.Row="0"
@@ -306,48 +305,92 @@
                                                         Click="还原图层_Btn_Click"
                                                         Content="还原图层" />
                                                     <Button
-                                                        x:Name="TEST"
+                                                        x:Name="图层字典"
                                                         Width="95"
                                                         Height="20"
                                                         Margin="5,5,0,0"
                                                         Background="#FFF4F5E0"
-                                                        Click="还原图层_Btn_Click"
-                                                        Content="..." />
+                                                        Click="图层字典_Btn_Click"
+                                                        Content="图层字典" />
                                                 </WrapPanel>
-                                                <ScrollViewer
+                                                <!--  Layer Data Grid  -->
+                                                <!--  推荐使用这种方式  -->
+                                                <DataGrid
+                                                    x:Name="LayerDataGrid"
                                                     Grid.Row="1"
-                                                    HorizontalContentAlignment="Stretch"
-                                                    VerticalContentAlignment="Stretch">
-                                                    <DataGrid
-                                                        x:Name="LayerDataGrid"
-                                                        Margin="0"
-                                                        HorizontalContentAlignment="Stretch"
-                                                        VerticalContentAlignment="Stretch"
-                                                        AutoGenerateColumns="False"
-                                                        CanUserAddRows="False"
-                                                        CanUserDeleteRows="False"
-                                                        FontSize="11"
-                                                        GridLinesVisibility="All"
-                                                        HeadersVisibility="Column"
-                                                        IsReadOnly="True">
-                                                        <DataGrid.Columns>
-                                                            <DataGridTextColumn Width="40" Header="序号" />
-                                                            <DataGridTextColumn Width="80" Header="图层名称" />
-                                                            <DataGridTextColumn Width="40" Header="开关" />
-                                                            <DataGridTextColumn Width="40" Header="冻结" />
-                                                            <DataGridTextColumn Width="40" Header="颜色" />
-                                                            <DataGridTextColumn Width="40" Header="删除" />
-                                                        </DataGrid.Columns>
-                                                    </DataGrid>
-                                                </ScrollViewer>
+                                                    Margin="0"
+                                                    AutoGenerateColumns="False"
+                                                    CanUserAddRows="False"
+                                                    CanUserSortColumns="True"
+                                                    EnableColumnVirtualization="False"
+                                                    EnableRowVirtualization="False"
+                                                    FrozenColumnCount="1"
+                                                    GridLinesVisibility="All"
+                                                    HeadersVisibility="Column"
+                                                    HorizontalScrollBarVisibility="Auto"
+                                                    ScrollViewer.CanContentScroll="False"
+                                                    ScrollViewer.PanningMode="VerticalFirst"
+                                                    VerticalScrollBarVisibility="Auto">
+                                                    <DataGrid.Columns>
+                                                        <DataGridCheckBoxColumn
+                                                            Width="35"
+                                                            Binding="{Binding ToDelete}"
+                                                            Header="删除" />
+                                                        <DataGridTextColumn
+                                                            Width="35"
+                                                            Binding="{Binding DisplayIndex}"
+                                                            Header="序号"
+                                                            IsReadOnly="True" />
+                                                        <DataGridTextColumn
+                                                            Width="100"
+                                                            Binding="{Binding Name}"
+                                                            Header="图层名称"
+                                                            IsReadOnly="True" />
+                                                        <DataGridCheckBoxColumn
+                                                            Width="35"
+                                                            Binding="{Binding IsOn}"
+                                                            Header="开关" />
+                                                        <DataGridCheckBoxColumn
+                                                            Width="35"
+                                                            Binding="{Binding IsFrozen}"
+                                                            Header="冻结" />
+                                                        <DataGridTextColumn
+                                                            Width="35"
+                                                            Binding="{Binding ColorIndex}"
+                                                            Header="颜色"
+                                                            IsReadOnly="True" />
+
+                                                    </DataGrid.Columns>
+                                                    <DataGrid.Style>
+                                                        <Style TargetType="DataGrid">
+                                                            <Setter Property="ColumnHeaderStyle">
+                                                                <Setter.Value>
+                                                                    <Style TargetType="DataGridColumnHeader">
+                                                                        <Setter Property="Background" Value="#FFECECEC" />
+                                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                                        <Setter Property="Padding" Value="5" />
+                                                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                                                    </Style>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </DataGrid.Style>
+                                                </DataGrid>
+                                                <!--  状态信息  -->
+                                                <TextBlock
+                                                    x:Name="statusText"
+                                                    Grid.Row="2"
+                                                    Margin="5"
+                                                    VerticalAlignment="Center"
+                                                    Text="就绪" />
                                             </Grid>
                                         </TabItem>
 
                                         <TabItem
-                                            x:Name="常用工具3"
+                                            x:Name="常用工具"
                                             FontSize="12"
                                             FontWeight="Bold"
-                                            Header="常用工具3">
+                                            Header="常用工具">
                                             <Grid />
                                         </TabItem>
                                     </TabControl>
@@ -371,76 +414,27 @@
                                                 <Grid Grid.Row="1">
                                                     <Grid Margin="0">
                                                         <Grid.RowDefinitions>
-                                                            <RowDefinition Height="80" />
+                                                            <RowDefinition Height="60" />
+                                                            <RowDefinition Height="90" />
                                                             <RowDefinition Height="*" />
                                                             <RowDefinition Height="140" />
-                                                            <RowDefinition Height="75" />
-                                                            <RowDefinition Height="102" />
+                                                            <RowDefinition Height="105" />
                                                         </Grid.RowDefinitions>
                                                         <Grid Grid.Row="0">
                                                             <GroupBox
                                                                 x:Name="工艺绘制"
+                                                                Margin="5"
+                                                                Padding="0,3,0,0"
                                                                 FontFamily="Microsoft YaHei UI"
                                                                 Header="工艺绘制">
                                                                 <Grid>
-                                                                    <Button
-                                                                        x:Name="属性同步"
-                                                                        Width="90"
-                                                                        Height="25"
-                                                                        Margin="0,5,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        Background="#FF0050A0"
-                                                                        BorderBrush="#FFC2C6CE"
-                                                                        Click="属性同步_Click"
-                                                                        Content="属性同步"
-                                                                        FontSize="12"
-                                                                        Foreground="White" />
-                                                                    <Button
-                                                                        x:Name="表格同步"
-                                                                        Width="90"
-                                                                        Height="25"
-                                                                        Margin="92,5,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        Background="#FF0050A0"
-                                                                        BorderBrush="#FFC2C6CE"
-                                                                        Click="表格同步_Click"
-                                                                        Content="表格同步"
-                                                                        FontSize="12"
-                                                                        Foreground="White" />
-                                                                    <Button
-                                                                        x:Name="导出表格"
-                                                                        Width="90"
-                                                                        Height="25"
-                                                                        Margin="184,5,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        Background="#FF0050A0"
-                                                                        BorderBrush="#FFC2C6CE"
-                                                                        Click="导出表格_Click"
-                                                                        Content="导出表格"
-                                                                        FontSize="12"
-                                                                        Foreground="White" />
-                                                                    <Button
-                                                                        x:Name="生成设备表"
-                                                                        Width="90"
-                                                                        Height="25"
-                                                                        Margin="0,33,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        Background="#FF0050A0"
-                                                                        BorderBrush="#FFC2C6CE"
-                                                                        Click="生成设备表_Click"
-                                                                        Content="生成设备表"
-                                                                        FontSize="12"
-                                                                        Foreground="White" />
+
                                                                     <Button
                                                                         x:Name="绘制进口管道"
-                                                                        Width="90"
+                                                                        Width="85"
                                                                         Height="25"
-                                                                        Margin="0,33,0,0"
-                                                                        HorizontalAlignment="Center"
+                                                                        Margin="1,0,0,0"
+                                                                        HorizontalAlignment="Left"
                                                                         VerticalAlignment="Top"
                                                                         Background="#FF0050A0"
                                                                         BorderBrush="#FFC2C6CE"
@@ -450,9 +444,9 @@
                                                                         Foreground="White" />
                                                                     <Button
                                                                         x:Name="绘制出口管道"
-                                                                        Width="90"
+                                                                        Width="85"
                                                                         Height="25"
-                                                                        Margin="184,33,0,0"
+                                                                        Margin="88,0,0,0"
                                                                         HorizontalAlignment="Left"
                                                                         VerticalAlignment="Top"
                                                                         Background="#FF0050A0"
@@ -461,15 +455,102 @@
                                                                         Content="绘制出口管道"
                                                                         FontSize="12"
                                                                         Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="属性同步"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        Margin="175,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Bottom"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="属性同步_Click"
+                                                                        Content="属性同步"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
                                                                 </Grid>
+                                                            </GroupBox>
+                                                        </Grid>
+                                                        <Grid Grid.Row="1">
+                                                            <GroupBox
+                                                                x:Name="工艺表格"
+                                                                Margin="5"
+                                                                Padding="0,3,0,0"
+                                                                Header="工艺表格">
+                                                                <WrapPanel x:Name="工艺表格按钮面板" Orientation="Horizontal">
+                                                                    <Button
+                                                                        x:Name="生成管道表"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        Margin="1,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="生成管道表_Click"
+                                                                        Content="生成管道表"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="生成设备表"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        Margin="1,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="生成设备表_Click"
+                                                                        Content="生成设备表"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="插入管道表"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        HorizontalAlignment="Center"
+                                                                        VerticalAlignment="Center"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="插入管道表_Click"
+                                                                        Content="插入管道表"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                    <Button
+                                                                        x:Name="导出表格"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        Margin="1,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="导出表格_Click"
+                                                                        Content="导出表格"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
 
+
+                                                                    <Button
+                                                                        x:Name="表格同步"
+                                                                        Width="85"
+                                                                        Height="25"
+                                                                        HorizontalAlignment="Center"
+                                                                        VerticalAlignment="Center"
+                                                                        Background="#FF0050A0"
+                                                                        BorderBrush="#FFC2C6CE"
+                                                                        Click="表格同步_Click"
+                                                                        Content="表格同步"
+                                                                        FontSize="12"
+                                                                        Foreground="White" />
+                                                                </WrapPanel>
                                                             </GroupBox>
                                                         </Grid>
                                                         <WrapPanel
                                                             x:Name="CraftButtonsPanel"
-                                                            Grid.Row="1"
+                                                            Grid.Row="2"
                                                             Orientation="Vertical" />
-                                                        <Grid Grid.Row="2">
+                                                        <Grid Grid.Row="3">
                                                             <GroupBox
                                                                 x:Name="TJ工艺制图"
                                                                 FontFamily="Microsoft YaHei UI"
@@ -748,81 +829,7 @@
                                                                 </Grid>
                                                             </GroupBox>
                                                         </Grid>
-                                                        <Grid Grid.Row="3">
-                                                            <GroupBox
-                                                                x:Name="TJ建筑孔洞"
-                                                                FontFamily="Microsoft YaHei UI"
-                                                                Header="TJ建筑孔洞">
-                                                                <Grid Height="50">
-                                                                    <Label
-                                                                        Width="70"
-                                                                        Height="20"
-                                                                        Margin="0,27,0,0"
-                                                                        Padding="0,0,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        VerticalContentAlignment="Center"
-                                                                        Content="左右加宽"
-                                                                        FontFamily="Microsoft YaHei UI"
-                                                                        FontSize="12"
-                                                                        FontWeight="Normal" />
-                                                                    <Label
-                                                                        Width="70"
-                                                                        Height="20"
-                                                                        Margin="0,3,0,0"
-                                                                        Padding="0,0,0,0"
-                                                                        HorizontalAlignment="Left"
-                                                                        VerticalAlignment="Top"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        VerticalContentAlignment="Center"
-                                                                        Content="左右加宽"
-                                                                        FontFamily="Microsoft YaHei UI"
-                                                                        FontSize="12"
-                                                                        FontWeight="Normal" />
-
-                                                                    <TextBox
-                                                                        x:Name="TextBox_TJ建筑孔洞左右宽"
-                                                                        Width="80"
-                                                                        Height="20"
-                                                                        Margin="68,3,125,27"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        VerticalContentAlignment="Center"
-                                                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                                                        Tag="0.5" />
-                                                                    <TextBox
-                                                                        x:Name="TextBox_TJ建筑孔洞上下高"
-                                                                        Width="80"
-                                                                        Height="20"
-                                                                        Margin="68,27,125,3"
-                                                                        HorizontalContentAlignment="Center"
-                                                                        VerticalContentAlignment="Center"
-                                                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                                                        Tag="0.5" />
-                                                                    <Button
-                                                                        x:Name="横墙建筑开洞"
-                                                                        Width="100"
-                                                                        Height="20"
-                                                                        Margin="163,3,10,27"
-                                                                        Click="横墙建筑开洞_Btn_Clic"
-                                                                        Content="横墙建筑开洞"
-                                                                        FontFamily="Microsoft YaHei UI"
-                                                                        FontWeight="Normal" />
-                                                                    <Button
-                                                                        x:Name="纵墙建筑开洞"
-                                                                        Width="100"
-                                                                        Height="20"
-                                                                        Margin="163,27,10,3"
-                                                                        Click="纵墙建筑开洞_Btn_Click"
-                                                                        Content="纵墙建筑开洞"
-                                                                        FontFamily="Microsoft YaHei UI"
-                                                                        FontSize="11"
-                                                                        FontWeight="Normal" />
-
-                                                                </Grid>
-
-                                                            </GroupBox>
-                                                        </Grid>
+                                                        <Grid Grid.Row="3" />
                                                         <Grid Grid.Row="4">
                                                             <GroupBox
                                                                 x:Name="工艺标注"
@@ -834,7 +841,7 @@
                                                                         x:Name="纯化水"
                                                                         Width="85"
                                                                         Height="18"
-                                                                        Margin="5,1,1,1"
+                                                                        Margin="5,5,1,1"
                                                                         Background="#FFF3EEEE"
                                                                         Click="纯化水_Btn_Clic"
                                                                         Content="纯化水"
@@ -845,7 +852,7 @@
                                                                         x:Name="纯蒸汽"
                                                                         Width="85"
                                                                         Height="18"
-                                                                        Margin="5,1,1,1"
+                                                                        Margin="5,5,1,1"
                                                                         Background="#FFF3EEEE"
                                                                         Click="纯蒸汽_Btn_Click"
                                                                         Content="纯蒸汽"
@@ -856,7 +863,7 @@
                                                                         x:Name="注射用水"
                                                                         Width="85"
                                                                         Height="18"
-                                                                        Margin="5,1,1,1"
+                                                                        Margin="5,5,1,1"
                                                                         Background="#FFF3EEEE"
                                                                         Click="注射用水_Btn_Click"
                                                                         Content="注射用水"
@@ -963,7 +970,6 @@
                                                                         FontWeight="Normal" />
 
                                                                 </WrapPanel>
-
                                                             </GroupBox>
 
                                                         </Grid>
@@ -973,7 +979,7 @@
                                             </Grid>
                                         </ScrollViewer>
                                     </TabItem>
-                                    <TabItem x:Name="各专业条件" Header=" 条件图元 ">
+                                    <TabItem x:Name="工艺_条件绘制" Header=" 条件绘制 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*" />
@@ -1018,7 +1024,91 @@
                                                         Margin="5"
                                                         Padding="3"
                                                         Header="建筑专业条件">
-                                                        <WrapPanel x:Name="建筑条件按钮面板" Orientation="Vertical" />
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*" />
+                                                                <RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                            <WrapPanel
+                                                                x:Name="建筑条件按钮面板"
+                                                                Grid.Row="0"
+                                                                Orientation="Vertical" />
+                                                            <GroupBox
+                                                                x:Name="TJ建筑孔洞"
+                                                                Grid.Row="1"
+                                                                FontFamily="Microsoft YaHei UI"
+                                                                Header="TJ建筑孔洞">
+                                                                <Grid Height="50">
+                                                                    <Label
+                                                                        x:Name="Label_TJ建筑孔洞_横墙左右加宽"
+                                                                        Width="70"
+                                                                        Height="20"
+                                                                        Margin="0,27,0,0"
+                                                                        Padding="0,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        HorizontalContentAlignment="Center"
+                                                                        VerticalContentAlignment="Center"
+                                                                        Content="左右加宽"
+                                                                        FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="12"
+                                                                        FontWeight="Normal" />
+                                                                    <Label
+                                                                        x:Name="Label_TJ建筑孔洞_纵墙左右加宽"
+                                                                        Width="70"
+                                                                        Height="20"
+                                                                        Margin="0,3,0,0"
+                                                                        Padding="0,0,0,0"
+                                                                        HorizontalAlignment="Left"
+                                                                        VerticalAlignment="Top"
+                                                                        HorizontalContentAlignment="Center"
+                                                                        VerticalContentAlignment="Center"
+                                                                        Content="左右加宽"
+                                                                        FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="12"
+                                                                        FontWeight="Normal" />
+                                                                    <TextBox
+                                                                        x:Name="TextBox_TJ建筑孔洞左右宽"
+                                                                        Width="60"
+                                                                        Height="20"
+                                                                        Margin="68,3,117,27"
+                                                                        HorizontalContentAlignment="Center"
+                                                                        VerticalContentAlignment="Center"
+                                                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                        Tag="0.5" />
+                                                                    <TextBox
+                                                                        x:Name="TextBox_TJ建筑孔洞上下高"
+                                                                        Width="60"
+                                                                        Height="20"
+                                                                        Margin="68,27,117,3"
+                                                                        HorizontalContentAlignment="Center"
+                                                                        VerticalContentAlignment="Center"
+                                                                        Style="{StaticResource WatermarkTextBoxStyle}"
+                                                                        Tag="0.5" />
+                                                                    <Button
+                                                                        x:Name="横墙建筑开洞"
+                                                                        Width="100"
+                                                                        Height="20"
+                                                                        Margin="140,3,5,27"
+                                                                        Click="横墙建筑开洞_Btn_Clic"
+                                                                        Content="横墙建筑开洞"
+                                                                        FontFamily="Microsoft YaHei UI"
+                                                                        FontWeight="Normal" />
+                                                                    <Button
+                                                                        x:Name="纵墙建筑开洞"
+                                                                        Width="100"
+                                                                        Height="20"
+                                                                        Margin="140,27,5,3"
+                                                                        Click="纵墙建筑开洞_Btn_Click"
+                                                                        Content="纵墙建筑开洞"
+                                                                        FontFamily="Microsoft YaHei UI"
+                                                                        FontSize="11"
+                                                                        FontWeight="Normal" />
+
+                                                                </Grid>
+                                                            </GroupBox>
+                                                        </Grid>
+
                                                     </GroupBox>
                                                     <!--  结构专业条件  -->
                                                     <GroupBox
@@ -1040,7 +1130,6 @@
 
                                                 </StackPanel>
                                             </Grid>
-
                                         </Grid>
                                     </TabItem>
                                     <TabItem x:Name="工艺图层" Header=" 图层管理 ">
@@ -1111,11 +1200,18 @@
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
+                                    <TabItem x:Name="建筑_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
+                                    </TabItem>
                                     <TabItem
                                         x:Name="建筑图层"
                                         Height="21"
                                         VerticalAlignment="Top"
-                                        Header=" 图层管理 ">
+                                        Header=" 图层管理">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="300" />
@@ -1362,6 +1458,13 @@
 
 
                                             </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="结构_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
                                         </Grid>
                                     </TabItem>
                                     <TabItem x:Name="结构图层" Header=" 图层管理 ">
@@ -1615,6 +1718,13 @@
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
+                                    <TabItem x:Name="给排水_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
+                                    </TabItem>
                                     <TabItem x:Name="给排水图层" Header=" 图层管理 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
@@ -1638,9 +1748,74 @@
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="*" />
+                                                <RowDefinition Height="*" />
+                                                <RowDefinition Height="*" />
                                             </Grid.RowDefinitions>
+                                            <Grid>
+                                                <GroupBox
+                                                    x:Name="暖通表格"
+                                                    Margin="5"
+                                                    Padding="0,3,0,0"
+                                                    Header="工艺表格">
+                                                    <WrapPanel x:Name="暖通表格按钮面板" Orientation="Horizontal">
+                                                        <Button
+                                                            x:Name="生成暖通管道表"
+                                                            Width="85"
+                                                            Height="25"
+                                                            Margin="1,0,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Background="#FF0050A0"
+                                                            BorderBrush="#FFC2C6CE"
+                                                            Click="生成暖通管道表_Click"
+                                                            Content="生成管道表"
+                                                            FontSize="12"
+                                                            Foreground="White" />
+                                                        <Button
+                                                            x:Name="生成暖通设备表"
+                                                            Width="85"
+                                                            Height="25"
+                                                            Margin="1,0,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Background="#FF0050A0"
+                                                            BorderBrush="#FFC2C6CE"
+                                                            Click="生成暖通设备表_Click"
+                                                            Content="生成设备表"
+                                                            FontSize="12"
+                                                            Foreground="White" />
+                                                        <Button
+                                                            x:Name="插入暖通管道表"
+                                                            Width="85"
+                                                            Height="25"
+                                                            HorizontalAlignment="Center"
+                                                            VerticalAlignment="Center"
+                                                            Background="#FF0050A0"
+                                                            BorderBrush="#FFC2C6CE"
+                                                            Click="插入暖通管道表_Click"
+                                                            Content="插入管道表"
+                                                            FontSize="12"
+                                                            Foreground="White" />
+                                                        <Button
+                                                            x:Name="导出暖通表格"
+                                                            Width="85"
+                                                            Height="25"
+                                                            Margin="1,0,0,0"
+                                                            HorizontalAlignment="Left"
+                                                            VerticalAlignment="Top"
+                                                            Background="#FF0050A0"
+                                                            BorderBrush="#FFC2C6CE"
+                                                            Click="导出暖通表格_Click"
+                                                            Content="导出表格"
+                                                            FontSize="12"
+                                                            Foreground="White" />
+
+
+                                                    </WrapPanel>
+                                                </GroupBox>
+                                            </Grid>
                                             <ScrollViewer
-                                                Grid.Row="0"
+                                                Grid.Row="2"
                                                 Margin="0"
                                                 VerticalScrollBarVisibility="Auto">
                                                 <Grid>
@@ -1873,6 +2048,13 @@
                                                 </Grid>
 
                                             </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="暖通_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
                                         </Grid>
                                     </TabItem>
                                     <TabItem x:Name="暖通图层" Header=" 图层管理 ">
@@ -2136,6 +2318,13 @@
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
+                                    <TabItem x:Name="电气_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
+                                    </TabItem>
                                     <TabItem x:Name="电气图层" Header=" 图层管理 ">
                                         <Grid>
                                             <Grid.RowDefinitions>
@@ -2384,6 +2573,13 @@
                                             </ScrollViewer>
                                         </Grid>
                                     </TabItem>
+                                    <TabItem x:Name="自控_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                        </Grid>
+                                    </TabItem>
                                     <TabItem
                                         x:Name="自控图层"
                                         Height="21"
@@ -2424,6 +2620,13 @@
                                                 VerticalScrollBarVisibility="Auto">
                                                 <WrapPanel x:Name="GeneralButtonsPanel" Orientation="Vertical" />
                                             </ScrollViewer>
+                                        </Grid>
+                                    </TabItem>
+                                    <TabItem x:Name="总图_条件绘制" Header=" 条件绘制 ">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
                                         </Grid>
                                     </TabItem>
                                     <TabItem x:Name="总图图层" Header=" 图层管理 ">
@@ -2477,7 +2680,7 @@
                                 IsReadOnly="True">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn
-                                        Width="*"
+                                        Width="60"
                                         Binding="{Binding PropertyName1}"
                                         Header="属性名称" />
                                     <DataGridTextColumn
@@ -2485,7 +2688,7 @@
                                         Binding="{Binding PropertyValue1}"
                                         Header="值" />
                                     <DataGridTextColumn
-                                        Width="*"
+                                        Width="60"
                                         Binding="{Binding PropertyName2}"
                                         Header="属性名称" />
                                     <DataGridTextColumn
@@ -2502,168 +2705,346 @@
             <!--  第二个TabControlItem(设置)  -->
             <!--  修改工具设置TabItem，添加端口输入框  -->
             <TabItem Header="工具设置">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="40" />
-                    </Grid.RowDefinitions>
+                <TabControl
+                    Margin="0,0,0,0"
+                    Padding="1,2,1,0"
+                    Background="Azure"
+                    ItemContainerStyle="{StaticResource VerticalTabStyle}"
+                    TabStripPlacement="Left">
+                    <TabItem
+                        Height="68"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Header=" 系统设置 ">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="40" />
+                            </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="10">
-                            <!--  数据库设置  -->
-                            <GroupBox Margin="0,5,0,10" Header="数据库设置">
-                                <StackPanel Margin="5">
-                                    <TextBlock Margin="0,5,0,2" Text="服务器IP地址：" />
-                                    <TextBox
-                                        x:Name="TextBox_Set_ServiceIP"
-                                        Margin="0,0,0,5"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入服务器IP地址"
-                                        Text="127.0.0.1" />
+                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="10">
+                                    <!--  数据库设置  -->
+                                    <GroupBox Margin="0,5,0,10" Header="数据库设置">
+                                        <StackPanel Margin="5">
+                                            <TextBlock Margin="0,5,0,2" Text="服务器IP地址：" />
+                                            <TextBox
+                                                x:Name="TextBox_Set_ServiceIP"
+                                                Margin="0,0,0,5"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入服务器IP地址"
+                                                Text="127.0.0.1" />
 
-                                    <TextBlock Margin="0,5,0,2" Text="端口号：" />
-                                    <TextBox
-                                        x:Name="TextBox_Set_ServicePort"
-                                        Margin="0,0,0,5"
-                                        DataObject.Pasting="TextBox_Set_ServicePort_Pasting"
-                                        PreviewTextInput="TextBox_Set_ServicePort_PreviewTextInput"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入端口号"
-                                        Text="3306" />
+                                            <TextBlock Margin="0,5,0,2" Text="端口号：" />
+                                            <TextBox
+                                                x:Name="TextBox_Set_ServicePort"
+                                                Margin="0,0,0,5"
+                                                DataObject.Pasting="TextBox_Set_ServicePort_Pasting"
+                                                PreviewTextInput="TextBox_Set_ServicePort_PreviewTextInput"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入端口号"
+                                                Text="3306" />
 
-                                    <TextBlock Margin="0,5,0,2" Text="数据库名称：" />
-                                    <TextBox
-                                        x:Name="TextBox_Set_DatabaseName"
-                                        Margin="0,0,0,5"
-                                        Background="#f0f0f0"
-                                        FontFamily="Microsoft YaHei UI"
-                                        FontWeight="Normal"
-                                        IsReadOnly="True"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入数据库名称"
-                                        Text="cad_sw_library" />
+                                            <TextBlock Margin="0,5,0,2" Text="数据库名称：" />
+                                            <TextBox
+                                                x:Name="TextBox_Set_DatabaseName"
+                                                Margin="0,0,0,5"
+                                                Background="#f0f0f0"
+                                                FontFamily="Microsoft YaHei UI"
+                                                FontWeight="Normal"
+                                                IsReadOnly="True"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入数据库名称"
+                                                Text="cad_sw_library" />
 
-                                    <TextBlock Margin="0,5,0,2" Text="用户名：" />
-                                    <TextBox
-                                        x:Name="TextBox_Set_Username"
-                                        Margin="0,0,0,5"
-                                        Background="#f0f0f0"
-                                        FontFamily="Microsoft YaHei UI"
-                                        FontWeight="Normal"
-                                        IsReadOnly="True"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入用户名"
-                                        Text="root" />
+                                            <TextBlock Margin="0,5,0,2" Text="用户名：" />
+                                            <TextBox
+                                                x:Name="TextBox_Set_Username"
+                                                Margin="0,0,0,5"
+                                                Background="#f0f0f0"
+                                                FontFamily="Microsoft YaHei UI"
+                                                FontWeight="Normal"
+                                                IsReadOnly="True"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入用户名"
+                                                Text="root" />
 
-                                    <TextBlock Margin="0,5,0,2" Text="密码：" />
-                                    <TextBox
-                                        x:Name="PasswordBox_Set_Password"
-                                        Margin="0,0,0,5"
-                                        Background="#f0f0f0"
-                                        FontFamily="Microsoft YaHei UI"
-                                        FontWeight="Normal"
-                                        IsReadOnly="True"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Text="root" />
+                                            <TextBlock Margin="0,5,0,2" Text="密码：" />
+                                            <TextBox
+                                                x:Name="PasswordBox_Set_Password"
+                                                Margin="0,0,0,5"
+                                                Background="#f0f0f0"
+                                                FontFamily="Microsoft YaHei UI"
+                                                FontWeight="Normal"
+                                                IsReadOnly="True"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Text="root" />
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <!--  文件存储设置  -->
+                                    <GroupBox Margin="0,5,0,10" Header="文件存储设置">
+                                        <StackPanel Margin="5">
+                                            <TextBlock Margin="0,5,0,2" Text="首选存储路径：" />
+                                            <TextBox
+                                                x:Name="TextBox_Set_StoragePath"
+                                                Margin="0,0,0,5"
+                                                Background="#f0f0f0"
+                                                FontFamily="Microsoft YaHei UI"
+                                                FontWeight="Normal"
+                                                IsReadOnly="True"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入文件存储路径"
+                                                Text="D:\GB_Tools\Cad_Sw_Library" />
+
+                                            <CheckBox
+                                                x:Name="CheckBox_UseDPath"
+                                                Margin="0,5,0,5"
+                                                Content="优先使用D盘存储"
+                                                IsChecked="True"
+                                                IsEnabled="False" />
+                                        </StackPanel>
+                                    </GroupBox>
+
+                                    <!--  其他设置  -->
+                                    <GroupBox Margin="0,5,0,10" Header="其他设置">
+                                        <StackPanel Margin="5">
+                                            <CheckBox
+                                                x:Name="CheckBox_AutoSync"
+                                                Margin="0,5,0,5"
+                                                Background="#f0f0f0"
+                                                Content="启用自动同步"
+                                                IsChecked="True"
+                                                IsEnabled="False" />
+
+                                            <TextBlock Margin="0,5,0,2" Text="同步间隔（分钟）：" />
+                                            <TextBox
+                                                x:Name="TextBox_SyncInterval"
+                                                Margin="0,0,0,5"
+                                                Background="#f0f0f0"
+                                                FontFamily="Microsoft YaHei UI"
+                                                FontWeight="Normal"
+                                                IsReadOnly="True"
+                                                Style="{StaticResource WatermarkTextBoxStyle}"
+                                                Tag="请输入同步间隔"
+                                                Text="30" />
+                                        </StackPanel>
+                                    </GroupBox>
+                                    <GroupBox Margin="0,5,0,10" Header="日志">
+                                        <StackPanel Margin="5">
+                                            <Button
+                                                x:Name="查看日志按钮"
+                                                Width="80"
+                                                Height="25"
+                                                Margin="5"
+                                                Click="查看日志按钮_Click"
+                                                Content="查看日志" />
+                                            <Button
+                                                x:Name="显示最新日志按钮"
+                                                Width="80"
+                                                Height="25"
+                                                Margin="5"
+                                                Click="显示最新日志按钮_Click"
+                                                Content="显示最新日志 " />
+                                        </StackPanel>
+                                    </GroupBox>
                                 </StackPanel>
-                            </GroupBox>
+                            </ScrollViewer>
 
-                            <!--  文件存储设置  -->
-                            <GroupBox Margin="0,5,0,10" Header="文件存储设置">
-                                <StackPanel Margin="5">
-                                    <TextBlock Margin="0,5,0,2" Text="首选存储路径：" />
-                                    <TextBox
-                                        x:Name="TextBox_Set_StoragePath"
-                                        Margin="0,0,0,5"
-                                        Background="#f0f0f0"
-                                        FontFamily="Microsoft YaHei UI"
-                                        FontWeight="Normal"
-                                        IsReadOnly="True"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入文件存储路径"
-                                        Text="D:\GB_Tools\Cad_Sw_Library" />
+                            <StackPanel
+                                Grid.Row="1"
+                                HorizontalAlignment="Center"
+                                Orientation="Horizontal">
+                                <Button
+                                    x:Name="保存设置按钮"
+                                    Width="80"
+                                    Height="25"
+                                    Margin="5"
+                                    Click="保存设置按钮_Click"
+                                    Content="保存设置" />
+                                <Button
+                                    x:Name="测试连接按钮"
+                                    Width="80"
+                                    Height="25"
+                                    Margin="5"
+                                    Click="测试连接按钮_Click"
+                                    Content="测试连接" />
+                                <Button
+                                    x:Name="应用设置按钮"
+                                    Width="80"
+                                    Height="25"
+                                    Margin="5"
+                                    Click="应用设置按钮_Click"
+                                    Content="应用设置" />
+                            </StackPanel>
+                        </Grid>
+                    </TabItem>
+                    <TabItem
+                        Height="68"
+                        FontSize="12"
+                        FontWeight="Bold"
+                        Header="绘图配置">
+                        <Grid>
+                            <TabControl>
+                                <TabItem Header="图层字典">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="65" />
+                                            <RowDefinition Height="1" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
 
-                                    <CheckBox
-                                        x:Name="CheckBox_UseDPath"
-                                        Margin="0,5,0,5"
-                                        Content="优先使用D盘存储"
-                                        IsChecked="True"
-                                        IsEnabled="False" />
-                                </StackPanel>
-                            </GroupBox>
+                                        <Grid Grid.Row="0">
+                                            <Button
+                                                x:Name="加载标准图层字典按钮"
+                                                Width="100"
+                                                Height="25"
+                                                Margin="5,5,195,35"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="加载标准图层字典_Click"
+                                                Content="加载标准图层字典"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                            <Button
+                                                x:Name="加载个人图层字典按钮"
+                                                Width="100"
+                                                Height="25"
+                                                Margin="110,5,92,35"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="加载个人图层字典_Click"
+                                                Content="加载个人图层字典"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                            <Button
+                                                x:Name="添加一行按钮"
+                                                Width="100"
+                                                Height="25"
+                                                Margin="5,35,197,5"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="添加一行_Click"
+                                                Content="添加一行"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                            <Button
+                                                x:Name="删除选中行按钮"
+                                                Width="100"
+                                                Height="25"
+                                                Margin="110,35,92,5"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="删除选中行_Click"
+                                                Content="删除选中行"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                            <Button
+                                                x:Name="当前图纸图层"
+                                                Width="80"
+                                                Height="25"
+                                                Margin="215,5,7,35"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="当前图纸图层_Click"
+                                                Content="当前图纸图层"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                            <Button
+                                                x:Name="保存图层字典按钮"
+                                                Width="80"
+                                                Height="25"
+                                                Margin="215,35,7,5"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Top"
+                                                Background="#FF0050A0"
+                                                BorderBrush="#FFC2C6CE"
+                                                Click="保存图层字典_Click"
+                                                Content="保存字典"
+                                                FontSize="12"
+                                                Foreground="White" />
+                                        </Grid>
+                                        <DataGrid
+                                            x:Name="LayerDictionary_DataGrid"
+                                            Grid.Row="3"
+                                            MinHeight="120"
+                                            Margin="0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
+                                            AutoGenerateColumns="False"
+                                            CanUserAddRows="False"
+                                            CanUserSortColumns="True"
+                                            EnableColumnVirtualization="True"
+                                            EnableRowVirtualization="True"
+                                            FrozenColumnCount="1"
+                                            GridLinesVisibility="All"
+                                            HeadersVisibility="Column"
+                                            HorizontalScrollBarVisibility="Auto"
+                                            ScrollViewer.CanContentScroll="False"
+                                            ScrollViewer.PanningMode="VerticalFirst"
+                                            SelectionMode="Extended"
+                                            VerticalScrollBarVisibility="Auto">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn
+                                                    Width="35"
+                                                    Binding="{Binding DisplayIndex}"
+                                                    Header="序号"
+                                                    IsReadOnly="True" />
+                                                <DataGridComboBoxColumn
+                                                    Width="75"
+                                                    Header="专业"
+                                                    ItemsSource="{Binding CategoryNames, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    SelectedItemBinding="{Binding Major, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <DataGridTextColumn
+                                                    Width="100"
+                                                    Binding="{Binding LayerName}"
+                                                    Header="图层名称"
+                                                    IsReadOnly="True" />
+                                                <DataGridTextColumn
+                                                    Width="100"
+                                                    Binding="{Binding DicLayerName}"
+                                                    Header="解释名称"
+                                                    IsReadOnly="False" />
+                                            </DataGrid.Columns>
+                                            <DataGrid.Style>
+                                                <Style TargetType="DataGrid">
+                                                    <Setter Property="ColumnHeaderStyle">
+                                                        <Setter.Value>
+                                                            <Style TargetType="DataGridColumnHeader">
+                                                                <Setter Property="Background" Value="#FFECECEC" />
+                                                                <Setter Property="FontWeight" Value="Bold" />
+                                                                <Setter Property="Padding" Value="5" />
+                                                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                                            </Style>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </DataGrid.Style>
+                                        </DataGrid>
 
-                            <!--  其他设置  -->
-                            <GroupBox Margin="0,5,0,10" Header="其他设置">
-                                <StackPanel Margin="5">
-                                    <CheckBox
-                                        x:Name="CheckBox_AutoSync"
-                                        Margin="0,5,0,5"
-                                        Background="#f0f0f0"
-                                        Content="启用自动同步"
-                                        IsChecked="True"
-                                        IsEnabled="False" />
 
-                                    <TextBlock Margin="0,5,0,2" Text="同步间隔（分钟）：" />
-                                    <TextBox
-                                        x:Name="TextBox_SyncInterval"
-                                        Margin="0,0,0,5"
-                                        Background="#f0f0f0"
-                                        FontFamily="Microsoft YaHei UI"
-                                        FontWeight="Normal"
-                                        IsReadOnly="True"
-                                        Style="{StaticResource WatermarkTextBoxStyle}"
-                                        Tag="请输入同步间隔"
-                                        Text="30" />
-                                </StackPanel>
-                            </GroupBox>
-                            <GroupBox Margin="0,5,0,10" Header="日志">
-                                <StackPanel Margin="5">
-                                    <Button
-                                        x:Name="查看日志按钮"
-                                        Width="80"
-                                        Height="25"
-                                        Margin="5"
-                                        Click="查看日志按钮_Click"
-                                        Content="查看日志" />
-                                    <Button
-                                        x:Name="显示最新日志按钮"
-                                        Width="80"
-                                        Height="25"
-                                        Margin="5"
-                                        Click="显示最新日志按钮_Click"
-                                        Content="显示最新日志 " />
-                                </StackPanel>
-                            </GroupBox>
-                        </StackPanel>
-                    </ScrollViewer>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="其它">
+                                    <Grid>
+                                        <TextBox Text="{Binding LayerDict}" />
+                                    </Grid>
+                                </TabItem>
+                            </TabControl>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
 
-                    <StackPanel
-                        Grid.Row="1"
-                        HorizontalAlignment="Center"
-                        Orientation="Horizontal">
-                        <Button
-                            x:Name="保存设置按钮"
-                            Width="80"
-                            Height="25"
-                            Margin="5"
-                            Click="保存设置按钮_Click"
-                            Content="保存设置" />
-                        <Button
-                            x:Name="测试连接按钮"
-                            Width="80"
-                            Height="25"
-                            Margin="5"
-                            Click="测试连接按钮_Click"
-                            Content="测试连接" />
-                        <Button
-                            x:Name="应用设置按钮"
-                            Width="80"
-                            Height="25"
-                            Margin="5"
-                            Click="应用设置按钮_Click"
-                            Content="应用设置" />
-                    </StackPanel>
-                </Grid>
             </TabItem>
             <!--  第一TabControlItem(管理员模块)  -->
             <TabItem
@@ -3151,7 +3532,7 @@
                 Width="110"
                 HorizontalAlignment="Right"
                 Header="部门\人员模块">
-                <local:DepartmentAdminControl Height="auto" />
+                <local:DepartmentAdminControl />
             </TabItem>
         </TabControl>
 

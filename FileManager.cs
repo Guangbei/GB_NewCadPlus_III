@@ -164,27 +164,36 @@ namespace GB_NewCadPlus_III
         /// <returns>文件的哈希值</returns>
         public static async Task<string> CalculateFileHashAsync(Stream stream)
         {
-            stream.Position = 0;
-            using (var sha256 = SHA256.Create())
-            {
-                // 对于大文件，分块读取以避免内存问题
-                const int bufferSize = 8192;
-                byte[] buffer = new byte[bufferSize];
+            if (stream == null) throw new ArgumentNullException(nameof(stream));
 
-                // 使用Task.Run在后台线程执行CPU密集型操作
+            bool canSeek = stream.CanSeek;
+            long originalPosition = canSeek ? stream.Position : 0;
+            if (canSeek)
+            {
+                stream.Position = 0;
+            }
+
+            try
+            {
+                // 在后台线程执行 ComputeHash（同步读取），避免在 UI 线程执行耗时的 CPU/IO 操作
                 byte[] hash = await Task.Run(() =>
                 {
-                    int bytesRead;
-                    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                    using (var sha = SHA256.Create())
                     {
-                        // SHA256的TransformBlock方法可以处理流式数据
-                        sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+                        // ComputeHash 会从当前流位置读取到末尾
+                        return sha.ComputeHash(stream);
                     }
-                    sha256.TransformFinalBlock(buffer, 0, 0);
-                    return sha256.Hash;
-                });
+                }).ConfigureAwait(false);
 
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+            finally
+            {
+                // 恢复流原始位置（如果流可寻址）
+                if (canSeek)
+                {
+                    stream.Position = originalPosition;
+                }
             }
         }
 

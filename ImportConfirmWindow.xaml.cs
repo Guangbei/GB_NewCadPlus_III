@@ -1,4 +1,4 @@
-﻿using GB_NewCadPlus_III.Helpers;
+using GB_NewCadPlus_III.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -24,6 +24,7 @@ using Clipboard = System.Windows.Clipboard;
 using Path = System.IO.Path;
 using MessageBox = System.Windows.MessageBox;
 using DataTable = Autodesk.AutoCAD.DatabaseServices.DataTable;
+using Cursors = System.Windows.Input.Cursors;
 
 namespace GB_NewCadPlus_III.Views
 {
@@ -192,6 +193,12 @@ namespace GB_NewCadPlus_III.Views
                 MessageBox.Show($"导出模板失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        /// <summary>
+        /// 在 ImportConfirmWindow 类中新增字段（靠近其它私有字段）
+        /// </summary>
+        private bool _isConfirmProcessing = false;
+
         /// <summary>
         /// 确认按钮点击事件
         /// </summary>
@@ -199,6 +206,14 @@ namespace GB_NewCadPlus_III.Views
         /// <param name="e"></param>
         private async void BtnConfirm_Click(object sender, RoutedEventArgs e)
         {
+            if (_isConfirmProcessing) // 防止重复触发
+                return;
+
+            _isConfirmProcessing = true;
+            BtnConfirm.IsEnabled = false;
+            var prevCursor = Mouse.OverrideCursor;
+            Mouse.OverrideCursor = Cursors.Wait;
+
             try
             {
                 // 1. 从UI更新DTO
@@ -213,12 +228,14 @@ namespace GB_NewCadPlus_III.Views
                         var doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
                         if (doc != null)
                         {
+                            // 调用 AutoCAD API 需小心：捕获可能的异常
                             doc.CloseAndSave(doc.Name);
                         }
                     }
                     catch (Exception ex)
                     {
                         MessageBox.Show($"关闭文件失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        // 失败也可以继续，让用户决定
                     }
                 }
                 else
@@ -227,7 +244,6 @@ namespace GB_NewCadPlus_III.Views
                     if (giveUp == MessageBoxResult.Yes)
                     {
                         this.DialogResult = false;
-                        return;
                     }
                     return;
                 }
@@ -235,17 +251,26 @@ namespace GB_NewCadPlus_III.Views
                 // 3. 再次从UI更新DTO，确保所有更改都已保存
                 UpdateDtoFromGrid();
 
-                // 4. 执行导入
+                // 4. 执行导入（将 DTO 注册到主窗口并执行上传）
                 _mainWindow.SetSelectedFileForImport(_dto);
-                await _mainWindow.UploadFileAndSaveToDatabase(_dto);
 
-                // 5. 关闭窗口
-                this.DialogResult = true;
+                try
+                {
+                    await _mainWindow.UploadFileAndSaveToDatabase(_dto);
+                    // 5. 关闭窗口
+                    this.DialogResult = true;
+                }
+                catch (Exception exUp)
+                {
+                    MessageBox.Show($"导入失败: {exUp.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    this.DialogResult = false;
+                }
             }
-            catch (Exception ex)
+            finally
             {
-                MessageBox.Show($"导入失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                this.DialogResult = false;
+                _isConfirmProcessing = false;
+                BtnConfirm.IsEnabled = true;
+                Mouse.OverrideCursor = prevCursor;
             }
         }
 
