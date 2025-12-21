@@ -100,7 +100,7 @@ namespace GB_NewCadPlus_III
             };
 
         /// <summary>
-        /// 主命令：生成设备材料表（按类型拆分为多个表）
+        /// 主命令：生成设备材料表（按类型拆分为多个表）arrowEntities
         /// </summary>
         /// <summary>
         /// 主命令：生成设备材料表（按类型拆分为多个表）
@@ -1274,6 +1274,7 @@ namespace GB_NewCadPlus_III
             // 将字典中的设备信息转换为列表并返回
             return equipmentDict.Values.ToList();
         }
+
         /// <summary>
         /// 处理动态块中的动态属性（如拉伸参数、可见性参数等）
         /// </summary>
@@ -1358,7 +1359,6 @@ namespace GB_NewCadPlus_III
         /*
          GeneratePipeTableFromSelection CalculateTotalColumns SyncPipeProperties  ExportTableToExcelFile
          */
-
 
         #region 获取动态块信息的方法
 
@@ -1495,8 +1495,6 @@ namespace GB_NewCadPlus_III
         }
 
         #endregion
-
-
 
         #region
 
@@ -1746,7 +1744,6 @@ namespace GB_NewCadPlus_III
 
         #endregion
 
-
         #region 同步管道的实现方法
 
         /// <summary>
@@ -1759,6 +1756,11 @@ namespace GB_NewCadPlus_III
             public List<AttributeDefinition> AttributeDefinitions { get; set; } = new List<AttributeDefinition>();
             public Point3d BasePoint { get; set; }
         }
+
+        // 替换 SyncPipeProperties 内关于箭头生成的那几行（用 CreateDirectionalArrowsAndTitles 取代只在中点生成单个箭头）
+        // 定位：在方法中计算 pipeLocal 之后、CloneAttributeDefinitionsLocal 之前的位置
+        // 原始片段包含 EnsureArrowEntities / AlignArrowToDirection / midArrowOutline 的逻辑，替换为下面代码。 pipeTitle  DrawPipeByClicks
+
 
         /// <summary>
         /// 同步管道\属性
@@ -1829,8 +1831,27 @@ namespace GB_NewCadPlus_III
                     // 读取示例块的所有属性
                     var sampleAttrMap = GetEntityAttributeMap(tr, sampleBlockRef) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-                    // 弹出属性编辑窗体让用户修改（键不可改，值可改）
-                    using (var editor = new PipeAttributeEditorForm(sampleAttrMap))
+                    // 加载上次保存的属性（此处取决于 sampleBlockRef 名称中是否包含入口/出口关键词）
+                    // 既然 SyncPipeProperties 没有 isOutlet 参数，尝试根据名称判断
+                    // 加载上次保存的属性（根据示例块名称判断入口/出口）
+                    bool sampleIsOutlet = (sampleBlockRef.Name ?? string.Empty).ToLowerInvariant().Contains("出口") ||
+                                          (sampleBlockRef.Name ?? string.Empty).ToLowerInvariant().Contains("outlet");
+
+                    // 从磁盘读取历史属性
+                    var savedAttrsSync = FileManager.LoadLastPipeAttributes(sampleIsOutlet);
+
+                    // 使用 FileManager 的合并规则：示例中非空优先，示例空/占位则使用历史值；历史中新增键也会被带入
+                    //var mergedForEditor = FileManager.MergeSavedPipeAttributes(sampleAttrMap, savedAttrsSync);
+
+                    //// 可选调试：在命令行打印已加载历史项数量（便于验证）
+                    //try
+                    //{
+                    //    ed.WriteMessage($"\n[Debug] LoadLastPipeAttributes 返回 {savedAttrsSync.Count} 项，传给编辑窗 {mergedForEditor.Count} 项");
+                    //}
+                    //catch { /* 忽略在非交互环境的写入失败 */ }
+
+                    // 打开属性编辑窗，传入合并后的初始字典
+                    using (var editor = new PipeAttributeEditorForm(savedAttrsSync))
                     {
                         var dr = editor.ShowDialog();
                         if (dr != DialogResult.OK)
@@ -1839,10 +1860,11 @@ namespace GB_NewCadPlus_III
                             return;
                         }
 
-                        // 获取用户修改后的属性
+                        // 保存历史属性供下次使用
                         var editedAttrs = editor.Attributes ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        FileManager.SaveLastPipeAttributes(sampleIsOutlet, editedAttrs);
 
-                        // 写回示例块的 AttributeReference（只写存在的 AttributeReference）
+                        // 把用户修改后的属性写回示例块（只写存在的 AttributeReference）
                         try
                         {
                             var sampleBrWrite = tr.GetObject(sampleBlockRef.ObjectId, OpenMode.ForWrite) as BlockReference;
@@ -1868,10 +1890,7 @@ namespace GB_NewCadPlus_III
                         {
                             ed.WriteMessage($"\n写回示例块属性时出错: {exWriteSample.Message}");
                         }
-
-                        // 注意：后续生成的新块会使用示例块（已更新）的属性值
                     }
-
                     // 开始构建新管道块
                     double pipelineLength = 0.0;
                     for (int i = 0; i < orderedVertices.Count - 1; i++)
@@ -1885,21 +1904,6 @@ namespace GB_NewCadPlus_III
 
                     Vector3d targetDirNormalized = targetDir.IsZeroLength() ? Vector3d.XAxis : targetDir.GetNormal();
                     Polyline pipeLocal = BuildPipePolylineLocal(sampleInfo.PipeBodyTemplate, orderedVertices, midPoint);
-                    (Polyline arrowOutline, Solid? arrowFill) = EnsureArrowEntities(sampleInfo, sampleBlockRef.Name);
-                    if (arrowOutline == null)
-                    {
-                        ed.WriteMessage("\n错误：无法从示例块获取箭头模板。");
-                        return;
-                    }
-                    (Polyline midArrowOutline, Solid? midArrowFill) = AlignArrowToDirection(arrowOutline, arrowFill, targetDirNormalized);
-                    if (midArrowOutline == null)
-                    {
-                        ed.WriteMessage("\n错误：生成中点箭头失败。");
-                        return;
-                    }
-
-                    var arrowEntities = new List<Entity> { (Polyline)midArrowOutline.Clone() };
-                    if (midArrowFill != null) arrowEntities.Add((Solid)midArrowFill.Clone());
 
                     // 复制属性定义（基于示例块的定义）
                     var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBlockRef.Name)
@@ -1907,6 +1911,14 @@ namespace GB_NewCadPlus_III
 
                     // 重新读取示例块属性（刚刚可能已被编辑并写回）
                     var latestSampleAttrs = GetEntityAttributeMap(tr, sampleBlockRef) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    // 生成标题（优先属性中的管道标题）
+                    string pipeTitle = latestSampleAttrs.TryGetValue("管道标题", out var sampleTitle) && !string.IsNullOrWhiteSpace(sampleTitle)
+                                       ? sampleTitle
+                                       : sampleBlockRef.Name ?? "管道";
+
+                    // 为每一段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
+                    var arrowEntities = CreateDirectionalArrowsAndTitles(sampleInfo, orderedVertices, midPoint, pipeTitle, sampleBlockRef.Name);
 
                     // 把最新属性写入/覆盖到 attDefsLocal（存在则覆盖，不存在则新增）
                     double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
@@ -1937,26 +1949,24 @@ namespace GB_NewCadPlus_III
                             extraIndex++;
                         }
                     }
-
+                   
                     // 新增或覆盖 起点/终点 属性定义（保持原逻辑）
                     Point3d worldStart = orderedVertices.First();
                     Point3d worldEnd = orderedVertices.Last();
                     string startCoordStr = $"X={worldStart.X:F3},Y={worldStart.Y:F3}";
                     string endCoordStr = $"X={worldEnd.X:F3},Y={worldEnd.Y:F3}";
                     int nextSegNum = GetNextPipeSegmentNumber(db);
-                    // 取消直接使用序号的旧逻辑；先尝试从管道标题中提取管道号
+
+                    // 取管段号，优先从属性或标题提取
                     string extractedPipeNo = string.Empty;
                     if (latestSampleAttrs.TryGetValue("管道标题", out var titleFromSample) && !string.IsNullOrWhiteSpace(titleFromSample))
                     {
                         extractedPipeNo = ExtractPipeCodeFromTitle(titleFromSample);
                     }
-                    // 回退到块名称或自动序号
                     if (string.IsNullOrWhiteSpace(extractedPipeNo))
                     {
-                        // 尝试从样例块名称中提取
                         extractedPipeNo = ExtractPipeCodeFromTitle(sampleBlockRef.Name);
                     }
-                    // 再回退到已有的管段号属性（保持兼容）
                     if (string.IsNullOrWhiteSpace(extractedPipeNo))
                     {
                         if (latestSampleAttrs.TryGetValue("管段号", out var pn) && !string.IsNullOrWhiteSpace(pn))
@@ -1964,7 +1974,6 @@ namespace GB_NewCadPlus_III
                         else if (latestSampleAttrs.TryGetValue("管段编号", out var pn2) && !string.IsNullOrWhiteSpace(pn2))
                             extractedPipeNo = pn2;
                     }
-                    // 最后回退到自动编号
                     if (string.IsNullOrWhiteSpace(extractedPipeNo))
                     {
                         extractedPipeNo = nextSegNum.ToString("D4");
@@ -1997,24 +2006,30 @@ namespace GB_NewCadPlus_III
 
                     SetOrAddAttrLocal("始点", startCoordStr);
                     SetOrAddAttrLocal("终点", endCoordStr);
-
-                    // 使用从管道标题提取的管段号（如果能提取否则使用序号回退）
                     SetOrAddAttrLocal("管段号", extractedPipeNo);
-
-                    // 关键要求：生成的管道块上仅显示 “管道标题” 字段，其他属性字段不显示
+                    // 移除块定义中的中点“管道标题”属性（避免在块中重复显示中点标题）
+                    // 并把其余属性都设置为隐藏（块内不显示），让分段文字/箭头负责显示标题
+                    attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
                     foreach (var ad in attDefsLocal)
                     {
-                        if (string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase))
-                        {
-                            ad.Invisible = false;
-                            ad.Constant = false;
-                        }
-                        else
-                        {
-                            ad.Invisible = true; // 隐藏其它属性
-                            ad.Constant = false;
-                        }
+                        ad.Invisible = true; // 隐藏所有属性（块内不显示）
+                        ad.Constant = false;
                     }
+                    // 关键要求：生成的管道块上仅显示 “管道标题” 字段，其他属性字段不显示
+                    //foreach (var ad in attDefsLocal)
+                    //{
+                    //    if (string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase))
+                    //    {
+                    //        ad.Invisible = false;
+                    //        ad.Constant = false;
+                    //    }
+                    //    else
+                    //    {
+                    //        ad.Invisible = true; // 隐藏其它属性
+                    //        ad.Constant = false;
+                    //    }
+                    //}
+                    
 
                     // 构建块定义并插入新块
                     string desiredName = sampleBlockRef.Name;
@@ -2184,8 +2199,7 @@ namespace GB_NewCadPlus_III
                 try
                 {
                     var bt = (BlockTable)tr.GetObject(db.BlockTableId, OpenMode.ForRead);
-                    var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead);
-
+                    var ms = (BlockTableRecord)tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForRead); 
                     foreach (ObjectId id in ms)
                     {
                         try
@@ -2866,8 +2880,6 @@ namespace GB_NewCadPlus_III
 
         #endregion
 
-
-
         #region 操作动态块的方法
 
         /// <summary>
@@ -3108,7 +3120,6 @@ namespace GB_NewCadPlus_III
         }
 
         #endregion
-
 
         #region 动态块拉伸
 
@@ -3418,6 +3429,568 @@ namespace GB_NewCadPlus_III
         }
 
         #endregion
+
+        /*
+         SyncPipeProperties
+         */
+
+        #region 绘制管道线
+
+        // 新增：通过点击采集点并生成管道块（入口/出口两种命令）
+        // 放在类 EquipmentTableGenerator 的任意合适位置（例如 SyncPipeProperties 方法附近）
+        [CommandMethod("DrawOutletPipeByClicks")]
+        public void DrawOutletPipeByClicks()
+        {
+            DrawPipeByClicks(isOutlet: true);
+        }
+
+        [CommandMethod("DrawInletPipeByClicks")]
+        public void DrawInletPipeByClicks()
+        {
+            DrawPipeByClicks(isOutlet: false);
+        }
+
+        /// <summary>
+        /// 主实现：交互式采点并基于示例块生成管道块
+        /// 说明：Polyline pipeLocal = BuildPipePolylineLocal
+        ///— 1) 首先要求用户选择一个示例管道块（作为模板/属性来源）；
+        ///— 2) 交互式点击多个点（每次点击会记录坐标），按 Esc 或在提示阶段取消结束采点；
+        ///— 3) 采集结束后用示例块生成管道块（复用现有的 Clone/Build/Insert 逻辑）。
+        /// </summary>
+        private void DrawPipeByClicks(bool isOutlet)
+        {
+            var doc = Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            var ed = doc.Editor;
+            Database db = doc.Database;
+
+            try
+            {
+                // 先尝试在块表中寻找示例块（优先按名称包含“出口/出口/outlet/入口/inlet”）
+                ObjectId sampleBtrId = ObjectId.Null;
+                string sampleBtrName = string.Empty;
+                using (var tx = db.TransactionManager.StartTransaction())
+                {
+                    // 遍历块表
+                    var bt = (BlockTable)tx.GetObject(db.BlockTableId, OpenMode.ForRead);
+                    foreach (ObjectId btrId in bt)// 遍历块表
+                    {
+                        try
+                        {
+                            var btr = tx.GetObject(btrId, OpenMode.ForRead) as BlockTableRecord;
+                            if (btr == null) continue;
+                            var nm = (btr.Name ?? string.Empty).ToLowerInvariant();
+                            if (isOutlet)
+                            {
+                                if (nm.Contains("出口") || nm.Contains("outlet"))
+                                {
+                                    sampleBtrId = btrId;
+                                    sampleBtrName = btr.Name;
+                                    break;
+                                }
+                            }
+                            else
+                            {
+                                if (nm.Contains("入口") || nm.Contains("inlet"))
+                                {
+                                    sampleBtrId = btrId;
+                                    sampleBtrName = btr.Name;
+                                    break;
+                                }
+                            }
+                        }
+                        catch { /* 忽略单条读取错误 */ }
+                    }
+                    tx.Commit();
+                }
+
+                bool tempInserted = false;
+                BlockReference sampleBr = null;
+
+                using (var tr = new DBTrans())
+                {
+                    try
+                    {
+                        // 如果在块表里找到了合适的样例块定义，先把它插入到当前空间（临时），位置用图纸原点
+                        if (!sampleBtrId.IsNull)
+                        {
+                            Point3d insertPoint = Point3d.Origin;
+                            // 插入到当前空间
+                            ObjectId tempSampleBrId = tr.CurrentSpace.InsertBlock(insertPoint, sampleBtrId, rotation: 0.0, atts: null);
+                            sampleBr = tr.GetObject(tempSampleBrId, OpenMode.ForWrite) as BlockReference;
+                            tempInserted = true;
+                        }
+                        else
+                        {
+                            // 未找到自动样例块，回退到用户选择示例块（原有流程）
+                            ed.WriteMessage("\n未在块表中找到自动样例块，请手动选择示例块作为模板。");
+                            var peo = new PromptEntityOptions("\n请选择示例管线块（作为模板，用于属性与样式）:");
+                            peo.SetRejectMessage("\n请选择块参照对象.");
+                            peo.AddAllowedClass(typeof(BlockReference), true);
+                            var per = ed.GetEntity(peo);
+                            if (per.Status != PromptStatus.OK)
+                            {
+                                ed.WriteMessage("\n未选择示例块，取消操作。");
+                                tr.Abort();
+                                return;
+                            }
+                            sampleBr = tr.GetObject(per.ObjectId, OpenMode.ForRead) as BlockReference;
+                            // ensure writable for attribute write later
+                            if (sampleBr != null && !sampleBr.IsWriteEnabled) sampleBr.UpgradeOpen();
+                            tempInserted = false;
+                        }
+
+                        if (sampleBr == null)
+                        {
+                            ed.WriteMessage("\n无法获取示例块参照，取消操作。");
+                            tr.Abort();
+                            return;
+                        }
+
+                        // 读取示例块属性并弹出属性编辑窗体（在插入后立即编辑）
+                        // 读取示例块属性
+                        var sampleAttrMap = GetEntityAttributeMap(tr, sampleBr) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                        // 加载上次保存的属性（入口/出口区分）
+                        var loadedAttrs = FileManager.LoadLastPipeAttributes(isOutlet);
+
+                        // 使用 FileManager 提供的合并方法（示例优先，但示例为空/占位时使用历史值；历史新增键也会加入）
+                        //var mergedForEditor = FileManager.MergeSavedPipeAttributes(sampleAttrMap, savedAttrs);
+
+                        //// 可选调试：命令行输出
+                        //try
+                        //{
+                        //    ed.WriteMessage($"\n[Debug] LoadLastPipeAttributes 返回 {savedAttrs.Count} 项，传给编辑窗 {mergedForEditor.Count} 项");
+                        //}
+                        //catch { }
+
+                        // 弹出属性编辑窗，传入合并结果
+                        using (var editor = new PipeAttributeEditorForm(loadedAttrs))
+                        {
+                            var dr = editor.ShowDialog();
+                            if (dr != DialogResult.OK)
+                            {
+                                // 用户取消属性编辑，移除临时插入的样例块并退出
+                                if (tempInserted)
+                                {
+                                    try
+                                    {
+                                        var brToDel = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference;
+                                        brToDel?.Erase();
+                                    }
+                                    catch { }
+                                }
+                                tr.Abort();
+                                ed.WriteMessage("\n已取消属性编辑，操作终止。");
+                                return;
+                            }
+
+                            // 用户确认后获取编辑结果并保存为默认供下次使用
+                            var editedAttrs = editor.Attributes ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            FileManager.SaveLastPipeAttributes(isOutlet, editedAttrs);
+
+                            // 把用户修改后的属性写回示例块（只写存在的 AttributeReference）
+                            try
+                            {
+                                var sampleBrWrite = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference;
+                                if (sampleBrWrite != null)
+                                {
+                                    foreach (ObjectId aid in sampleBrWrite.AttributeCollection)
+                                    {
+                                        try
+                                        {
+                                            var ar = tr.GetObject(aid, OpenMode.ForWrite) as AttributeReference;
+                                            if (ar == null || string.IsNullOrWhiteSpace(ar.Tag)) continue;
+                                            if (editedAttrs.TryGetValue(ar.Tag, out var newVal))
+                                            {
+                                                ar.TextString = newVal ?? string.Empty;
+                                                try { ar.AdjustAlignment(db); } catch { }
+                                            }
+                                        }
+                                        catch { /* 单个属性写回失败不阻塞整体 */ }
+                                    }
+                                }
+                            }
+                            catch { /* 忽略写回失败 */ }
+                        }
+                        // 属性编辑完成后，开始采点（用户使用左键点击采点，空格/右键/ESC结束）
+                        var points = new List<Point3d>();
+                        var firstOpts = new PromptPointOptions("\n指定起点（点击或输入坐标）:");
+                        firstOpts.AllowNone = false;
+                        var firstRes = ed.GetPoint(firstOpts);
+                        if (firstRes.Status != PromptStatus.OK)
+                        {
+                            ed.WriteMessage("\n未指定起点，取消操作。");
+                            // 清理临时样例块
+                            if (tempInserted)
+                            {
+                                try { var brToDel = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference; brToDel?.Erase(); }
+                                catch { }
+                            }
+                            tr.Abort();
+                            return;
+                        }
+                        points.Add(firstRes.Value);
+
+                        while (true)
+                        {
+                            var nextOpts = new PromptPointOptions("\n指定下一个点（点击或输入坐标），按 Esc/取消结束：");
+                            nextOpts.UseBasePoint = true;
+                            nextOpts.BasePoint = points.Last();
+                            nextOpts.AllowNone = false;
+                            var nextRes = ed.GetPoint(nextOpts);
+                            if (nextRes.Status != PromptStatus.OK)
+                                break;
+                            var pt = nextRes.Value;
+                            if (pt.IsEqualTo(points.Last())) break;
+                            points.Add(pt);
+                        }
+
+                        if (points.Count < 2)
+                        {
+                            ed.WriteMessage("\n采集点不足（至少需要两个点），取消生成。");
+                            // 清理临时样例块
+                            if (tempInserted)
+                            {
+                                try { var brToDel = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference; brToDel?.Erase(); }
+                                catch { }
+                            }
+                            tr.Abort();
+                            return;
+                        }
+
+                        // 使用示例块（sampleBr）生成管道块（与以前逻辑一致）
+                        var sampleInfo = AnalyzeSampleBlock(tr, sampleBr);
+                        if (sampleInfo?.PipeBodyTemplate == null)
+                        {
+                            ed.WriteMessage("\n示例块中未找到管道主体（PolyLine），无法生成管道。");
+                            // 清理临时样例块
+                            if (tempInserted)
+                            {
+                                try { var brToDel = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference; brToDel?.Erase(); }
+                                catch { }
+                            }
+                            tr.Abort();
+                            return;
+                        }
+
+                        // 计算管道总长度与中点
+                        double pipelineLength = 0.0;
+                        for (int i = 0; i < points.Count - 1; i++)
+                            pipelineLength += points[i].DistanceTo(points[i + 1]);
+
+                        var (midPoint, midAngle) = ComputeMidPointAndAngle(points, pipelineLength);
+                        Vector3d targetDir = ComputeDirectionAtPoint(points, midPoint, 1e-6);
+
+                        Vector3d segmentDir = ComputeAggregateSegmentDirection(BuildOrderedLineSegmentsFromPoints(points));
+                        if (!segmentDir.IsZeroLength() && targetDir.DotProduct(segmentDir) < 0)
+                            targetDir = -targetDir;
+                        Vector3d targetDirNormalized = targetDir.IsZeroLength() ? Vector3d.XAxis : targetDir.GetNormal();
+
+                        // 局部 polyline（以 midPoint 为基准）
+                        var pipeLocal = BuildPipePolylineLocal(sampleInfo.PipeBodyTemplate, points, midPoint);
+
+                        // 重新读取示例块属性（以保证使用用户已编辑的值）
+                        var latestSampleAttrs = GetEntityAttributeMap(tr, sampleBr) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        string pipeTitle = latestSampleAttrs.TryGetValue("管道标题", out var sampleTitle) && !string.IsNullOrWhiteSpace(sampleTitle)
+                                         ? sampleTitle
+                                         : (sampleBr.IsDynamicBlock ? sampleBr.Name : sampleBr.Name) ?? "管道";
+
+                        // 为每段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
+                        var arrowEntities = CreateDirectionalArrowsAndTitles(sampleInfo, points, midPoint, pipeTitle, sampleBr.Name);
+
+                        // 复制属性定义并写入最新属性值
+                        var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBr.Name)
+                                            ?? new List<AttributeDefinition>();
+
+                        double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
+                        double yOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attHeight * 1.2 : -attHeight * 2.0;
+                        int extraIndex = 0;
+                        foreach (var kv in latestSampleAttrs)
+                        {
+                            if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+                            var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, kv.Key, StringComparison.OrdinalIgnoreCase));
+                            if (existing != null)
+                            {
+                                existing.TextString = kv.Value ?? string.Empty;
+                                existing.Invisible = false;
+                                existing.Constant = false;
+                            }
+                            else
+                            {
+                                attDefsLocal.Add(new AttributeDefinition
+                                {
+                                    Tag = kv.Key,
+                                    Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),
+                                    Rotation = 0.0,
+                                    TextString = kv.Value ?? string.Empty,
+                                    Height = attHeight,
+                                    Invisible = false,
+                                    Constant = false
+                                });
+                                extraIndex++;
+                            }
+                        }
+
+                        // 确保始点/终点/管段号属性
+                        string startCoordStr = $"X={points.First().X:F3},Y={points.First().Y:F3}";
+                        string endCoordStr = $"X={points.Last().X:F3},Y={points.Last().Y:F3}";
+                        SetOrAddAttr(attDefsLocal, "始点", startCoordStr, ref extraIndex, yOffsetBase, attHeight);
+                        SetOrAddAttr(attDefsLocal, "终点", endCoordStr, ref extraIndex, yOffsetBase, attHeight);
+                        int nextSegNum = GetNextPipeSegmentNumber(db);
+                        string extractedPipeNo = string.Empty;
+                        if (latestSampleAttrs.TryGetValue("管道标题", out var titleFromSample) && !string.IsNullOrWhiteSpace(titleFromSample))
+                            extractedPipeNo = ExtractPipeCodeFromTitle(titleFromSample);
+                        if (string.IsNullOrWhiteSpace(extractedPipeNo))
+                        {
+                            if (latestSampleAttrs.TryGetValue("管段号", out var pn) && !string.IsNullOrWhiteSpace(pn))
+                                extractedPipeNo = pn;
+                        }
+                        if (string.IsNullOrWhiteSpace(extractedPipeNo))
+                            extractedPipeNo = nextSegNum.ToString("D4");
+                        SetOrAddAttr(attDefsLocal, "管段号", extractedPipeNo, ref extraIndex, yOffsetBase, attHeight);
+
+                        // 在构建块定义之前：移除/隐藏中点“管道标题”
+                        attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
+                        foreach (var ad in attDefsLocal)
+                        {
+                            ad.Invisible = true;
+                            ad.Constant = false;
+                        }
+
+                        // 构建块定义并插入新块
+                        string desiredName = sampleBr.Name;
+                        string newBlockName = BuildPipeBlockDefinition(tr, desiredName, (Polyline)pipeLocal.Clone(), arrowEntities, attDefsLocal);
+
+                        var attValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var a in attDefsLocal)
+                        {
+                            if (string.IsNullOrWhiteSpace(a?.Tag)) continue;
+                            attValues[a.Tag] = a.TextString ?? string.Empty;
+                        }
+
+                        var newBrId = InsertPipeBlockWithAttributes(tr, midPoint, newBlockName, 0.0, attValues);
+                        var newBr = tr.GetObject(newBrId, OpenMode.ForWrite) as BlockReference;
+                        if (newBr != null)
+                            newBr.Layer = sampleInfo.PipeBodyTemplate.Layer;
+
+                        // 清理：如果之前我们临时插入了样例块，删除它（不影响已创建的管线块）
+                        if (tempInserted)
+                        {
+                            try
+                            {
+                                var brToDel = tr.GetObject(sampleBr.ObjectId, OpenMode.ForWrite) as BlockReference;
+                                brToDel?.Erase();
+                            }
+                            catch { /* 忽略删除失败 */ }
+                        }
+
+                        tr.Commit();
+                        ed.WriteMessage($"\n管道已生成（{(isOutlet ? "出口" : "入口")}），点数: {points.Count}，管段号: {extractedPipeNo}");
+                    }
+                    catch (Exception ex)
+                    {
+                        tr.Abort();
+                        ed.WriteMessage($"\n生成管道时出错: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ed.WriteMessage($"\n操作失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 辅助：把属性定义中存在或不存在的 Tag 设置/新增值
+        /// </summary>
+        private void SetOrAddAttr(List<AttributeDefinition> attDefs, string tag, string text, ref int extraIndex, double yOffsetBase, double attHeight)
+        {
+            var existing = attDefs.FirstOrDefault(a => string.Equals(a.Tag, tag, StringComparison.OrdinalIgnoreCase));
+            if (existing != null)
+            {
+                existing.TextString = text;
+                existing.Invisible = false;
+                existing.Constant = false;
+            }
+            else
+            {
+                attDefs.Add(new AttributeDefinition
+                {
+                    Tag = tag,
+                    Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),
+                    Rotation = 0.0,
+                    TextString = text,
+                    Height = attHeight,
+                    Invisible = false,
+                    Constant = false
+                });
+                extraIndex++;
+            }
+        }
+
+        /// <summary>
+        /// 辅助：根据点列表构建按顺序的线段信息（仅用于方向聚合计算）
+        /// </summary>
+        private List<LineSegmentInfo> BuildOrderedLineSegmentsFromPoints(List<Point3d> pts)
+        {
+            var segs = new List<LineSegmentInfo>();
+            for (int i = 0; i < pts.Count - 1; i++)
+            {
+                segs.Add(new LineSegmentInfo
+                {
+                    StartPoint = pts[i],
+                    EndPoint = pts[i + 1],
+                    Length = pts[i].DistanceTo(pts[i + 1]),
+                    Angle = ComputeSegmentAngleUcs(pts[i], pts[i + 1])
+                });
+            }
+            return segs;
+        }
+
+        /// <summary>
+        /// 新增辅助：为每段生成方向三角和管道标题文字（放在 EquipmentTableGenerator 类内，放置在 BuildOrderedLineSegmentsFromPoints 之后）
+        /// </summary>
+        /// <param name="sampleInfo"></param>
+        /// <param name="verticesWorld"></param>
+        /// <param name="pipeTitle"></param>
+        /// <param name="sampleBlockName"></param>
+        /// <returns></returns>
+        private List<Entity> CreateDirectionalArrowsAndTitles(SamplePipeInfo sampleInfo, List<Point3d> verticesWorld, Point3d midPointWorld, string pipeTitle, string sampleBlockName)
+        {
+            var overlay = new List<Entity>();
+            if (sampleInfo == null || verticesWorld == null || verticesWorld.Count < 2) return overlay;
+
+            // 备份模板与填充（若无模板则自绘三角）
+            Polyline arrowTemplate = sampleInfo.DirectionArrowTemplate;
+            Solid? fillTemplate = null;
+            double explicitArrowLength = 10.0;
+            double explicitArrowHeight = 3.0;
+            if (arrowTemplate == null)
+            {
+                // 使用默认样式（依据块名判断入/出口颜色和大小）
+                var (colorIdx, length, height) = DetermineArrowStyleByName(sampleBlockName);
+                explicitArrowLength = length;
+                explicitArrowHeight = height;
+                var (outline, fill) = CreateArrowTriangleFilled(length, height, colorIdx, sampleInfo.PipeBodyTemplate);
+                arrowTemplate = outline;
+                fillTemplate = fill;
+            }
+
+            // 文本样式参考
+            double textHeight = 2.5;
+            if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)
+                textHeight = Math.Max(1.0, sampleInfo.AttributeDefinitions[0].Height);
+
+            for (int i = 0; i < verticesWorld.Count - 1; i++)
+            {
+                var p1 = verticesWorld[i];
+                var p2 = verticesWorld[i + 1];
+                var seg = p2 - p1;
+                if (seg.IsZeroLength()) continue;
+
+                var dir = seg.GetNormal();
+                var mid = new Point3d((p1.X + p2.X) / 2.0, (p1.Y + p2.Y) / 2.0, (p1.Z + p2.Z) / 2.0);
+
+                // 生成对齐后的箭头（以箭头模板为基准，尖端朝 +X）
+                Polyline? outlineAligned = null;
+                Solid? fillAligned = null;
+                try
+                {
+                    (outlineAligned, fillAligned) = AlignArrowToDirection(arrowTemplate, fillTemplate, dir);
+
+                    // 把箭头移动到相对于 midPointWorld 的局部坐标（block 内）
+                    var localDisp = mid - midPointWorld;
+                    if (outlineAligned != null)
+                    {
+                        outlineAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
+                        outlineAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
+                        overlay.Add(outlineAligned);
+                    }
+                    if (fillAligned != null)
+                    {
+                        fillAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
+                        fillAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
+                        overlay.Add(fillAligned);
+                    }
+                }
+                catch
+                {
+                    // 忽略箭头生成异常，继续生成文本
+                }
+
+                // 生成文字（DBText），放在箭头上方（沿箭头本地 Y 方向，即 perp），并转换为局部坐标
+                try
+                {
+                    var perp = new Vector3d(-dir.Y, dir.X, 0.0);
+                    if (perp.IsZeroLength())
+                        perp = Vector3d.YAxis;
+                    else
+                        perp = perp.GetNormal();
+
+                    // 估算箭头高度（使用已对齐实体的几何包围盒）
+                    double arrowHalfHeight = explicitArrowHeight / 2.0;
+                    try
+                    {
+                        Entity sizeEntity = (Entity?)outlineAligned ?? (Entity?)fillAligned;
+                        if (sizeEntity != null)
+                        {
+                            var ext = sizeEntity.GeometricExtents;
+                            // 注意：在 align 后，local Y 对应法向 perp；用高度一半作为偏移基准
+                            arrowHalfHeight = Math.Abs(ext.MaxPoint.Y - ext.MinPoint.Y) / 2.0;
+                            if (arrowHalfHeight < 1e-6) arrowHalfHeight = explicitArrowHeight / 2.0;
+                        }
+                    }
+                    catch
+                    {
+                        // 忽略，使用默认
+                        arrowHalfHeight = explicitArrowHeight / 2.0;
+                    }
+
+                    // 将文字放在箭头上方：沿 perp 方向偏移 arrowHalfHeight + 文字高度的适当间距
+                    double offset = arrowHalfHeight + textHeight * 0.8;
+
+                    var worldTextPos = mid + perp * offset;
+
+                    // 转为局部坐标（相对于 midPointWorld）
+                    var localTextPos = new Point3d(worldTextPos.X - midPointWorld.X, worldTextPos.Y - midPointWorld.Y, worldTextPos.Z - midPointWorld.Z);
+
+                    var dbText = new DBText
+                    {
+                        Position = localTextPos,
+                        Height = textHeight,
+                        TextString = string.IsNullOrWhiteSpace(pipeTitle) ? sampleBlockName ?? "管道" : pipeTitle,
+                        Rotation = ComputeSegmentAngleUcs(p1, p2),
+                        Layer = sampleInfo.PipeBodyTemplate.Layer,
+                        Normal = Vector3d.ZAxis,
+                        Oblique = 0.0
+                    };
+
+                    // 使文字水平居中（以 Position 为中心）
+                    try
+                    {
+                        dbText.AlignmentPoint = localTextPos;
+                        dbText.HorizontalMode = TextHorizontalMode.TextCenter;
+                    }
+                    catch
+                    {
+                        // 有些 AutoCAD API 版本对这些属性可能有限制，忽略异常
+                    }
+
+                    overlay.Add(dbText);
+                }
+                catch
+                {
+                    // 忽略文字生成异常
+                }
+            }
+
+            return overlay;
+        }
+
+        #endregion
+
+
         /// <summary>
         /// 设置动态块的角度
         /// </summary>
@@ -3821,7 +4394,7 @@ namespace GB_NewCadPlus_III
                                        GridLineType.HorizontalInside |
                                        GridLineType.VerticalLeft |
                                        GridLineType.VerticalRight |
-                                       GridLineType.VerticalInside;               
+                                       GridLineType.VerticalInside;
             }
             catch
             {
@@ -3999,8 +4572,6 @@ namespace GB_NewCadPlus_III
                 // 容错：忽略任何设置异常
             }
         }
-
-
 
         /// <summary>
         /// 填充动态内容

@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Xml.Serialization;
 using static GB_NewCadPlus_III.WpfMainWindow;
 using DataTable = System.Data.DataTable;
 using MessageBox = System.Windows.MessageBox;
@@ -156,7 +157,187 @@ namespace GB_NewCadPlus_III
                 throw new Exception($"删除文件失败: {ex.Message}", ex);
             }
         }
+        /// <summary>
+        /// 获取管道属性保存路径
+        /// </summary>
+        /// <param name="isOutlet"></param>
+        /// <returns></returns>
+        public static string GetPipeAttrSavePath(bool isOutlet)
+        {
+            try
+            {
+                var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GB_NewCadPlus_III");
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                return Path.Combine(dir, isOutlet ? "LastPipeAttrs_Outlet.xml" : "LastPipeAttrs_Inlet.xml");
+            }
+            catch
+            {
+                return Path.GetTempFileName(); // 兜底
+            }
+        }
 
+        // 可序列化的键值项，保证序列化输出始终包含 <Key> 与 <Value>
+        [XmlType("KeyValuePairOfStringString")]
+        public class PipeAttrEntry
+        {
+            [XmlElement("Key")]
+            public string Key { get; set; } = string.Empty;
+
+            [XmlElement("Value")]
+            public string Value { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// 读取管道属性
+        /// </summary>
+        /// <param name="isOutlet"></param>
+        /// <returns></returns>
+        public static Dictionary<string, string> LoadLastPipeAttributes(bool isOutlet)
+        {
+            var path = GetPipeAttrSavePath(isOutlet);
+            if (!File.Exists(path))
+                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                var xs = new XmlSerializer(typeof(List<PipeAttrEntry>));
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    var obj = xs.Deserialize(fs) as List<PipeAttrEntry>;
+                    if (obj == null) return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var e in obj)
+                    {
+                        if (e == null) continue;
+                        var k = (e.Key ?? string.Empty).Trim();
+                        if (string.IsNullOrWhiteSpace(k)) continue;
+                        var v = (e.Value ?? string.Empty).Trim();
+                        dict[k] = v;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[FileManager] Loaded {dict.Count} pipe attrs from {path}");
+                    return dict;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FileManager] LoadLastPipeAttributes failed: {ex.Message}");
+                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+        }
+        /// <summary>
+        /// 保存管道属性
+        /// </summary>
+        /// <param name="isOutlet"></param>
+        /// <param name="attrs"></param>
+        public static void SaveLastPipeAttributes(bool isOutlet, Dictionary<string, string> attrs)
+        {
+            if (attrs == null) return;
+            var path = GetPipeAttrSavePath(isOutlet);
+
+            try
+            {
+                // 规范化并过滤：Trim 键/值，丢弃空键，按不区分大小写合并同名键
+                var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in attrs)
+                {
+                    var k = (kv.Key ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(k)) continue;
+                    var v = (kv.Value ?? string.Empty).Trim();
+                    dict[k] = v;
+                }
+
+                // 如果没有有效项，则删除旧文件并返回
+                if (dict.Count == 0)
+                {
+                    try { if (File.Exists(path)) File.Delete(path); }
+                    catch { }
+                    System.Diagnostics.Debug.WriteLine($"[FileManager] Nothing to save for {path}");
+                    return;
+                }
+
+                var list = dict.Select(kv => new PipeAttrEntry { Key = kv.Key, Value = kv.Value }).ToList();
+
+                var xs = new XmlSerializer(typeof(List<PipeAttrEntry>));
+                var tmpFile = path + ".tmp";
+
+                var settings = new System.Xml.XmlWriterSettings
+                {
+                    Indent = true,
+                    Encoding = new System.Text.UTF8Encoding(true), // 带 BOM，符合编辑器/Windows 习惯
+                    NewLineChars = "\r\n"
+                };
+
+                using (var ofs = new FileStream(tmpFile, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var xw = System.Xml.XmlWriter.Create(ofs, settings))
+                {
+                    xs.Serialize(xw, list);
+                    xw.Flush();
+                    ofs.Flush(true);
+                }
+
+                // 原子替换目标文件
+                try
+                {
+                    if (File.Exists(path))
+                        File.Replace(tmpFile, path, null);
+                    else
+                        File.Move(tmpFile, path);
+                }
+                catch
+                {
+                    // 回退：简单覆盖
+                    if (File.Exists(tmpFile))
+                    {
+                        File.Copy(tmpFile, path, true);
+                        File.Delete(tmpFile);
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[FileManager] Saved {dict.Count} pipe attrs to {path}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FileManager] SaveLastPipeAttributes failed: {ex.Message}");
+            }
+        }
+
+        public static bool IsConsideredEmpty(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return true;
+            var t = s.Trim();
+            if (t == "-" || t == "—") return true;
+            var tl = t.ToLowerInvariant();
+            if (tl == "n/a" || tl == "na" || tl == "无" || tl == "0") return true;
+            return false;
+        }
+
+        public static Dictionary<string, string> MergeSavedPipeAttributes(Dictionary<string, string>? sampleAttrMap, Dictionary<string, string>? savedAttrs)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            sampleAttrMap = sampleAttrMap ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            savedAttrs = savedAttrs ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            // 合并键集合（保持不区分大小写）
+            var keys = new HashSet<string>(sampleAttrMap.Keys, StringComparer.OrdinalIgnoreCase);
+            foreach (var k in savedAttrs.Keys) keys.Add(k);
+
+            foreach (var key in keys)
+            {
+                sampleAttrMap.TryGetValue(key, out var sampleVal);
+                savedAttrs.TryGetValue(key, out var savedVal);
+
+                // 优先使用示例中已有且不是占位/空的值；否则使用保存值（若有），否则空字符串
+                if (!IsConsideredEmpty(sampleVal))
+                    result[key] = sampleVal!;
+                else
+                    result[key] = savedVal ?? string.Empty;
+            }
+
+            return result;
+        }
         /// <summary>
         /// 计算文件的哈希值
         /// </summary>

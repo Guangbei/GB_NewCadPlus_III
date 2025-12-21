@@ -7119,22 +7119,15 @@ namespace GB_NewCadPlus_III
 
         private void 绘制进口管道_Click(object sender, RoutedEventArgs e)
         {
-            VariableDictionary.entityRotateAngle = 0;
-            VariableDictionary.btnFileName = "GB_PID_JKGD_进口管道";
-            VariableDictionary.btnFileName_blockName = "#GB_PID_JKGD_进口管道";
-            VariableDictionary.btnBlockLayer = "管道";
-            //VariableDictionary.resourcesFile = Resources.GB_PID_GDJK_进口管道;
-            Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
+           
+            Env.Document.SendStringToExecute("DrawInletPipeByClicks ", false, false, false);
+            //Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
         }
 
         private void 绘制出口管道_Click(object sender, RoutedEventArgs e)
         {
-            VariableDictionary.entityRotateAngle = 0;
-            VariableDictionary.btnFileName = "GB_PID_CKGD_出口管道";
-            VariableDictionary.btnFileName_blockName = "#GB_PID_CKGD_出口管道";
-            VariableDictionary.btnBlockLayer = "管道";
-            //VariableDictionary.resourcesFile = Resources.GB_PID_GDJK_出口管道;
-            Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
+            Env.Document.SendStringToExecute("DrawOutletPipeByClicks ", false, false, false);
+            //Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
         }
 
         #endregion
