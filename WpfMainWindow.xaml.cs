@@ -430,7 +430,7 @@ namespace GB_NewCadPlus_III
                     VariableDictionary._serverIP = TextBox_Set_ServiceIP.Text?.Trim() ?? "127.0.0.1";
 
                 }
-
+                /// 端口
                 VariableDictionary._serverPort = int.TryParse(TextBox_Set_ServicePort.Text, out var p) ? p : 3306;
 
 
@@ -8303,6 +8303,7 @@ namespace GB_NewCadPlus_III
 
             return string.Join("|", parts);
         }
+
         /// <summary>
         /// 帮助：解析属性字符串中的长度值
         /// </summary>
@@ -9584,13 +9585,32 @@ namespace GB_NewCadPlus_III
     /// </summary>
     public class LayerDictionaryRow
     {
-        public int Id { get; set; } // 数据库 id，0 表示新行（未持久化）
-        public int DisplayIndex { get; set; } // 显示序号
-        public string Major { get; set; } = ""; // 专业列（可填写或来自部门）
-        public string LayerName { get; set; } = ""; // 原图层名（只读显示）
-        public string DicLayerName { get; set; } = ""; // 解释图层名（可编辑）
-        public string Source { get; set; } = "personal"; // 来源（personal/standard）
+        /// <summary>
+        /// 数据库 id，0 表示新行（未持久化）
+        /// </summary>
+        public int Id { get; set; }
+        /// <summary>
+        /// 显示序号
+        /// </summary>
+        public int DisplayIndex { get; set; }
+        /// <summary>
+        /// 专业列（可填写或来自部门）
+        /// </summary>
+        public string Major { get; set; } = "";
+        /// <summary>
+        /// 原图层名（只读显示）
+        /// </summary>
+        public string LayerName { get; set; } = "";
+        /// <summary>
+        /// 解释图层名（可编辑）
+        /// </summary>
+        public string DicLayerName { get; set; } = "";
+        /// <summary>
+        /// 来源（personal/standard）
+        /// </summary>
+        public string Source { get; set; } = "personal"; 
     }
+
     /// <summary>
     /// 图层信息类
     /// </summary>
@@ -9652,8 +9672,14 @@ namespace GB_NewCadPlus_III
             get => _color;
             set { _color = value; OnPropertyChanged(); }
         }
-
+        /// <summary>
+        /// 属性变更通知
+        /// </summary>
         public event PropertyChangedEventHandler PropertyChanged;
+        /// <summary>
+        /// 属性变更通知方法
+        /// </summary>
+        /// <param name="propertyName"></param>
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

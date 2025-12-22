@@ -2,6 +2,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.GraphicsInterface;
 using Autodesk.AutoCAD.PlottingServices;
 using Autodesk.AutoCAD.Windows;
+using GB_NewCadPlus_III.Helpers;
 using IFoxCAD.Cad;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
@@ -79,6 +80,53 @@ namespace GB_NewCadPlus_III
         /// 静态变量，用于保存图库管理窗体
         /// </summary>
         private static PaletteSet? Wpf_Cad_PaletteSet;
+        /// <summary>
+        /// 方向变更事件：外部（WPF按钮/UnifiedCommandManager）通过 NotifyDirectionChanged 广播当前角度（弧度）
+        /// EnhancedBlockPlacementJig 在创建时订阅此事件以实现拖拽期间的即时预览旋转。
+        /// </summary>
+        public static event Action<double>? DirectionChanged;
+        /// <summary>
+        /// 外部调用以广播方向变化（弧度）
+        /// 同步 VariableDictionary.entityRotateAngle 并通知订阅者。
+        /// </summary>
+        /// <param name="angle">弧度</param>
+        public static void NotifyDirectionChanged(double angle)
+        {
+            try
+            {
+                VariableDictionary.entityRotateAngle = angle;
+                DirectionChanged?.Invoke(angle);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogInfo($"\nNotifyDirectionChanged 错误: {ex.Message}");
+            }
+        }
+        /// <summary>
+        /// 存储用户点击的点
+        /// </summary>
+        private static List<Point3d> pointS = new List<Point3d>();
+
+        /// <summary>
+        /// 当前图纸空间的ObjectId
+        /// </summary>
+        private static List<ObjectId>? currentSpaceObjectId = new List<ObjectId>();
+
+
+        #region 接口、实体、天正数据、标注等
+        /// <summary>
+        /// 插入图元相关静态变量（保留原有公共静态字段）
+        /// </summary>
+        public static string hvacR4 = "0";
+        public static string hvacR3 = "0";
+        public static string strHvacStart = "0";
+        public static sendText? sendSum;
+        public static List<LayerState> layerOriStates = new List<LayerState>();
+        private static bool _isLayersDeleted = false;
+        private static Dictionary<string, LayerState> _originalLayerInfos;
+        private static Dictionary<string, bool> layerOnOffDic = new Dictionary<string, bool>();
+        private static bool readLayerONOFFState = false;
+        #endregion
 
         /// <summary>
         /// 显示主窗体
@@ -122,11 +170,6 @@ namespace GB_NewCadPlus_III
             }
             ;
         }
-
-        /// <summary>
-        /// 存储用户点击的点
-        /// </summary>
-        private static List<Point3d> pointS = new List<Point3d>();
 
         /// <summary>
         /// 块统计
@@ -850,12 +893,6 @@ namespace GB_NewCadPlus_III
 
 
         #region 插入图元
-
-
-        /// <summary>
-        /// 当前图纸空间的ObjectId
-        /// </summary>
-        private static List<ObjectId>? currentSpaceObjectId = new List<ObjectId>();
 
 
         /// <summary>
@@ -1790,31 +1827,72 @@ namespace GB_NewCadPlus_III
 
                     // 使用增强的放置 Jig 进行拖拽交互（保留你的 EnhancedBlockPlacementJig）
                     var jig = new EnhancedBlockPlacementJig(newBlockId, attDefs, blockLayer, recommendedScale);
-                    var promptResult = Env.Editor.Drag(jig);
-                    if (promptResult.Status == PromptStatus.OK)
+                    PromptResult promptResult = null;
+                    try
                     {
-                        // 用户确认后，创建最终块引用
-                        var finalRef = new BlockReference(jig.Position, newBlockId)
+                        promptResult = Env.Editor.Drag(jig);
+                        if (promptResult.Status == PromptStatus.OK)
                         {
-                            Rotation = jig.Rotation,
-                            Layer = blockLayer,
-                            ScaleFactors = jig.Scale
-                        };
-                        ObjectId finalRefId = tr.CurrentSpace.AddEntity(finalRef);
-                        // 添加属性
-                        if (btr1 != null && btr1.HasAttributeDefinitions)
-                        {
-                            foreach (var attDef in attDefs)
+                            // 用户确认：创建最终块引用（你原有的插入逻辑）
+                            var finalRef = new BlockReference(jig.Position, newBlockId)
                             {
-                                var attRef = new AttributeReference();
-                                attRef.SetAttributeFromBlock(attDef, finalRef.BlockTransform);
-                                attRef.TextString = attDef.TextString;
-                                // 添加属性引用到块引用的属性集合中
-                                finalRef.AttributeCollection.AppendAttribute(attRef);
-                                //tr.AddNewlyCreatedDBObject(attRef, true);//
+                                Rotation = jig.Rotation,
+                                Layer = blockLayer,
+                                ScaleFactors = jig.Scale
+                            };
+
+                            // 将 finalRef 添加到当前空间（示例，按你项目的 DBTrans API 调整）
+                            ObjectId finalRefId = tr.CurrentSpace.AddEntity(finalRef);
+
+                            // 添加属性引用（如果有）
+                            if (btr1 != null && btr1.HasAttributeDefinitions)
+                            {
+                                foreach (var attDef in attDefs)
+                                {
+                                    var attRef = new AttributeReference();
+                                    attRef.SetAttributeFromBlock(attDef, finalRef.BlockTransform);
+                                    attRef.TextString = attDef.TextString;
+                                    finalRef.AttributeCollection.AppendAttribute(attRef);
+                                }
                             }
+
+                            LogManager.Instance.LogInfo($"\n已插入新块引用: {blockName}，图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}, 角度(弧度)={jig.Rotation:F4}");
                         }
-                        LogManager.Instance.LogInfo($"\n已插入新块引用: {blockName}，图层: {blockLayer}，比例: X={jig.Scale.X:F2}, Y={jig.Scale.Y:F2}, Z={jig.Scale.Z:F2}");
+                        else
+                        {
+                            LogManager.Instance.LogInfo("插入被取消或未完成交互。");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Instance.LogError($"插入过程中出错: {ex.Message}");
+                    }
+                    finally
+                    {
+                        // 无论确认或取消，都将角度重置为初始值（这里使用 0）
+                        try
+                        {
+                            VariableDictionary.entityRotateAngle = 0.0;
+                            Command.NotifyDirectionChanged(VariableDictionary.entityRotateAngle);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Instance.LogInfo($"重置角度时出错: {ex.Message}");
+                        }
+
+                        // 释放 jig 的订阅，避免事件泄露
+                        try
+                        {
+                            jig.Dispose();
+                        }
+                        catch { }
+
+                        // 强制刷新界面以清除预览残留
+                        try
+                        {
+                            Env.Editor.UpdateScreen();
+                        }
+                        catch { }
                     }
 
                     Env.Editor.Redraw();
@@ -4484,18 +4562,6 @@ namespace GB_NewCadPlus_III
 
         #region 接口、实体、天正数据、标注等
 
-        /// <summary>
-        /// 获取天正数据宽度参数
-        /// </summary>
-        public static string hvacR4 = "0";
-        /// <summary>
-        /// 获取天正数据高度参数
-        /// </summary>
-        public static string hvacR3 = "0";
-        /// <summary>
-        /// 获取天正数据距地面参数
-        /// </summary>
-        public static string strHvacStart = "0";
 
         /// <summary>
         /// 给体id返回实体对像
@@ -5283,8 +5349,6 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"标注失败！错误信息: {ex.Message}"); // 输出错误信息  
             }
         }
-
-        public static sendText? sendSum;
 
         /// <summary>
         /// 选择实体
@@ -6716,40 +6780,8 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>  
-        /// 图层状态信息类，用于存储单个图层的详细状态  
-        /// </summary>  
-        public class LayerState
-        {
-            public ObjectId ObjectId { get; set; }
-            public string? Name { get; set; }            // 图层名称  
-            public bool IsOff { get; set; }             // 图层是否关闭  
-            public bool IsFrozen { get; set; }          // 图层是否冻结  
-            public bool IsLocked { get; set; }          // 图层是否锁定  
-            public bool IsPlottable { get; set; }       // 图层是否可打印  
-            public short ColorIndex { get; set; }       // 图层颜色索引  
-            public LineWeight LineWeight { get; set; }  // 图层线宽  
-            public string? PlotStyleName { get; set; }   // 图层打印样式名称
-            public DrawStream? DrawStream { get; set; } // 图层绘制数据
-            public bool IsHidden { get; set; } // 图层是否隐藏
-            public bool IsReconciled { get; set; } // 图层是否同步
-            public ObjectId LinetypeObjectId { get; set; } // 图层线型对象ID
-            public ObjectId MaterialId { get; set; } // 图层材质ID
-            public DuplicateRecordCloning MergeStyle { get; set; } // 图层合并样式
-            public ObjectId OwnerId { get; set; } // 图层所有者ID
-            public ObjectId PlotStyleNameId { get; set; } // 图层打印样式名称ID
-            public Transparency Transparency { get; set; } // 图层透明度
-            public bool ViewportVisibilityDefault { get; set; } // 图层视图可见性默认值
-            public ResultBuffer? XData { get; set; } // 图层X数据
-            public AnnotativeStates Annotative { get; set; } // 图层注释
-            public string? Description { get; set; } // 图层描述
-            public bool HasSaveVersionOverride { get; set; } // 图层保存版本覆盖
-        }
-
-        /// <summary>
-        /// 创建用于存储图层状态的列表  
-        /// </summary>
-        public static List<LayerState> layerOriStates = new List<LayerState>();
+       
+               
 
         /// <summary>  
         /// 保存当前文档中所有图层的状态  
@@ -6956,11 +6988,6 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        // 静态变量：记录是否已经删除图层
-        private static bool _isLayersDeleted = false;
-
-        // 静态变量：存储原始图层信息
-        private static Dictionary<string, LayerState> _originalLayerInfos;
 
         /// <summary>
         /// 图层删除和恢复命令
@@ -7207,9 +7234,7 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"打开图层失败:{ex}");
             }
 
-        }
-        private static Dictionary<string, bool> layerOnOffDic = new Dictionary<string, bool>();
-        private static bool readLayerONOFFState = false;
+        }     
 
         /// <summary>
         /// 图层开或关
@@ -7954,38 +7979,7 @@ namespace GB_NewCadPlus_III
 
         #region 导出Excel方法二；
 
-        /// 存储表格数据的类
-        public class TableCell
-        {
-            /// <summary>
-            /// 表文字
-            /// </summary>
-            public string Text { get; set; }
-            /// <summary>
-            /// 表坐标
-            /// </summary>
-            public Point3d Position { get; set; }
-            /// <summary>
-            /// 表宽
-            /// </summary>
-            public double Width { get; set; }
-            /// <summary>
-            /// 表高
-            /// </summary>
-            public double Height { get; set; }
-            /// <summary>
-            /// 合并格
-            /// </summary>
-            public bool IsMerged { get; set; } = false;
-            /// <summary>
-            /// 合并跨越
-            /// </summary>
-            public int MergeAcross { get; set; } = 0;
-            /// <summary>
-            /// 向下合并
-            /// </summary>
-            public int MergeDown { get; set; } = 0;
-        }
+        
 
         /// <summary>
         /// 导出CAD表格到Excel的命令
@@ -8468,26 +8462,7 @@ namespace GB_NewCadPlus_III
             return null;
         }
 
-        /// <summary>
-        /// 辅助类：用于统一处理DBText和MText
-        /// </summary>
-        private class TextEntity
-        {
-            public string Text { get; set; }
-            public Point3d Position { get; set; }
-            public double Height { get; set; }
-        }
-
-        /// <summary>
-        /// 辅助类：用于表示合并单元格信息
-        /// </summary>
-        private class MergedCellInfo
-        {
-            public int Row { get; set; }
-            public int Column { get; set; }
-            public int RowSpan { get; set; }
-            public int ColumnSpan { get; set; }
-        }
+       
 
         #endregion
 
@@ -8700,6 +8675,254 @@ namespace GB_NewCadPlus_III
         }
         #endregion
 
+       
+
+        #region 结尾：增强的块放置 Jig（已修改以订阅方向事件）
+        /// <summary>
+        /// 增强的块放置拖拽类，完整支持组合块预览并响应方向按键变化用于旋转预览
+        /// </summary>
+        private class EnhancedBlockPlacementJig : EntityJig, IDisposable
+        {
+            private Point3d _position;//块位置 插入点
+            private double _rotation;//块旋转角度（弧度）
+            private Scale3d _scale;//块缩放比例
+            private ObjectId _blockId;//块ID
+            private List<AttributeDefinition> _attDefs;//属性定义列表
+            private string _blockLayer;//块图层
+            private bool _subscribed = false;
+            private bool _disposed = false;
+
+            // 属性
+            public Point3d Position => _position;//块位置 插入点
+            public double Rotation => _rotation;//块旋转角度
+            public Scale3d Scale => _scale;//块缩放比例
+
+            /// <summary>
+            /// 拖拽类的 - 动态增强的块放置类
+            /// </summary>
+            /// <param name="blockId">块ID</param>
+            /// <param name="attDefs">属性定义列表</param>
+            /// <param name="blockLayer"> 块图层</param>
+            /// <param name="scale">比例</param>
+            public EnhancedBlockPlacementJig(ObjectId blockId, List<AttributeDefinition> attDefs, string? blockLayer = null, Scale3d? scale = null)
+                : base(new BlockReference(Point3d.Origin, blockId))
+            {
+                _blockId = blockId;//块ID
+                _position = Point3d.Origin;//初始位置设为原点
+                _rotation = VariableDictionary.entityRotateAngle; // 使用预设旋转角度
+                _attDefs = attDefs ?? new List<AttributeDefinition>();//属性定义列表
+                _blockLayer = blockLayer ?? "0";//块图层，默认"0"图层
+                _scale = scale ?? new Scale3d(1, 1, 1);//块缩放比例，默认1:1比例
+
+                // 配置预览实体
+                if (Entity is BlockReference blockRef)
+                {
+                    blockRef.Layer = _blockLayer;//设置块图层
+                    blockRef.ScaleFactors = _scale;//设置块缩放比例
+                    blockRef.Rotation = _rotation;
+                }
+
+                // 订阅 Command 方向变更通知（允许外部按钮即时驱动旋转）
+                if (!_subscribed)
+                {
+                    Command.DirectionChanged += OnDirectionChanged;
+                    _subscribed = true;
+                }
+            }
+
+            // 方向变更时直接修改预览实体并刷新编辑器显示（使拖拽期间实时可见）
+            private void OnDirectionChanged(double angle)
+            {
+                try
+                {
+                    // 更新内部角度
+                    _rotation = angle;
+
+                    // 直接修改正在预览的实体（Entity）旋转值
+                    if (Entity is BlockReference br)
+                    {
+                        br.Rotation = _rotation;
+                    }
+
+                    // 刷新当前文档视图，让预览立即反映
+                    var doc = Application.DocumentManager.MdiActiveDocument;
+                    doc?.Editor.UpdateScreen();
+                }
+                catch
+                {
+                    // 忽略以确保不会打断主流程
+                }
+            }
+
+            /// <summary>
+            /// 获取预览实体
+            /// </summary>
+            /// <param name="prompts">提示</param>
+            /// <returns></returns>
+            protected override SamplerStatus Sampler(JigPrompts prompts)
+            {
+                // 获取插入点
+                JigPromptPointOptions pointOpts = new JigPromptPointOptions("\n指定组合块插入点（右键确认）:");
+                pointOpts.UserInputControls = UserInputControls.Accept3dCoordinates;
+                pointOpts.UseBasePoint = false;
+
+                PromptPointResult pointResult = prompts.AcquirePoint(pointOpts);
+
+                // 如果用户取消
+                if (pointResult.Status != PromptStatus.OK)
+                    return SamplerStatus.Cancel;
+
+                // 如果位置和角度都没变，返回NoChange
+                if (_position.DistanceTo(pointResult.Value) < 0.001 && Math.Abs(_rotation - VariableDictionary.entityRotateAngle) < 1e-9)
+                    return SamplerStatus.NoChange;
+
+                // 更新位置
+                _position = pointResult.Value;
+
+                // 始终使用 VariableDictionary.entityRotateAngle 作为旋转角度基准（外部按钮会通过事件另外通知）
+                _rotation = VariableDictionary.entityRotateAngle;
+
+                return SamplerStatus.OK;
+            }
+            /// <summary>
+            ///  更新数据
+            /// </summary>
+            /// <returns></returns>
+            protected override bool Update()
+            {
+                try
+                {
+                    // 更新块引用的位置、旋转和比例
+                    if (Entity is BlockReference blockRef)
+                    {
+                        blockRef.Position = _position;
+                        blockRef.Rotation = _rotation;
+                        blockRef.ScaleFactors = _scale;
+                    }
+
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    // 记录错误但不抛出异常
+                    LogManager.Instance.LogInfo($"\n块更新时发生错误: {ex.Message}");
+                    return false;
+                }
+            }
+
+            /// <summary>
+            /// 显式释放：取消订阅避免泄露
+            /// </summary>
+            public void Dispose()
+            {
+                if (_disposed) return;
+                if (_subscribed)
+                {
+                    try
+                    {
+                        Command.DirectionChanged -= OnDirectionChanged;
+                    }
+                    catch { }
+                    _subscribed = false;
+                }
+                _disposed = true;
+                GC.SuppressFinalize(this);
+            }
+
+            ~EnhancedBlockPlacementJig()
+            {
+                Dispose();
+            }
+        }
+        #endregion
+        #region 其它内部类（LayerState、TableCell、TextEntity、MergedCellInfo、BlockReferenceInfo等）
+
+        /// <summary>  
+        /// 图层状态信息类，用于存储单个图层的详细状态  
+        /// </summary>  
+        public class LayerState
+        {
+            public ObjectId ObjectId { get; set; }
+            public string? Name { get; set; }            // 图层名称  
+            public bool IsOff { get; set; }             // 图层是否关闭  
+            public bool IsFrozen { get; set; }          // 图层是否冻结  
+            public bool IsLocked { get; set; }          // 图层是否锁定  
+            public bool IsPlottable { get; set; }       // 图层是否可打印  
+            public short ColorIndex { get; set; }       // 图层颜色索引  
+            public LineWeight LineWeight { get; set; }  // 图层线宽  
+            public string? PlotStyleName { get; set; }   // 图层打印样式名称
+            public DrawStream? DrawStream { get; set; } // 图层绘制数据
+            public bool IsHidden { get; set; } // 图层是否隐藏
+            public bool IsReconciled { get; set; } // 图层是否同步
+            public ObjectId LinetypeObjectId { get; set; } // 图层线型对象ID
+            public ObjectId MaterialId { get; set; } // 图层材质ID
+            public DuplicateRecordCloning MergeStyle { get; set; } // 图层合并样式
+            public ObjectId OwnerId { get; set; } // 图层所有者ID
+            public ObjectId PlotStyleNameId { get; set; } // 图层打印样式名称ID
+            public Transparency Transparency { get; set; } // 图层透明度
+            public bool ViewportVisibilityDefault { get; set; } // 图层视图可见性默认值
+            public ResultBuffer? XData { get; set; } // 图层X数据
+            public AnnotativeStates Annotative { get; set; } // 图层注释
+            public string? Description { get; set; } // 图层描述
+            public bool HasSaveVersionOverride { get; set; } // 图层保存版本覆盖
+        }
+
+        /// <summary>
+        /// 表格单元格类
+        /// </summary>
+        public class TableCell
+        {
+            /// <summary>
+            /// 表文字
+            /// </summary>
+            public string Text { get; set; }
+            /// <summary>
+            /// 表坐标
+            /// </summary>
+            public Point3d Position { get; set; }
+            /// <summary>
+            /// 表宽
+            /// </summary>
+            public double Width { get; set; }
+            /// <summary>
+            /// 表高
+            /// </summary>
+            public double Height { get; set; }
+            /// <summary>
+            /// 合并格
+            /// </summary>
+            public bool IsMerged { get; set; } = false;
+            /// <summary>
+            /// 合并跨越
+            /// </summary>
+            public int MergeAcross { get; set; } = 0;
+            /// <summary>
+            /// 向下合并
+            /// </summary>
+            public int MergeDown { get; set; } = 0;
+        }
+
+        /// <summary>
+        /// 辅助类：用于统一处理DBText和MText
+        /// </summary>
+        private class TextEntity
+        {
+            public string Text { get; set; }
+            public Point3d Position { get; set; }
+            public double Height { get; set; }
+        }
+
+        /// <summary>
+        /// 辅助类：用于表示合并单元格信息
+        /// </summary>
+        private class MergedCellInfo
+        {
+            public int Row { get; set; }
+            public int Column { get; set; }
+            public int RowSpan { get; set; }
+            public int ColumnSpan { get; set; }
+        }
+
         /// <summary>
         /// 用于保存块引用信息的辅助类
         /// </summary>
@@ -8767,98 +8990,7 @@ namespace GB_NewCadPlus_III
             public Vector3d Normal { get; set; }
         }
 
-        /// <summary>
-        /// 增强的块放置拖拽类，完整支持组合块预览
-        /// </summary>
-        private class EnhancedBlockPlacementJig : EntityJig
-        {
-            private Point3d _position;//块位置 插入点
-            private double _rotation;//块旋转块旋转角度
-            private Scale3d _scale;//块缩放比例
-            private ObjectId _blockId;//块ID
-            private List<AttributeDefinition> _attDefs;//属性定义属性定义列表
-            private string _blockLayer;//块图层
-
-            // 属性
-            public Point3d Position => _position;//块位置块位置 插入点
-            public double Rotation => _rotation;//块旋转角度
-            public Scale3d Scale => _scale;//块缩放比例
-            /// <summary>
-            /// 拖拽类的 - 动态增强的块放置类
-            /// </summary>
-            /// <param name="blockId">块ID</param>
-            /// <param name="attDefs">属性定义列表</param>
-            /// <param name="blockLayer"> 块图层</param>
-            /// <param name="scale">比例</param>
-            public EnhancedBlockPlacementJig(ObjectId blockId, List<AttributeDefinition> attDefs, string? blockLayer = null, Scale3d? scale = null)
-                : base(new BlockReference(Point3d.Origin, blockId))
-            {
-                _blockId = blockId;//块ID
-                _position = Point3d.Origin;//初始位置设为原点
-                _rotation = VariableDictionary.entityRotateAngle; // 使用预设旋转角度
-                _attDefs = attDefs;//属性定义列表
-                _blockLayer = blockLayer ?? "0";//块图层，默认"0"图层
-                _scale = scale ?? new Scale3d(1, 1, 1);//块缩放比例，默认1:1比例
-
-                // 配置预览实体
-                BlockReference blockRef = (BlockReference)Entity;
-                blockRef.Layer = _blockLayer;//设置块图层
-                blockRef.ScaleFactors = _scale;//设置块缩放比例
-            }
-            /// <summary>
-            /// 获取预览实体
-            /// </summary>
-            /// <param name="prompts">提示</param>
-            /// <returns></returns>
-            protected override SamplerStatus Sampler(JigPrompts prompts)
-            {
-                // 获取插入点
-                JigPromptPointOptions pointOpts = new JigPromptPointOptions("\n指定组合块插入点（右键确认）:");
-                pointOpts.UserInputControls = UserInputControls.Accept3dCoordinates;
-                pointOpts.UseBasePoint = false;
-
-                PromptPointResult pointResult = prompts.AcquirePoint(pointOpts);
-
-                // 如果用户取消
-                if (pointResult.Status != PromptStatus.OK)
-                    return SamplerStatus.Cancel;
-
-                // 如果位置没变，返回NoChange
-                if (_position.DistanceTo(pointResult.Value) < 0.001)
-                    return SamplerStatus.NoChange;
-
-                _position = pointResult.Value;
-
-                // 始终使用VariableDictionary.entityRotateAngle作为旋转角度
-                _rotation = VariableDictionary.entityRotateAngle;
-
-                return SamplerStatus.OK;
-            }
-            /// <summary>
-            ///  更新数据
-            /// </summary>
-            /// <returns></returns>
-            protected override bool Update()
-            {
-                try
-                {
-                    // 更新块引用的位置、旋转和比例
-                    BlockReference blockRef = (BlockReference)Entity;
-                    blockRef.Position = _position;
-                    blockRef.Rotation = _rotation;
-                    blockRef.ScaleFactors = _scale;
-
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    // 记录错误但不抛出异常
-                    LogManager.Instance.LogInfo($"\n块更新时发生错误: {ex.Message}");
-                    return false;
-                }
-            }
-        }
-
+        #endregion
 
     }
 

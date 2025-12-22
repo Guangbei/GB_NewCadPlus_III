@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 
 namespace GB_NewCadPlus_III
@@ -143,13 +143,18 @@ namespace GB_NewCadPlus_III
 
         /// <summary>
         /// 执行方向命令
+        /// 修改说明：
+        ///  - 保持原有根据图元类型调整角度逻辑
+        ///  - 在设置 VariableDictionary.entityRotateAngle 后，立即广播给 Command.NotifyDirectionChanged(angle)
+        ///    以便任何正在运行的 EnhancedBlockPlacementJig 能即时响应并更新预览旋转
+        ///  - 最后再发送插入命令启动交互插入流程
         /// </summary>
         private static void ExecuteDirectionCommand(string direction, double angle)
         {
             try
             {
                 // 根据图元类型和方向设置角度
-                if (VariableDictionary.btnFileName.Contains("摄像机"))
+                if (VariableDictionary.btnFileName != null && VariableDictionary.btnFileName.Contains("摄像机"))
                 {
                     VariableDictionary.entityRotateAngle = DirectionButtonManager.GetAdjustedAngleForDirection(direction, true);
                 }
@@ -158,8 +163,20 @@ namespace GB_NewCadPlus_III
                     VariableDictionary.entityRotateAngle = DirectionButtonManager.GetAdjustedAngleForDirection(direction, false);
                 }
 
-                // 根据图元类型选择插入命令
-                if (VariableDictionary.btnFileName.Contains("电话插座") || VariableDictionary.btnFileName.Contains("网络插座"))
+                // 立即广播方向变化，通知可能存在的 Jig 进行实时预览旋转
+                try
+                {
+                    // Command.NotifyDirectionChanged 会同步 VariableDictionary 并触发事件
+                    Command.NotifyDirectionChanged(VariableDictionary.entityRotateAngle);
+                }
+                catch (Exception evEx)
+                {
+                    // 广播失败不应中断插入流程，记录日志并继续
+                    LogManager.Instance.LogInfo($"\nNotifyDirectionChanged 触发失败: {evEx.Message}");
+                }
+
+                // 根据图元类型选择插入命令（在广播后启动交互）
+                if (VariableDictionary.btnFileName != null && (VariableDictionary.btnFileName.Contains("电话插座") || VariableDictionary.btnFileName.Contains("网络插座")))
                 {
                     Env.Document.SendStringToExecute("GB_InsertBlock_2 ", false, false, false);
                 }

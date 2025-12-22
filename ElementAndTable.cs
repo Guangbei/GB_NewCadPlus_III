@@ -1,4 +1,6 @@
 
+using Autodesk.AutoCAD.DatabaseServices;
+using GB_NewCadPlus_III.Helpers;
 using Mysqlx.Crud;
 using OfficeOpenXml;
 using System.Data;
@@ -1840,16 +1842,6 @@ namespace GB_NewCadPlus_III
                     // 从磁盘读取历史属性
                     var savedAttrsSync = FileManager.LoadLastPipeAttributes(sampleIsOutlet);
 
-                    // 使用 FileManager 的合并规则：示例中非空优先，示例空/占位则使用历史值；历史中新增键也会被带入
-                    //var mergedForEditor = FileManager.MergeSavedPipeAttributes(sampleAttrMap, savedAttrsSync);
-
-                    //// 可选调试：在命令行打印已加载历史项数量（便于验证）
-                    //try
-                    //{
-                    //    ed.WriteMessage($"\n[Debug] LoadLastPipeAttributes 返回 {savedAttrsSync.Count} 项，传给编辑窗 {mergedForEditor.Count} 项");
-                    //}
-                    //catch { /* 忽略在非交互环境的写入失败 */ }
-
                     // 打开属性编辑窗，传入合并后的初始字典
                     using (var editor = new PipeAttributeEditorForm(savedAttrsSync))
                     {
@@ -1918,31 +1910,33 @@ namespace GB_NewCadPlus_III
                                        : sampleBlockRef.Name ?? "管道";
 
                     // 为每一段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
-                    var arrowEntities = CreateDirectionalArrowsAndTitles(sampleInfo, orderedVertices, midPoint, pipeTitle, sampleBlockRef.Name);
-
+                    var arrowEntities = CreateDirectionalArrowsAndTitles(tr, sampleInfo, orderedVertices, midPoint, pipeTitle, sampleBlockRef.Name);
+                    
                     // 把最新属性写入/覆盖到 attDefsLocal（存在则覆盖，不存在则新增）
-                    double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
-                    double yOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attHeight * 1.2 : -attHeight * 2.0;
+                    double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 3.5;// 默认高度
+                    double yOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attHeight * 1.2 : -attHeight * 2.0;// 默认偏移 基础 Y 偏移
                     int extraIndex = 0;
                     foreach (var kv in latestSampleAttrs)
                     {
-                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;// 忽略空标签
+                        // 检查属性标签是否已存在 尝试更新 查找是否已存在该属性定义
                         var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, kv.Key, StringComparison.OrdinalIgnoreCase));
                         if (existing != null)
                         {
-                            existing.TextString = kv.Value ?? string.Empty;
+                            existing.TextString = kv.Value ?? string.Empty;// 属性值 更新属性值
                             existing.Invisible = false; // 先临时设置，后面统一控制显示
-                            existing.Constant = false;
+                            existing.Constant = false;// 属性定义
                         }
                         else
                         {
+                            // 新增 新增属性定义
                             attDefsLocal.Add(new AttributeDefinition
                             {
-                                Tag = kv.Key,
-                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),
-                                Rotation = 0.0,
-                                TextString = kv.Value ?? string.Empty,
-                                Height = attHeight,
+                                Tag = kv.Key,// 属性标签
+                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),// 默认位置 属性位置
+                                Rotation = 0.0,// 默认旋转 默认旋转角度
+                                TextString = kv.Value ?? string.Empty,// 默认值
+                                Height = attHeight,// 默认高度
                                 Invisible = false, // 临时
                                 Constant = false
                             });
@@ -1978,27 +1972,28 @@ namespace GB_NewCadPlus_III
                     {
                         extractedPipeNo = nextSegNum.ToString("D4");
                     }
-
+                    // 生成管段号属性 局部函数：设置或新增属性定义
                     void SetOrAddAttrLocal(string tag, string text)
                     {
+                        // 尝试更新 查找是否已存在该属性定义
                         var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, tag, StringComparison.OrdinalIgnoreCase));
                         if (existing != null)
                         {
-                            existing.TextString = text;
-                            existing.Invisible = false;
-                            existing.Constant = false;
+                            existing.TextString = text;// 更新属性值
+                            existing.Invisible = false;// 临时 先临时设置，后面统一控制显示
+                            existing.Constant = false;// 临时 非常量
                         }
                         else
                         {
-                            attDefsLocal.Add(new AttributeDefinition
+                            attDefsLocal.Add(new AttributeDefinition// 新增 新增属性定义
                             {
-                                Tag = tag,
-                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),
-                                Rotation = 0.0,
-                                TextString = text,
-                                Height = attHeight,
-                                Invisible = false,
-                                Constant = false
+                                Tag = tag,// 属性标签
+                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),// 属性位置
+                                Rotation = 0.0,// 属性旋转角度
+                                TextString = text,// 属性值
+                                Height = attHeight,// 属性高度
+                                Invisible = false,// 临时
+                                Constant = false// 非常量
                             });
                             extraIndex++;
                         }
@@ -2015,21 +2010,7 @@ namespace GB_NewCadPlus_III
                         ad.Invisible = true; // 隐藏所有属性（块内不显示）
                         ad.Constant = false;
                     }
-                    // 关键要求：生成的管道块上仅显示 “管道标题” 字段，其他属性字段不显示
-                    //foreach (var ad in attDefsLocal)
-                    //{
-                    //    if (string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase))
-                    //    {
-                    //        ad.Invisible = false;
-                    //        ad.Constant = false;
-                    //    }
-                    //    else
-                    //    {
-                    //        ad.Invisible = true; // 隐藏其它属性
-                    //        ad.Constant = false;
-                    //    }
-                    //}
-                    
+                  
 
                     // 构建块定义并插入新块
                     string desiredName = sampleBlockRef.Name;
@@ -2075,18 +2056,25 @@ namespace GB_NewCadPlus_III
             private Button _btnOk;// 确认按钮
             private Button _btnCancel;// 取消按钮 确认和取消按钮
             private Dictionary<string, string> _attributes;// 属性表/ 存储属性表
+
             /// <summary>
             /// 属性表编辑后的属性表
             /// </summary>
             public Dictionary<string, string> Attributes => new Dictionary<string, string>(_attributes, StringComparer.OrdinalIgnoreCase);
 
+            /// <summary>
+            /// 属性表编辑窗口
+            /// </summary>
+            /// <param name="initialAttributes"></param>
             public PipeAttributeEditorForm(Dictionary<string, string> initialAttributes)
             {
                 _attributes = new Dictionary<string, string>(initialAttributes ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                 InitializeComponent();
                 LoadAttributesToGrid();
             }
-
+            /// <summary>
+            /// 初始化控件
+            /// </summary>
             private void InitializeComponent()
             {
                 this.Text = "示例管道属性编辑";
@@ -2712,7 +2700,7 @@ namespace GB_NewCadPlus_III
             var uniquePoints = new List<Point3d>();
             Func<Point3d, int> getIndex = p =>
             {
-                for (int i = 0; i < uniquePoints.Count; i++)//
+                for (int i = 0; i < uniquePoints.Count; i++)
                 {
                     if (PointsEqual(uniquePoints[i], p, tol)) return i;
                 }
@@ -2784,6 +2772,31 @@ namespace GB_NewCadPlus_III
                     }
                 }
             } while (progressed);
+
+            // 新增校验：确保最终的方向与线段聚合方向一致
+            try
+            {
+                if (result.Count >= 2)
+                {
+                    var overallVec = result.Last() - result.First();
+                    if (!overallVec.IsZeroLength())
+                    {
+                        var agg = ComputeAggregateSegmentDirection(segments);
+                        if (!agg.IsZeroLength())
+                        {
+                            // 如果总体向量与聚合向量点积为负，则反转顶点顺序
+                            if (overallVec.DotProduct(agg) < 0)
+                            {
+                                result.Reverse();
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // 容错：若聚合计算失败，不影响已有顺序
+            }
             return result;
         }
 
@@ -3697,7 +3710,7 @@ namespace GB_NewCadPlus_III
                                          : (sampleBr.IsDynamicBlock ? sampleBr.Name : sampleBr.Name) ?? "管道";
 
                         // 为每段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
-                        var arrowEntities = CreateDirectionalArrowsAndTitles(sampleInfo, points, midPoint, pipeTitle, sampleBr.Name);
+                        var arrowEntities = CreateDirectionalArrowsAndTitles(tr, sampleInfo, points, midPoint, pipeTitle, sampleBr.Name);
 
                         // 复制属性定义并写入最新属性值
                         var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBr.Name)
@@ -3856,62 +3869,65 @@ namespace GB_NewCadPlus_III
         /// <param name="pipeTitle"></param>
         /// <param name="sampleBlockName"></param>
         /// <returns></returns>
-        private List<Entity> CreateDirectionalArrowsAndTitles(SamplePipeInfo sampleInfo, List<Point3d> verticesWorld, Point3d midPointWorld, string pipeTitle, string sampleBlockName)
+        private List<Entity> CreateDirectionalArrowsAndTitles(DBTrans tr, SamplePipeInfo sampleInfo, List<Point3d> verticesWorld, Point3d midPointWorld, string pipeTitle, string sampleBlockName)
         {
-            var overlay = new List<Entity>();
-            if (sampleInfo == null || verticesWorld == null || verticesWorld.Count < 2) return overlay;
+            var overlay = new List<Entity>();// 用于返回的临时对象 返回的实体列表
+            if (sampleInfo == null || verticesWorld == null || verticesWorld.Count < 2) return overlay;// 无效输入 参数检查
 
             // 备份模板与填充（若无模板则自绘三角）
-            Polyline arrowTemplate = sampleInfo.DirectionArrowTemplate;
-            Solid? fillTemplate = null;
-            double explicitArrowLength = 10.0;
-            double explicitArrowHeight = 3.0;
-            if (arrowTemplate == null)
+            Polyline arrowTemplate = sampleInfo.DirectionArrowTemplate;// 模板 箭头模板
+            Solid? fillTemplate = null;// 填充 填充模板
+            double explicitArrowLength = 10.0;// 箭头长度 显式箭头长度
+            double explicitArrowHeight = 3.0;// 箭头高度 显式箭头高度
+            if (arrowTemplate == null)// 无模板 若无模板
             {
                 // 使用默认样式（依据块名判断入/出口颜色和大小）
                 var (colorIdx, length, height) = DetermineArrowStyleByName(sampleBlockName);
-                explicitArrowLength = length;
-                explicitArrowHeight = height;
+                explicitArrowLength = length;// 箭头长度
+                explicitArrowHeight = height;// 箭头高度
+                // 创建填充 自绘三角形箭头 自绘三角形箭头
                 var (outline, fill) = CreateArrowTriangleFilled(length, height, colorIdx, sampleInfo.PipeBodyTemplate);
-                arrowTemplate = outline;
-                fillTemplate = fill;
+                arrowTemplate = outline;// 模板
+                fillTemplate = fill;// 填充
             }
 
             // 文本样式参考
-            double textHeight = 2.5;
-            if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)
-                textHeight = Math.Max(1.0, sampleInfo.AttributeDefinitions[0].Height);
-
+            double textHeight = 3.5;
+            if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)// 有属性定义
+                textHeight = Math.Max(1.0, sampleInfo.AttributeDefinitions[0].Height);// 文本高度 文本高度 参考属性定义的高度
+            // 文本 确保文字样式已注册
             for (int i = 0; i < verticesWorld.Count - 1; i++)
             {
-                var p1 = verticesWorld[i];
-                var p2 = verticesWorld[i + 1];
-                var seg = p2 - p1;
-                if (seg.IsZeroLength()) continue;
-
+                var p1 = verticesWorld[i];// 起点
+                var p2 = verticesWorld[i + 1];// 终点
+                var seg = p2 - p1;// 线段
+                if (seg.IsZeroLength()) continue;// 无效线段 跳过 忽略零长度段
+                // 计算线段方向 方向向量 线段方向
                 var dir = seg.GetNormal();
-                var mid = new Point3d((p1.X + p2.X) / 2.0, (p1.Y + p2.Y) / 2.0, (p1.Z + p2.Z) / 2.0);
+                var mid = new Point3d((p1.X + p2.X) / 2.0, (p1.Y + p2.Y) / 2.0, (p1.Z + p2.Z) / 2.0);// 管道的中点位置
 
                 // 生成对齐后的箭头（以箭头模板为基准，尖端朝 +X）
                 Polyline? outlineAligned = null;
                 Solid? fillAligned = null;
                 try
                 {
-                    (outlineAligned, fillAligned) = AlignArrowToDirection(arrowTemplate, fillTemplate, dir);
+                    (outlineAligned, fillAligned) = AlignArrowToDirection(arrowTemplate, fillTemplate, dir);// 对齐箭头
 
                     // 把箭头移动到相对于 midPointWorld 的局部坐标（block 内）
                     var localDisp = mid - midPointWorld;
-                    if (outlineAligned != null)
+                    if (outlineAligned != null)// 箭头 存在轮廓
                     {
+                        // 把箭头移动到相对于 midPointWorld 的局部坐标（block 内） 移动位置
                         outlineAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
-                        outlineAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
-                        overlay.Add(outlineAligned);
+                        outlineAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;// 箭头 层 设置图层
+                        overlay.Add(outlineAligned);// 箭头 添加 添加到返回列表
                     }
-                    if (fillAligned != null)
+                    if (fillAligned != null)// 填充 存在填充
                     {
+                        // 把填充移动到相对于 midPointWorld 的局部坐标（block 内）
                         fillAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
-                        fillAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
-                        overlay.Add(fillAligned);
+                        fillAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;// 填充 层 设置图层
+                        overlay.Add(fillAligned);// 填充 添加 添加到返回列表
                     }
                 }
                 catch
@@ -3919,14 +3935,19 @@ namespace GB_NewCadPlus_III
                     // 忽略箭头生成异常，继续生成文本
                 }
 
-                // 生成文字（DBText），放在箭头上方（沿箭头本地 Y 方向，即 perp），并转换为局部坐标
+                // 生成文字（DBText），放在箭头上侧并保证始终可读（不倒置）
                 try
                 {
+                    // perp 是相对于段方向的局部“上侧”向量
                     var perp = new Vector3d(-dir.Y, dir.X, 0.0);
                     if (perp.IsZeroLength())
                         perp = Vector3d.YAxis;
                     else
                         perp = perp.GetNormal();
+
+                    // 强制 perp 指向全局的 +Y 方向一侧，确保文字始终位于管道的“上侧”（图纸上方）
+                    if (perp.DotProduct(Vector3d.YAxis) < 0)
+                        perp = -perp;
 
                     // 估算箭头高度（使用已对齐实体的几何包围盒）
                     double arrowHalfHeight = explicitArrowHeight / 2.0;
@@ -3936,7 +3957,6 @@ namespace GB_NewCadPlus_III
                         if (sizeEntity != null)
                         {
                             var ext = sizeEntity.GeometricExtents;
-                            // 注意：在 align 后，local Y 对应法向 perp；用高度一半作为偏移基准
                             arrowHalfHeight = Math.Abs(ext.MaxPoint.Y - ext.MinPoint.Y) / 2.0;
                             if (arrowHalfHeight < 1e-6) arrowHalfHeight = explicitArrowHeight / 2.0;
                         }
@@ -3949,28 +3969,44 @@ namespace GB_NewCadPlus_III
 
                     // 将文字放在箭头上方：沿 perp 方向偏移 arrowHalfHeight + 文字高度的适当间距
                     double offset = arrowHalfHeight + textHeight * 0.8;
-
-                    var worldTextPos = mid + perp * offset;
-
+                    var worldTextPos = mid + perp * offset;// 文字位置
                     // 转为局部坐标（相对于 midPointWorld）
                     var localTextPos = new Point3d(worldTextPos.X - midPointWorld.X, worldTextPos.Y - midPointWorld.Y, worldTextPos.Z - midPointWorld.Z);
+                    //localTextPos = new Point3d(worldTextPos.X - midPointWorld.X - 10, worldTextPos.Y - midPointWorld.Y, worldTextPos.Z - midPointWorld.Z);
+                    // 计算文本旋转角度（使文字沿管线方向排布）
+                    double segAngle = ComputeSegmentAngleUcs(p1, p2); // 返回范围 [0, 2π)
+                    double textRot = segAngle;
 
+                    // 保证文字始终正向可读：使得文字基向量的 X 分量为非负（cos(rotation) >= 0）
+                    // 若 cos(textRot) < 0，则旋转 180°（加 PI），以避免文字“头上脚下”
+                    if (Math.Cos(textRot) < 0)
+                        textRot += Math.PI;
+
+                    // 将角度归一化到 (-π, π]，AutoCAD 更容易接受
+                    if (textRot > Math.PI)
+                        textRot -= 2.0 * Math.PI;
+                    if (textRot <= -Math.PI)
+                        textRot += 2.0 * Math.PI;
+                    // 创建 DBText 创建 DBText 文字实体
                     var dbText = new DBText
                     {
-                        Position = localTextPos,
-                        Height = textHeight,
-                        TextString = string.IsNullOrWhiteSpace(pipeTitle) ? sampleBlockName ?? "管道" : pipeTitle,
-                        Rotation = ComputeSegmentAngleUcs(p1, p2),
-                        Layer = sampleInfo.PipeBodyTemplate.Layer,
-                        Normal = Vector3d.ZAxis,
-                        Oblique = 0.0
+                        Position = localTextPos,// 文字位置 位置 局部位置
+                        Height = textHeight,// 文字高度 高度
+                        TextString = string.IsNullOrWhiteSpace(pipeTitle) ? sampleBlockName ?? "管道" : pipeTitle,// 文字字符串 文本字符串
+                        Rotation = textRot,// 旋转角度 旋转角度
+                        Layer = sampleInfo.PipeBodyTemplate.Layer,// 层 层 图层 设置图层
+                        Normal = Vector3d.ZAxis,// 法向量 法向量
+                        Oblique = 0.0// 偏斜角度 偏斜角度
                     };
+                    // 应用标题样式 应用文字样式
+                    FontsStyleHelper.ApplyTitleToDBText(tr, dbText);
 
                     // 使文字水平居中（以 Position 为中心）
                     try
                     {
-                        dbText.AlignmentPoint = localTextPos;
-                        dbText.HorizontalMode = TextHorizontalMode.TextCenter;
+                        dbText.AlignmentPoint = localTextPos;// 文字位置 对齐点 对齐点 设置为位置
+                        dbText.HorizontalMode = TextHorizontalMode.TextCenter;// 文字水平居中 水平模式 水平模式 设置为居中
+                        dbText.VerticalMode = TextVerticalMode.TextVerticalMid;// 文字垂直居中 垂直模式 垂直模式 设置为居中
                     }
                     catch
                     {
@@ -3986,6 +4022,134 @@ namespace GB_NewCadPlus_III
             }
 
             return overlay;
+            //var overlay = new List<Entity>();
+            //if (sampleInfo == null || verticesWorld == null || verticesWorld.Count < 2) return overlay;
+
+            //// 备份模板与填充（若无模板则自绘三角）
+            //Polyline arrowTemplate = sampleInfo.DirectionArrowTemplate;
+            //Solid? fillTemplate = null;
+            //double explicitArrowLength = 10.0;
+            //double explicitArrowHeight = 3.0;
+            //if (arrowTemplate == null)
+            //{
+            //    // 使用默认样式（依据块名判断入/出口颜色和大小）
+            //    var (colorIdx, length, height) = DetermineArrowStyleByName(sampleBlockName);
+            //    explicitArrowLength = length;
+            //    explicitArrowHeight = height;
+            //    var (outline, fill) = CreateArrowTriangleFilled(length, height, colorIdx, sampleInfo.PipeBodyTemplate);
+            //    arrowTemplate = outline;
+            //    fillTemplate = fill;
+            //}
+
+            //// 文本样式参考
+            //double textHeight = 2.5;
+            //if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)
+            //    textHeight = Math.Max(1.0, sampleInfo.AttributeDefinitions[0].Height);
+
+            //for (int i = 0; i < verticesWorld.Count - 1; i++)
+            //{
+            //    var p1 = verticesWorld[i];
+            //    var p2 = verticesWorld[i + 1];
+            //    var seg = p2 - p1;
+            //    if (seg.IsZeroLength()) continue;
+
+            //    var dir = seg.GetNormal();
+            //    var mid = new Point3d((p1.X + p2.X) / 2.0, (p1.Y + p2.Y) / 2.0, (p1.Z + p2.Z) / 2.0);
+
+            //    // 生成对齐后的箭头（以箭头模板为基准，尖端朝 +X）
+            //    Polyline? outlineAligned = null;
+            //    Solid? fillAligned = null;
+            //    try
+            //    {
+            //        (outlineAligned, fillAligned) = AlignArrowToDirection(arrowTemplate, fillTemplate, dir);
+
+            //        // 把箭头移动到相对于 midPointWorld 的局部坐标（block 内）
+            //        var localDisp = mid - midPointWorld;
+            //        if (outlineAligned != null)
+            //        {
+            //            outlineAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
+            //            outlineAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
+            //            overlay.Add(outlineAligned);
+            //        }
+            //        if (fillAligned != null)
+            //        {
+            //            fillAligned.TransformBy(Matrix3d.Displacement(new Vector3d(localDisp.X, localDisp.Y, localDisp.Z)));
+            //            fillAligned.Layer = sampleInfo.PipeBodyTemplate.Layer;
+            //            overlay.Add(fillAligned);
+            //        }
+            //    }
+            //    catch
+            //    {
+            //        // 忽略箭头生成异常，继续生成文本
+            //    }
+
+            //    // 生成文字（DBText），放在箭头上方（沿箭头本地 Y 方向，即 perp），并转换为局部坐标
+            //    try
+            //    {
+            //        var perp = new Vector3d(-dir.Y, dir.X, 0.0);
+            //        if (perp.IsZeroLength())
+            //            perp = Vector3d.YAxis;
+            //        else
+            //            perp = perp.GetNormal();
+
+            //        // 估算箭头高度（使用已对齐实体的几何包围盒）
+            //        double arrowHalfHeight = explicitArrowHeight / 2.0;
+            //        try
+            //        {
+            //            Entity sizeEntity = (Entity?)outlineAligned ?? (Entity?)fillAligned;
+            //            if (sizeEntity != null)
+            //            {
+            //                var ext = sizeEntity.GeometricExtents;
+            //                // 注意：在 align 后，local Y 对应法向 perp；用高度一半作为偏移基准
+            //                arrowHalfHeight = Math.Abs(ext.MaxPoint.Y - ext.MinPoint.Y) / 2.0;
+            //                if (arrowHalfHeight < 1e-6) arrowHalfHeight = explicitArrowHeight / 2.0;
+            //            }
+            //        }
+            //        catch
+            //        {
+            //            // 忽略，使用默认
+            //            arrowHalfHeight = explicitArrowHeight / 2.0;
+            //        }
+
+            //        // 将文字放在箭头上方：沿 perp 方向偏移 arrowHalfHeight + 文字高度的适当间距
+            //        double offset = arrowHalfHeight + textHeight * 0.8;
+
+            //        var worldTextPos = mid + perp * offset;
+
+            //        // 转为局部坐标（相对于 midPointWorld）
+            //        var localTextPos = new Point3d(worldTextPos.X - midPointWorld.X, worldTextPos.Y - midPointWorld.Y, worldTextPos.Z - midPointWorld.Z);
+
+            //        var dbText = new DBText
+            //        {
+            //            Position = localTextPos,
+            //            Height = textHeight,
+            //            TextString = string.IsNullOrWhiteSpace(pipeTitle) ? sampleBlockName ?? "管道" : pipeTitle,
+            //            Rotation = ComputeSegmentAngleUcs(p1, p2),
+            //            Layer = sampleInfo.PipeBodyTemplate.Layer,
+            //            Normal = Vector3d.ZAxis,
+            //            Oblique = 0.0
+            //        };
+
+            //        // 使文字水平居中（以 Position 为中心）
+            //        try
+            //        {
+            //            dbText.AlignmentPoint = localTextPos;
+            //            dbText.HorizontalMode = TextHorizontalMode.TextCenter;
+            //        }
+            //        catch
+            //        {
+            //            // 有些 AutoCAD API 版本对这些属性可能有限制，忽略异常
+            //        }
+
+            //        overlay.Add(dbText);
+            //    }
+            //    catch
+            //    {
+            //        // 忽略文字生成异常
+            //    }
+            //}
+
+            //return overlay;
         }
 
         #endregion

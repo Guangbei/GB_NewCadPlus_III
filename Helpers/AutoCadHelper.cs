@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Application = Autodesk.AutoCAD.ApplicationServices.Application;
 
-namespace GB_NewCadPlus_III
+namespace GB_NewCadPlus_III.Helpers
 {
     /// <summary>
     /// AutoCAD操作工具类
