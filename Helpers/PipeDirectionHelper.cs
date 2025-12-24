@@ -19,6 +19,9 @@ namespace GB_NewCadPlus_III.Helpers
         /// 计算路径方向向量（从第一个非重复点指向最后一个非重复点），并归一化。
         /// 如果所有点相同，返回 Z 轴零向量。
         /// </summary>
+        ///
+
+
         public static Vector3d ComputePathDirectionVector(List<Point3d> orderedVertices, double tol = 1e-8)
         {
             if (orderedVertices == null || orderedVertices.Count == 0)

@@ -135,7 +135,8 @@ namespace GB_NewCadPlus_III
                     var list = g.ToList();
 
                     // 每次生成并插入表在独立的短事务中完成（CreateEquipmentTableWithType 自行创建事务）
-                    CreateEquipmentTableWithType(doc.Database, list, g.Key);
+                   // CreateEquipmentTableWithType(doc.Database, list, g.Key);
+                    CreateEquipmentTable(doc.Database, list);
 
                     // 强制重生成并刷新显示，确保新插入的表立即可见
                     try
@@ -441,177 +442,14 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 迁移：为 UI 按钮 [插入管道表] 提供命令入口（已迁移到此类）
-        /// 简单实现：直接调用 GeneratePipeTableFromSelection，使用统一逻辑（包含选择、分组、插入点提示）。
-        /// 如果 WPF 需直接调用此方法，请在 WPF 中触发此命令或直接调用 GeneratePipeTableFromSelection。
-        /// </summary>
-        [CommandMethod("InsertPipeTable")]
-        public void InsertPipeTable()
-        {
-            // 迁移后直接复用 GeneratePipeTableFromSelection 的逻辑
-            GeneratePipeTableFromSelection();
-        }
-
-        /// <summary>
-        /// 从管道标题中提取管道号，例如 "350-AR-1002-1.0G11" -> "AR-1002"
-        /// 优先返回字母-数字形式的片段，若无法匹配返回 empty
-        /// </summary>
-        private string ExtractPipeCodeFromTitle(string? title)
-        {
-            if (string.IsNullOrWhiteSpace(title)) return string.Empty;
-            title = title!.Trim();
-
-            // 常见形式：以字母开头 + '-' + 数字，例如 AR-1002
-            var m = Regex.Match(title, @"[A-Za-z]+-\d+");
-            if (m.Success) return m.Value;
-
-            // 保险：也尝试在 -...- 中间提取类似模式
-            var m2 = Regex.Match(title, @"-(?<code>[A-Za-z]+-\d+)-");
-            if (m2.Success && m2.Groups["code"].Success) return m2.Groups["code"].Value;
-
-            // 若仍找不到，可以尝试更宽松的匹配（包含数字在后）
-            var m3 = Regex.Match(title, @"[A-Za-z0-9]+-[0-9A-Za-z]+");
-            if (m3.Success) return m3.Value;
-
-            return string.Empty;
-        }
-
-        /// <summary>
-        /// ----------- 辅助：从实体中读取属性（AttributeReference / Xrecord / XData） ------------
-        /// </summary>
-        /// <param name="tr"></param>
-        /// <param name="ent"></param>
-        /// <returns></returns>
-        private Dictionary<string, string> GetEntityAttributeMap(Transaction tr, Entity ent)
-        {
-            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            try
-            {
-                if (ent == null) return map;
-
-                // 1) AttributeReference（块参照）
-                if (ent is BlockReference br)
-                {
-                    try
-                    {
-                        var attCol = br.AttributeCollection;
-                        foreach (ObjectId attId in attCol)
-                        {
-                            try
-                            {
-                                var ar = tr.GetObject(attId, OpenMode.ForRead) as AttributeReference;
-                                if (ar != null)
-                                {
-                                    var tag = (ar.Tag ?? string.Empty).Trim();
-                                    var val = (ar.TextString ?? string.Empty).Trim();
-                                    if (!string.IsNullOrEmpty(tag) && !map.ContainsKey(tag)) map[tag] = val;
-                                }
-                            }
-                            catch { /* 忽略单个属性读取失败 */ }
-                        }
-                    }
-                    catch { /* 忽略 */ }
-                }
-
-                // 2) ExtensionDictionary 的 Xrecord
-                try
-                {
-                    if (ent.ExtensionDictionary != ObjectId.Null)
-                    {
-                        var extDict = tr.GetObject(ent.ExtensionDictionary, OpenMode.ForRead) as DBDictionary;
-                        if (extDict != null)
-                        {
-                            foreach (var entry in extDict)
-                            {
-                                try
-                                {
-                                    var xrec = tr.GetObject(entry.Value, OpenMode.ForRead) as Xrecord;
-                                    if (xrec != null && xrec.Data != null)
-                                    {
-                                        var vals = xrec.Data.Cast<TypedValue>().Select(tv => tv.Value?.ToString() ?? "").ToArray();
-                                        var key = entry.Key ?? string.Empty;
-                                        var value = string.Join("|", vals);
-                                        if (!map.ContainsKey(key)) map[key] = value;
-                                    }
-                                }
-                                catch { }
-                            }
-                        }
-                    }
-                }
-                catch { /* 忽略 */ }
-
-                // 3) RegApp XData
-                try
-                {
-                    var db = ent.Database;
-                    var rat = (RegAppTable)tr.GetObject(db.RegAppTableId, OpenMode.ForRead);
-                    foreach (ObjectId appId in rat)
-                    {
-                        try
-                        {
-                            var app = tr.GetObject(appId, OpenMode.ForRead) as RegAppTableRecord;
-                            if (app == null) continue;
-                            var appName = app.Name;
-                            var rb = ent.GetXDataForApplication(appName);
-                            if (rb != null)
-                            {
-                                var vals = rb.Cast<TypedValue>().Select(tv => tv.Value?.ToString() ?? "").ToArray();
-                                var key = $"XDATA:{appName}";
-                                var value = string.Join("|", vals);
-                                if (!map.ContainsKey(key)) map[key] = value;
-                            }
-                        }
-                        catch { }
-                    }
-                }
-                catch { /* 忽略 */ }
-            }
-            catch (System.Exception ex)
-            {
-                Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage($"\nGetEntityAttributeMap 异常: {ex.Message}");
-            }
-            return map;
-        }
-
-        /// <summary>
-        /// ----------- 辅助：从属性字符串中解析长度（返回米，支持 mm/m） ------------
-        /// </summary>
-        /// <param name="rawValue"></param>
-        /// <returns></returns>
-        private double ParseLengthValueFromAttribute(string rawValue)
-        {
-            if (string.IsNullOrWhiteSpace(rawValue)) return double.NaN;
-            try
-            {
-                var s = rawValue.Trim().ToLowerInvariant();
-                bool containsMm = s.Contains("mm") || s.Contains("毫米");
-                bool containsM = (s.Contains("m") && !containsMm) || s.Contains("米");
-
-                var m = Regex.Match(s, @"[-+]?[0-9]*\.?[0-9]+");
-                if (!m.Success) return double.NaN;
-                if (!double.TryParse(m.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value))
-                    return double.NaN;
-
-                if (containsMm) return value / 1000.0;
-                if (containsM) return value;
-
-                // 无单位启发式：若值 >=1000 视为 mm
-                if (value >= 1000.0) return value / 1000.0;
-                return value;
-            }
-            catch { return double.NaN; }
-        }
-
-        /// <summary>
         /// "生成(管道)列表格"
         /// 内部：把给定管道列表以本类样式生成表格（表标题包含类型）
         /// 修复要点：
         /// - 插入表前使用单次 GetPoint 提示用户指定插入位置（按用户期望：选完实体后按空格/右键结束选择即可在此提示插入）
         /// - 插入并提交后立即调用 Editor.UpdateScreen() 刷新显示，允许用户在插入下一张表前看到已插入的表
         /// </summary>
-        /// <param name="db">  </param>
-        /// <param name="equipmentList"></param>
+        /// <param name="db"> </param>
+        /// <param name="equipmentList"> </param>
         /// <param name="typeTitle"></param>
         /// <summary>
         private void CreateEquipmentTableWithType(Database db, List<EquipmentInfo> equipmentList, string typeTitle)
@@ -670,7 +508,7 @@ namespace GB_NewCadPlus_III
             // 移除会被合并到固定列的键（按包含关系移除，避免 "操作温度T(℃)" 等变体生成动态列）
             var reservedKeySubstrings = new[]
             {
-                 "管道标题","管段号","管道号","起点","始点","终点","止点","管道等级",
+                 "管道标题","管段号","起点","始点","终点","止点","管道等级",
                  "介质","介质名称","Medium","Medium Name","操作温度","操作压力",
                  "隔热隔声代号","是否防腐","Length","长度"
              };
@@ -1108,13 +946,12 @@ namespace GB_NewCadPlus_III
             return string.Empty;
         }
 
-
         /// <summary>
         /// 计算总列数
         /// </summary>
         private int CalculateTotalColumns(List<EquipmentInfo> equipmentList)
         {
-            const int baseFixedCols = 10; // 基础固定列 0..9
+            const int baseFixedCols = 10; // 基础固定列 0..9 "管道号",
             // 收集所有属性键（去除保留/已合并键）
             var allKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var e in equipmentList)
@@ -1130,7 +967,7 @@ namespace GB_NewCadPlus_III
             // 移除保留键
             var reserved = new[]
             {
-                "管道标题","管段号","管道号","起点","始点","终点","止点","管道等级",
+                "管道标题","管段号","起点","始点","终点","止点","管道等级",
                 "介质","介质名称","Medium","Medium Name","操作温度","操作压力",
                 "隔热隔声代号","是否防腐","Length","长度","长度(m)"
             };
@@ -1162,6 +999,170 @@ namespace GB_NewCadPlus_III
             // total = baseFixedCols + pipeCount
             return baseFixedCols + pipeCount;
         }
+
+        /// <summary>
+        /// 迁移：为 UI 按钮 [插入管道表] 提供命令入口（已迁移到此类）
+        /// 简单实现：直接调用 GeneratePipeTableFromSelection，使用统一逻辑（包含选择、分组、插入点提示）。
+        /// 如果 WPF 需直接调用此方法，请在 WPF 中触发此命令或直接调用 GeneratePipeTableFromSelection。
+        /// </summary>
+        [CommandMethod("InsertPipeTable")]
+        public void InsertPipeTable()
+        {
+            // 迁移后直接复用 GeneratePipeTableFromSelection 的逻辑
+            GeneratePipeTableFromSelection();
+        }
+
+        /// <summary>
+        /// 从管道标题中提取管道号，例如 "350-AR-1002-1.0G11" -> "AR-1002" 
+        /// 优先返回字母-数字形式的片段，若无法匹配返回 empty 
+        /// </summary>
+        private string ExtractPipeCodeFromTitle(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return string.Empty;
+            title = title!.Trim();
+
+            // 常见形式：以字母开头 + '-' + 数字，例如 AR-1002
+            var m = Regex.Match(title, @"[A-Za-z]+-\d+");
+            if (m.Success) return m.Value;
+
+            // 保险：也尝试在 -...- 中间提取类似模式
+            var m2 = Regex.Match(title, @"-(?<code>[A-Za-z]+-\d+)-");
+            if (m2.Success && m2.Groups["code"].Success) return m2.Groups["code"].Value;
+
+            // 若仍找不到，可以尝试更宽松的匹配（包含数字在后）
+            var m3 = Regex.Match(title, @"[A-Za-z0-9]+-[0-9A-Za-z]+");
+            if (m3.Success) return m3.Value;
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// ----------- 辅助：从实体中读取属性（AttributeReference / Xrecord / XData） ------------
+        /// </summary>
+        /// <param name="tr"></param>
+        /// <param name="ent"></param>
+        /// <returns></returns>
+        private Dictionary<string, string> GetEntityAttributeMap(Transaction tr, Entity ent)
+        {
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                if (ent == null) return map;
+
+                // 1) AttributeReference（块参照）
+                if (ent is BlockReference br)
+                {
+                    try
+                    {
+                        var attCol = br.AttributeCollection;
+                        foreach (ObjectId attId in attCol)
+                        {
+                            try
+                            {
+                                var ar = tr.GetObject(attId, OpenMode.ForRead) as AttributeReference;
+                                if (ar != null)
+                                {
+                                    var tag = (ar.Tag ?? string.Empty).Trim();
+                                    var val = (ar.TextString ?? string.Empty).Trim();
+                                    if (!string.IsNullOrEmpty(tag) && !map.ContainsKey(tag)) map[tag] = val;
+                                }
+                            }
+                            catch { /* 忽略单个属性读取失败 */ }
+                        }
+                    }
+                    catch { /* 忽略 */ }
+                }
+
+                // 2) ExtensionDictionary 的 Xrecord
+                try
+                {
+                    if (ent.ExtensionDictionary != ObjectId.Null)
+                    {
+                        var extDict = tr.GetObject(ent.ExtensionDictionary, OpenMode.ForRead) as DBDictionary;
+                        if (extDict != null)
+                        {
+                            foreach (var entry in extDict)
+                            {
+                                try
+                                {
+                                    var xrec = tr.GetObject(entry.Value, OpenMode.ForRead) as Xrecord;
+                                    if (xrec != null && xrec.Data != null)
+                                    {
+                                        var vals = xrec.Data.Cast<TypedValue>().Select(tv => tv.Value?.ToString() ?? "").ToArray();
+                                        var key = entry.Key ?? string.Empty;
+                                        var value = string.Join("|", vals);
+                                        if (!map.ContainsKey(key)) map[key] = value;
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch { /* 忽略 */ }
+
+                // 3) RegApp XData
+                try
+                {
+                    var db = ent.Database;
+                    var rat = (RegAppTable)tr.GetObject(db.RegAppTableId, OpenMode.ForRead);
+                    foreach (ObjectId appId in rat)
+                    {
+                        try
+                        {
+                            var app = tr.GetObject(appId, OpenMode.ForRead) as RegAppTableRecord;
+                            if (app == null) continue;
+                            var appName = app.Name;
+                            var rb = ent.GetXDataForApplication(appName);
+                            if (rb != null)
+                            {
+                                var vals = rb.Cast<TypedValue>().Select(tv => tv.Value?.ToString() ?? "").ToArray();
+                                var key = $"XDATA:{appName}";
+                                var value = string.Join("|", vals);
+                                if (!map.ContainsKey(key)) map[key] = value;
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch { /* 忽略 */ }
+            }
+            catch (System.Exception ex)
+            {
+                Application.DocumentManager.MdiActiveDocument.Editor.WriteMessage($"\nGetEntityAttributeMap 异常: {ex.Message}");
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// ----------- 辅助：从属性字符串中解析长度（返回米，支持 mm/m） ------------
+        /// </summary>
+        /// <param name="rawValue"></param>
+        /// <returns></returns>
+        private double ParseLengthValueFromAttribute(string rawValue)
+        {
+            if (string.IsNullOrWhiteSpace(rawValue)) return double.NaN;
+            try
+            {
+                var s = rawValue.Trim().ToLowerInvariant();
+                bool containsMm = s.Contains("mm") || s.Contains("毫米");
+                bool containsM = (s.Contains("m") && !containsMm) || s.Contains("米");
+
+                var m = Regex.Match(s, @"[-+]?[0-9]*\.?[0-9]+");
+                if (!m.Success) return double.NaN;
+                if (!double.TryParse(m.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double value))
+                    return double.NaN;
+
+                if (containsMm) return value / 1000.0;
+                if (containsM) return value;
+
+                // 无单位启发式：若值 >=1000 视为 mm
+                if (value >= 1000.0) return value / 1000.0;
+                return value;
+            }
+            catch { return double.NaN; }
+        }
+
 
         /// <summary>
         /// 选择并分析属性块或动态属性块，提取设备信息并整理
@@ -1311,6 +1312,7 @@ namespace GB_NewCadPlus_III
                 Env.Editor.WriteMessage($"读取动态块属性失败: {ex.Message}");
             }
         }
+
         #region
         /// <summary>
         /// 帮助：基于已知关键字优先级构建分组键（属性存在时）
@@ -1359,7 +1361,7 @@ namespace GB_NewCadPlus_III
         #endregion
 
         /*
-         GeneratePipeTableFromSelection CalculateTotalColumns SyncPipeProperties  ExportTableToExcelFile
+         GeneratePipeTableFromSelection CalculateTotalColumns SyncPipeProperties  ExportTableToExcelFile  设备表
          */
 
         #region 获取动态块信息的方法
@@ -1834,8 +1836,6 @@ namespace GB_NewCadPlus_III
                     var sampleAttrMap = GetEntityAttributeMap(tr, sampleBlockRef) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
                     // 加载上次保存的属性（此处取决于 sampleBlockRef 名称中是否包含入口/出口关键词）
-                    // 既然 SyncPipeProperties 没有 isOutlet 参数，尝试根据名称判断
-                    // 加载上次保存的属性（根据示例块名称判断入口/出口）
                     bool sampleIsOutlet = (sampleBlockRef.Name ?? string.Empty).ToLowerInvariant().Contains("出口") ||
                                           (sampleBlockRef.Name ?? string.Empty).ToLowerInvariant().Contains("outlet");
 
@@ -1897,7 +1897,7 @@ namespace GB_NewCadPlus_III
                     Vector3d targetDirNormalized = targetDir.IsZeroLength() ? Vector3d.XAxis : targetDir.GetNormal();
                     Polyline pipeLocal = BuildPipePolylineLocal(sampleInfo.PipeBodyTemplate, orderedVertices, midPoint);
 
-                    // 复制属性定义（基于示例块的定义）
+                    // 复制属性定义（基于示例块的定义）——先克隆示例定义（保持字段顺序与名称）
                     var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBlockRef.Name)
                                         ?? new List<AttributeDefinition>();
 
@@ -1911,40 +1911,51 @@ namespace GB_NewCadPlus_III
 
                     // 为每一段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
                     var arrowEntities = CreateDirectionalArrowsAndTitles(tr, sampleInfo, orderedVertices, midPoint, pipeTitle, sampleBlockRef.Name);
-                    
-                    // 把最新属性写入/覆盖到 attDefsLocal（存在则覆盖，不存在则新增）
-                    double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 3.5;// 默认高度
-                    double yOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attHeight * 1.2 : -attHeight * 2.0;// 默认偏移 基础 Y 偏移
-                    int extraIndex = 0;
-                    foreach (var kv in latestSampleAttrs)
+
+                    // ---------- 关键修正：确保新块的属性定义字段严格以示例块的 AttributeDefinitions 为准 ----------
+                    // 1) 若示例存在属性定义，则按照示例顺序保留字段，仅更新 TextString（不新增示例中不存在的字段）
+                    // 2) 若示例没有属性定义，则以 latestSampleAttrs 为基础创建属性定义（按键排序以保证稳定性）
+                    if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)
                     {
-                        if (string.IsNullOrWhiteSpace(kv.Key)) continue;// 忽略空标签
-                        // 检查属性标签是否已存在 尝试更新 查找是否已存在该属性定义
-                        var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, kv.Key, StringComparison.OrdinalIgnoreCase));
-                        if (existing != null)
+                        // 使用示例定义作为基准，更新文本值（保留原有位置/高度/顺序）
+                        var latestDict = new Dictionary<string, string>(latestSampleAttrs, StringComparer.OrdinalIgnoreCase);
+                        foreach (var def in attDefsLocal)
                         {
-                            existing.TextString = kv.Value ?? string.Empty;// 属性值 更新属性值
-                            existing.Invisible = false; // 先临时设置，后面统一控制显示
-                            existing.Constant = false;// 属性定义
-                        }
-                        else
-                        {
-                            // 新增 新增属性定义
-                            attDefsLocal.Add(new AttributeDefinition
+                            if (string.IsNullOrWhiteSpace(def.Tag)) continue;
+                            if (latestDict.TryGetValue(def.Tag, out var val))
                             {
-                                Tag = kv.Key,// 属性标签
-                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),// 默认位置 属性位置
-                                Rotation = 0.0,// 默认旋转 默认旋转角度
-                                TextString = kv.Value ?? string.Empty,// 默认值
-                                Height = attHeight,// 默认高度
-                                Invisible = false, // 临时
-                                Constant = false
-                            });
-                            extraIndex++;
+                                def.TextString = val ?? string.Empty;
+                            }
+                            // 临时显示设置（随后统一隐藏/显示处理）
+                            def.Invisible = false;
+                            def.Constant = false;
                         }
                     }
-                   
-                    // 新增或覆盖 起点/终点 属性定义（保持原逻辑）
+                    else
+                    {
+                        // 示例无属性定义：根据 latestSampleAttrs 动态创建属性定义（按 Key 排序）
+                        attDefsLocal.Clear();
+                        double attHeight = 3.5;
+                        double yOffsetBase = -attHeight * 2.0;
+                        int idx = 0;
+                        foreach (var kv in latestSampleAttrs.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
+                        {
+                            if (string.IsNullOrWhiteSpace(kv.Key)) continue;
+                            attDefsLocal.Add(new AttributeDefinition
+                            {
+                                Tag = kv.Key,
+                                Position = new Point3d(0, yOffsetBase - idx * attHeight * 1.2, 0),
+                                Rotation = 0.0,
+                                TextString = kv.Value ?? string.Empty,
+                                Height = attHeight,
+                                Invisible = false,
+                                Constant = false
+                            });
+                            idx++;
+                        }
+                    }
+
+                    // 新增或覆盖 起点/终点 属性定义（保持原逻辑，若示例中已有这些字段则更新其值，否则新增）
                     Point3d worldStart = orderedVertices.First();
                     Point3d worldEnd = orderedVertices.Last();
                     string startCoordStr = $"X={worldStart.X:F3},Y={worldStart.Y:F3}";
@@ -1972,66 +1983,69 @@ namespace GB_NewCadPlus_III
                     {
                         extractedPipeNo = nextSegNum.ToString("D4");
                     }
-                    // 生成管段号属性 局部函数：设置或新增属性定义
+
+                    // 局部函数：按示例定义优先更新 / 新增（仅当示例中不存在该字段时新增）管道号
                     void SetOrAddAttrLocal(string tag, string text)
                     {
-                        // 尝试更新 查找是否已存在该属性定义
+                        // 按示例定义优先更新 查找是否已存在该属性定义
                         var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, tag, StringComparison.OrdinalIgnoreCase));
                         if (existing != null)
                         {
-                            existing.TextString = text;// 更新属性值
-                            existing.Invisible = false;// 临时 先临时设置，后面统一控制显示
-                            existing.Constant = false;// 临时 非常量
+                            existing.TextString = text;// 更新属性值 按示例定义优先更新
+                            existing.Invisible = false;// 临时显示设置（随后统一隐藏/显示处理）
+                            existing.Constant = false;// 临时常量设置（随后统一取消常量处理）
                         }
                         else
                         {
-                            attDefsLocal.Add(new AttributeDefinition// 新增 新增属性定义
+                            // 只有在示例没有任何定义时允许新增；但为兼容性仍允许新增起/终/段号
+                            attDefsLocal.Add(new AttributeDefinition
                             {
-                                Tag = tag,// 属性标签
-                                Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),// 属性位置
-                                Rotation = 0.0,// 属性旋转角度
-                                TextString = text,// 属性值
-                                Height = attHeight,// 属性高度
-                                Invisible = false,// 临时
-                                Constant = false// 非常量
+                                Tag = tag,
+                                Position = new Point3d(0, (attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attDefsLocal[0].Height * 1.2 : -3.5), 0),
+                                Rotation = 0.0,
+                                TextString = text,
+                                Height = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 3.5,
+                                Invisible = false,
+                                Constant = false
                             });
-                            extraIndex++;
                         }
                     }
 
                     SetOrAddAttrLocal("始点", startCoordStr);
                     SetOrAddAttrLocal("终点", endCoordStr);
                     SetOrAddAttrLocal("管段号", extractedPipeNo);
-                    // 移除块定义中的中点“管道标题”属性（避免在块中重复显示中点标题）
-                    // 并把其余属性都设置为隐藏（块内不显示），让分段文字/箭头负责显示标题
-                    attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
+
+                    //// 移除块定义中的中点“管道标题”属性（避免在块中重复显示中点标题）
+                    //attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
+
+                    //// 将其余属性设置为隐藏（块内不显示），以保持行为与现有逻辑一致
                     foreach (var ad in attDefsLocal)
                     {
-                        ad.Invisible = true; // 隐藏所有属性（块内不显示）
+                        ad.Invisible = true;
                         ad.Constant = false;
                     }
-                  
 
                     // 构建块定义并插入新块
                     string desiredName = sampleBlockRef.Name;
+                    // 创建块定义 若名称已存在则添加后缀
                     string newBlockName = BuildPipeBlockDefinition(tr, desiredName, (Polyline)pipeLocal.Clone(), arrowEntities, attDefsLocal);
-
+                    // 准备属性值字典
                     var attValues = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                     foreach (var a in attDefsLocal)
                     {
-                        if (string.IsNullOrWhiteSpace(a?.Tag)) continue;
-                        attValues[a.Tag] = a.TextString ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(a?.Tag)) continue;// 跳过无效标签 准备属性值字典
+                        attValues[a.Tag] = a.TextString ?? string.Empty;//  收集属性值
                     }
-
+                    // 插入新块并设置属性
                     var newBrId = InsertPipeBlockWithAttributes(tr, midPoint, newBlockName, 0.0, attValues);
-                    var newBr = tr.GetObject(newBrId, OpenMode.ForWrite) as BlockReference;
+                    var newBr = tr.GetObject(newBrId, OpenMode.ForWrite) as BlockReference;// 插入新块并设置属性
                     if (newBr != null)
-                        newBr.Layer = sampleInfo.PipeBodyTemplate.Layer;
+                        newBr.Layer = sampleInfo.PipeBodyTemplate.Layer;// 插入新块并设置属性 继承图层
 
                     // 删除原始线段
                     foreach (var seg in lineSegments)
                     {
-                        var ent = tr.GetObject(seg.Id, OpenMode.ForWrite) as Entity;
+                        var ent = tr.GetObject(seg.Id, OpenMode.ForWrite) as Entity;// 删除原始线段
                         if (ent != null)
                             ent.Erase();
                     }
@@ -3449,14 +3463,18 @@ namespace GB_NewCadPlus_III
 
         #region 绘制管道线
 
-        // 新增：通过点击采集点并生成管道块（入口/出口两种命令）
-        // 放在类 EquipmentTableGenerator 的任意合适位置（例如 SyncPipeProperties 方法附近）
+        /// <summary>
+        /// 新增：通过点击采集点并生成管道块（入口/出口两种命令）
+        /// </summary>
         [CommandMethod("DrawOutletPipeByClicks")]
         public void DrawOutletPipeByClicks()
         {
             DrawPipeByClicks(isOutlet: true);
         }
 
+        /// <summary>
+        /// 新增：通过点击采集点并生成管道块（入口/出口两种命令）
+        /// </summary>
         [CommandMethod("DrawInletPipeByClicks")]
         public void DrawInletPipeByClicks()
         {
@@ -3561,21 +3579,10 @@ namespace GB_NewCadPlus_III
                         }
 
                         // 读取示例块属性并弹出属性编辑窗体（在插入后立即编辑）
-                        // 读取示例块属性
                         var sampleAttrMap = GetEntityAttributeMap(tr, sampleBr) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
                         // 加载上次保存的属性（入口/出口区分）
                         var loadedAttrs = FileManager.LoadLastPipeAttributes(isOutlet);
-
-                        // 使用 FileManager 提供的合并方法（示例优先，但示例为空/占位时使用历史值；历史新增键也会加入）
-                        //var mergedForEditor = FileManager.MergeSavedPipeAttributes(sampleAttrMap, savedAttrs);
-
-                        //// 可选调试：命令行输出
-                        //try
-                        //{
-                        //    ed.WriteMessage($"\n[Debug] LoadLastPipeAttributes 返回 {savedAttrs.Count} 项，传给编辑窗 {mergedForEditor.Count} 项");
-                        //}
-                        //catch { }
 
                         // 弹出属性编辑窗，传入合并结果
                         using (var editor = new PipeAttributeEditorForm(loadedAttrs))
@@ -3712,44 +3719,61 @@ namespace GB_NewCadPlus_III
                         // 为每段生成局部坐标下的箭头与标题（相对于 midPoint），仅使用分段箭头/文字
                         var arrowEntities = CreateDirectionalArrowsAndTitles(tr, sampleInfo, points, midPoint, pipeTitle, sampleBr.Name);
 
-                        // 复制属性定义并写入最新属性值
+                        // ---------- 关键修正：属性定义严格以示例块 AttributeDefinitions 为准 ----------
                         var attDefsLocal = CloneAttributeDefinitionsLocal(sampleInfo.AttributeDefinitions, midPoint, 0.0, pipelineLength, sampleBr.Name)
                                             ?? new List<AttributeDefinition>();
 
-                        double attHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
-                        double yOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attHeight * 1.2 : -attHeight * 2.0;
-                        int extraIndex = 0;
-                        foreach (var kv in latestSampleAttrs)
+                        if (sampleInfo.AttributeDefinitions != null && sampleInfo.AttributeDefinitions.Count > 0)
                         {
-                            if (string.IsNullOrWhiteSpace(kv.Key)) continue;
-                            var existing = attDefsLocal.FirstOrDefault(a => string.Equals(a.Tag, kv.Key, StringComparison.OrdinalIgnoreCase));
-                            if (existing != null)
+                            // 示例有定义：按示例字段更新值（不随意新增无示例的字段）
+                            var latestDict = new Dictionary<string, string>(latestSampleAttrs, StringComparer.OrdinalIgnoreCase);
+                            foreach (var def in attDefsLocal)
                             {
-                                existing.TextString = kv.Value ?? string.Empty;
-                                existing.Invisible = false;
-                                existing.Constant = false;
+                                if (string.IsNullOrWhiteSpace(def.Tag)) continue;
+                                if (latestDict.TryGetValue(def.Tag, out var v))
+                                    def.TextString = v ?? string.Empty;
+                                def.Invisible = false;
+                                def.Constant = false;
                             }
-                            else
+                        }
+                        else
+                        {
+                            // 示例无定义：根据 latestSampleAttrs 动态创建属性定义（按 Key 排序）
+                            attDefsLocal.Clear();
+                            double attHeight = 2.5;
+                            double yOffsetBase = -attHeight * 2.0;
+                            int extraIdx = 0;
+                            foreach (var kv in latestSampleAttrs.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
                             {
+                                if (string.IsNullOrWhiteSpace(kv.Key)) continue;
                                 attDefsLocal.Add(new AttributeDefinition
                                 {
                                     Tag = kv.Key,
-                                    Position = new Point3d(0, yOffsetBase - extraIndex * attHeight * 1.2, 0),
+                                    Position = new Point3d(0, yOffsetBase - extraIdx * attHeight * 1.2, 0),
                                     Rotation = 0.0,
                                     TextString = kv.Value ?? string.Empty,
                                     Height = attHeight,
                                     Invisible = false,
                                     Constant = false
                                 });
-                                extraIndex++;
+                                extraIdx++;
                             }
                         }
 
-                        // 确保始点/终点/管段号属性
+                        // 确保始点/终点/管段号属性（若示例已包含则更新其值，否则新增）
                         string startCoordStr = $"X={points.First().X:F3},Y={points.First().Y:F3}";
                         string endCoordStr = $"X={points.Last().X:F3},Y={points.Last().Y:F3}";
-                        SetOrAddAttr(attDefsLocal, "始点", startCoordStr, ref extraIndex, yOffsetBase, attHeight);
-                        SetOrAddAttr(attDefsLocal, "终点", endCoordStr, ref extraIndex, yOffsetBase, attHeight);
+
+                        // 修正错误：在调用 SetOrAddAttr 时必须传入有效的 ref 变量及合适的偏移参数
+                        // 计算用于新增属性时的位置参数（基于 attDefsLocal 第一个定义或默认值）
+                        double finalAttHeight = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
+                        double finalYOffsetBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - finalAttHeight * 1.2 : -finalAttHeight * 2.0;
+                        int extraIndex = 0; // 追加属性时的索引（ref 参数）
+
+                        // 正确调用：传入 ref extraIndex, finalYOffsetBase, finalAttHeight
+                        SetOrAddAttr(attDefsLocal, "始点", startCoordStr, ref extraIndex, finalYOffsetBase, finalAttHeight);
+                        SetOrAddAttr(attDefsLocal, "终点", endCoordStr, ref extraIndex, finalYOffsetBase, finalAttHeight);
+
                         int nextSegNum = GetNextPipeSegmentNumber(db);
                         string extractedPipeNo = string.Empty;
                         if (latestSampleAttrs.TryGetValue("管道标题", out var titleFromSample) && !string.IsNullOrWhiteSpace(titleFromSample))
@@ -3761,10 +3785,31 @@ namespace GB_NewCadPlus_III
                         }
                         if (string.IsNullOrWhiteSpace(extractedPipeNo))
                             extractedPipeNo = nextSegNum.ToString("D4");
-                        SetOrAddAttr(attDefsLocal, "管段号", extractedPipeNo, ref extraIndex, yOffsetBase, attHeight);
+
+                        // 如果 attDefsLocal 中没有管段号字段，按之前逻辑补入（此处保证示例定义为准，但仍要保证管段号存在）
+                        if (!attDefsLocal.Any(a => string.Equals(a.Tag, "管段号", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            double attH = attDefsLocal.Count > 0 ? attDefsLocal[0].Height : 2.5;
+                            double yBase = attDefsLocal.Count > 0 ? attDefsLocal[0].Position.Y - attH * 1.2 : -attH * 2.0;
+                            attDefsLocal.Add(new AttributeDefinition
+                            {
+                                Tag = "管段号",
+                                Position = new Point3d(0, yBase - attDefsLocal.Count * attH * 1.2, 0),
+                                Rotation = 0.0,
+                                TextString = extractedPipeNo,
+                                Height = attH,
+                                Invisible = false,
+                                Constant = false
+                            });
+                        }
+                        else
+                        {
+                            var pnDef = attDefsLocal.First(a => string.Equals(a.Tag, "管段号", StringComparison.OrdinalIgnoreCase));
+                            pnDef.TextString = extractedPipeNo;
+                        }
 
                         // 在构建块定义之前：移除/隐藏中点“管道标题”
-                        attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
+                        //attDefsLocal.RemoveAll(ad => string.Equals(ad.Tag, "管道标题", StringComparison.OrdinalIgnoreCase));
                         foreach (var ad in attDefsLocal)
                         {
                             ad.Invisible = true;
@@ -3787,7 +3832,7 @@ namespace GB_NewCadPlus_III
                         if (newBr != null)
                             newBr.Layer = sampleInfo.PipeBodyTemplate.Layer;
 
-                        // 清理：如果之前我们临时插入了样例块，删除它（不影响已创建的管线块）
+                        // 清理：如果之前我们临时插入了样例块，删除它（不影响已创建的管线块）foreach (var ad in attDefsLocal)
                         if (tempInserted)
                         {
                             try
@@ -4412,56 +4457,6 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 设置表格样式 - 修正版
-        /// </summary>
-        private void SetTableStyle(Database db, Table table, Transaction trans)
-        {
-            try
-            {
-                // 获取或创建表格样式
-                ObjectId tableStyleId = GetOrCreateTableStyle(db, trans);
-
-                // 应用表格样式
-                if (!tableStyleId.IsNull)
-                {
-                    table.TableStyle = tableStyleId;
-                }
-
-                // 设置表格基本属性
-                table.FlowDirection = Autodesk.AutoCAD.DatabaseServices.FlowDirection.TopToBottom;
-
-                // 设置行高
-                for (int i = 0; i < table.Rows.Count; i++)
-                {
-                    double rowHeight = 8.0; // 默认行高
-                    if (i == 0) // 标题行稍高一些
-                        rowHeight = 12.0;
-                    else if (i == 1) // 第二行（设备名称行）
-                        rowHeight = 10.0;
-
-                    table.SetRowHeight(i, rowHeight);
-                }
-
-                // 设置列宽
-                for (int j = 0; j < table.Columns.Count; j++)
-                {
-                    table.SetColumnWidth(j, 25.0); // 默认列宽
-                }
-
-                // 设置表格边框
-                SetTableBorders(table);
-
-                // 设置单元格样式
-                SetCellStyles(table);
-            }
-            catch (Exception ex)
-            {
-                // 如果样式设置失败，使用基本设置
-                SetBasicTableStyle(table);
-            }
-        }
-
-        /// <summary>
         /// 获取或创建表格样式
         /// </summary>
         private ObjectId GetOrCreateTableStyle(Database db, Transaction trans)
@@ -4474,18 +4469,18 @@ namespace GB_NewCadPlus_III
                 ObjectId tableStyleId = ObjectId.Null;
 
                 // 尝试获取Standard表格样式
-                if (tableStyleDict.Contains("Standard"))
+                if (tableStyleDict.Contains("EquipmentTableStyle"))
                 {
-                    tableStyleId = tableStyleDict.GetAt("Standard");
+                    tableStyleId = tableStyleDict.GetAt("EquipmentTableStyle");
                 }
-                else if (tableStyleDict.Contains("_STANDARD"))
+                else if (tableStyleDict.Contains("_EquipmentTableStyle"))
                 {
-                    tableStyleId = tableStyleDict.GetAt("_STANDARD");
+                    tableStyleId = tableStyleDict.GetAt("_EquipmentTableStyle");
                 }
                 else
                 {
-                    // 创建自定义表格样式
-                    tableStyleId = CreateCustomTableStyle(db, trans, tableStyleDict);
+                    // 创建自定义(设备)表格样式
+                    tableStyleId = CreateEquipmentTableStyle(db, trans, tableStyleDict);
                 }
 
                 return tableStyleId;
@@ -4497,9 +4492,9 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 创建自定义表格样式
+        /// 创建自定义(设备)表格样式
         /// </summary>
-        private ObjectId CreateCustomTableStyle(Database db, Transaction trans, DBDictionary tableStyleDict)
+        private ObjectId CreateEquipmentTableStyle(Database db, Transaction trans, DBDictionary tableStyleDict)
         {
             try
             {
@@ -4508,7 +4503,7 @@ namespace GB_NewCadPlus_III
 
                 // 创建新的表格样式
                 TableStyle newTableStyle = new TableStyle();
-                newTableStyle.Name = "EquipmentTableStyle";
+                newTableStyle.Name = "EquipmentTableStyle";// 表格样式名称
 
                 // 设置标题行样式
                 newTableStyle.SetAlignment(CellAlignment.MiddleCenter, (int)RowType.TitleRow);
@@ -4563,6 +4558,56 @@ namespace GB_NewCadPlus_III
             catch
             {
                 // 忽略边框设置错误
+            }
+        }
+
+        /// <summary>
+        /// 设置表格样式 - 修正版
+        /// </summary>
+        private void SetTableStyle(Database db, Table table, Transaction trans)
+        {
+            try
+            {
+                // 获取或创建表格样式
+                ObjectId tableStyleId = GetOrCreateTableStyle(db, trans);
+
+                // 应用表格样式
+                if (!tableStyleId.IsNull)
+                {
+                    table.TableStyle = tableStyleId;
+                }
+
+                // 设置表格基本属性
+                table.FlowDirection = Autodesk.AutoCAD.DatabaseServices.FlowDirection.TopToBottom;
+
+                // 设置行高
+                for (int i = 0; i < table.Rows.Count; i++)
+                {
+                    double rowHeight = 8.0; // 默认行高
+                    if (i == 0) // 标题行稍高一些
+                        rowHeight = 12.0;
+                    else if (i == 1) // 第二行（设备名称行）
+                        rowHeight = 10.0;
+
+                    table.SetRowHeight(i, rowHeight);
+                }
+
+                // 设置列宽
+                for (int j = 0; j < table.Columns.Count; j++)
+                {
+                    table.SetColumnWidth(j, 25.0); // 默认列宽
+                }
+
+                // 设置表格边框
+                SetTableBorders(table);
+
+                // 设置单元格样式
+                SetCellStyles(table);
+            }
+            catch (Exception ex)
+            {
+                // 如果样式设置失败，使用基本设置
+                SetBasicTableStyle(table);
             }
         }
 
@@ -4671,7 +4716,7 @@ namespace GB_NewCadPlus_III
                 table.MergeCells(CellRange.Create(table, 1, 0, 2, 0));
                 table.Cells[1, 0].TextString = "管道标题\nPipe Title";
 
-                // 管段号：第1列（索引1），跨2行
+                // 管段号：第1列（索引1），跨2行 管道号
                 table.MergeCells(CellRange.Create(table, 1, 1, 2, 1));
                 table.Cells[1, 1].TextString = "管段号\nPipeline\nNo.";
 
@@ -4745,10 +4790,10 @@ namespace GB_NewCadPlus_III
             // 保持与现有表头对齐，原实现从第19列开始（索引18）
             int currentColumn = 18;
 
-            // 要从动态属性中排除的保留关键词（按包含匹配）
+            // 要从动态属性中排除的保留关键词（按包含匹配）管道号
             var reservedSubstrings = new[]
             {
-                "管道标题","管段号","管道号","起点","始点","终点","止点","管道等级",
+                "管道标题","管段号","起点","始点","终点","止点","管道等级",
                 "介质","介质名称","Medium","Medium Name","操作温度","操作压力",
                 "隔热隔声代号","是否防腐","Length","长度",
                 "标准号","图号","DWG.No.","STD.No.","标准"
