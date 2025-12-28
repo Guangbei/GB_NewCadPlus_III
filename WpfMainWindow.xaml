@@ -38,7 +38,7 @@
             MaxWidth="330"
             Style="{StaticResource TabControlStyle}">
             <!--  第一TabControlItem(图元)  -->
-            <TabItem Header="CAD图元">
+            <TabItem Width="80" Header="CAD图元">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="125" />
@@ -2704,7 +2704,7 @@
             </TabItem>
             <!--  第二个TabControlItem(设置)  -->
             <!--  修改工具设置TabItem，添加端口输入框  -->
-            <TabItem Header="工具设置">
+            <TabItem Width="80" Header="工具设置">
                 <TabControl
                     Margin="0,0,0,0"
                     Padding="1,2,1,0"
@@ -3048,7 +3048,7 @@
             </TabItem>
             <!--  第一TabControlItem(管理员模块)  -->
             <TabItem
-                Width="82"
+                Width="80"
                 HorizontalAlignment="Right"
                 Header="管理员模块">
                 <Grid>
@@ -3459,7 +3459,7 @@
                                 GridLinesVisibility="All"
                                 HeadersVisibility="Column">
                                 <DataGrid.Columns>
-                                    <DataGridTemplateColumn Width="*" Header="属性名称1">
+                                    <DataGridTemplateColumn Width="70" Header="属性名称1">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding PropertyName1}" />
@@ -3491,7 +3491,7 @@
                                         </DataGridTemplateColumn.CellEditingTemplate>
                                     </DataGridTemplateColumn>
 
-                                    <DataGridTemplateColumn Width="*" Header="属性名称2">
+                                    <DataGridTemplateColumn Width="70" Header="属性名称2">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding PropertyName2}" />
@@ -3528,11 +3528,296 @@
                     </Grid>
                 </Grid>
             </TabItem>
+
             <TabItem
-                Width="110"
+                Width="80"
                 HorizontalAlignment="Right"
-                Header="部门\人员模块">
-                <local:DepartmentAdminControl />
+                Header="数据库">
+                <TabControl>
+                    <TabItem Header="数据库管理">
+                        <Grid>
+                            <Button
+                                x:Name="初始化所有表"
+                                Width="150"
+                                Height="40"
+                                Margin="10,10,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化所有表_Click"
+                                Content="初始化所有表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化文件表"
+                                Width="150"
+                                Height="40"
+                                Margin="10,145,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化文件表_Click"
+                                Content="初始化文件表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化文件属性表"
+                                Width="150"
+                                Height="40"
+                                Margin="10,190,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化文件属性表_Click"
+                                Content="初始化文件属性表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化人员表"
+                                Width="150"
+                                Height="40"
+                                Margin="176,100,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化人员表_Click"
+                                Content="初始化人员表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化分类表"
+                                Width="150"
+                                Height="40"
+                                Margin="10,100,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化分类表_Click"
+                                Content="初始化分类表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化子分类表"
+                                Width="150"
+                                Height="40"
+                                Margin="10,55,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化子分类表_Click"
+                                Content="初始化子分类表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="初始化部门表"
+                                Width="150"
+                                Height="40"
+                                Margin="176,55,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="初始化部门表_Click"
+                                Content="初始化部门表"
+                                Foreground="White" />
+                            <Button
+                                x:Name="同步文件属性_列"
+                                Width="150"
+                                Height="40"
+                                Margin="176,190,0,0"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Background="#FF0050A0"
+                                BorderBrush="#FFC2C6CE"
+                                Click="同步文件属性_列_Click"
+                                Content="同步文件属性_列"
+                                Foreground="White" />
+                        </Grid>
+
+                    </TabItem>
+                    <TabItem Header="部门管理">
+                        <Grid Width="Auto" Height="Auto">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="2" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <StackPanel
+                                Grid.Column="0"
+                                Margin="0"
+                                Background="#FFECECEC">
+                                <TextBlock
+                                    Margin="8,5,0,6"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Text="部门管理" />
+                                <StackPanel
+                                    Margin="0,0,0,6"
+                                    HorizontalAlignment="Left"
+                                    Orientation="Horizontal">
+                                    <Button
+                                        x:Name="BtnSync"
+                                        Width="100"
+                                        Margin="8,0,6,0"
+                                        Click="BtnSync_Click"
+                                        Content="按分类同步部门" />
+                                    <Button
+                                        x:Name="BtnAddDept"
+                                        Width="60"
+                                        Margin="0,0,6,0"
+                                        Click="BtnAddDept_Click"
+                                        Content="新增部门" />
+                                    <Button
+                                        x:Name="BtnEditDept"
+                                        Width="60"
+                                        Margin="0,0,6,0"
+                                        Click="BtnEditDept_Click"
+                                        Content="编辑部门" />
+                                    <Button
+                                        x:Name="BtnDeleteDept"
+                                        Width="60"
+                                        Click="BtnDeleteDept_Click"
+                                        Content="删除部门" />
+                                </StackPanel>
+
+                                <DataGrid
+                                    x:Name="DepartmentsGrid"
+                                    AutoGenerateColumns="False"
+                                    IsReadOnly="True"
+                                    SelectionChanged="DepartmentsGrid_SelectionChanged"
+                                    SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn
+                                            Width="40"
+                                            Binding="{Binding Id}"
+                                            Header="ID" />
+                                        <DataGridTextColumn
+                                            Width="80"
+                                            Binding="{Binding Name}"
+                                            Header="名称" />
+                                        <DataGridTextColumn
+                                            Width="80"
+                                            Binding="{Binding DisplayName}"
+                                            Header="显示名" />
+                                        <DataGridTextColumn
+                                            Width="50"
+                                            Binding="{Binding UserCount}"
+                                            Header="用户数" />
+                                        <DataGridTextColumn
+                                            Width="40"
+                                            Binding="{Binding SortOrder}"
+                                            Header="排序" />
+                                        <DataGridCheckBoxColumn
+                                            Width="40"
+                                            Binding="{Binding IsActive}"
+                                            Header="启用" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+
+                            <StackPanel
+                                Grid.Row="2"
+                                Margin="0"
+                                Background="#FFECECEC">
+                                <TextBlock
+                                    Margin="5,8,5,8"
+                                    FontSize="14"
+                                    FontWeight="Bold"
+                                    Text="部门用户 / 分配" />
+                                <TextBlock
+                                    Margin="10,0,5,5"
+                                    FontWeight="SemiBold"
+                                    Text="选中部门用户列表：" />
+                                <DataGrid
+                                    x:Name="UsersGrid"
+                                    AutoGenerateColumns="False"
+                                    IsReadOnly="True"
+                                    SelectionMode="Single">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn
+                                            Width="50"
+                                            Binding="{Binding Id}"
+                                            Header="用户ID" />
+                                        <DataGridTextColumn
+                                            Width="80"
+                                            Binding="{Binding Username}"
+                                            Header="用户名" />
+                                        <DataGridTextColumn
+                                            Width="80"
+                                            Binding="{Binding FullName}"
+                                            Header="姓名" />
+                                        <DataGridTextColumn
+                                            Width="100"
+                                            Binding="{Binding Email}"
+                                            Header="邮箱" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <StackPanel
+                                    Margin="0,8,0,0"
+                                    VerticalAlignment="Top"
+                                    Orientation="Horizontal">
+                                    <TextBox
+                                        x:Name="TxtSearchUser"
+                                        Width="350"
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Bottom"
+                                        Text="输入用户名搜索/分配" />
+
+                                </StackPanel>
+
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Row="2"
+                                Width="154"
+                                Height="22"
+                                Margin="10,0,0,58"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Bottom">
+                                <Button
+                                    x:Name="BtnRefresh"
+                                    Width="150"
+                                    Height="20"
+                                    Margin="0,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"
+                                    Click="BtnRefresh_Click"
+                                    Content="刷新" />
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Row="2"
+                                Width="154"
+                                Height="22"
+                                Margin="0,0,10,58"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom">
+                                <Button
+                                    x:Name="BtnAssignUser"
+                                    Width="150"
+                                    Height="20"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    HorizontalContentAlignment="Center"
+                                    Click="BtnAssignUser_Click"
+                                    Content="将用户分配到选中部门" />
+
+                            </StackPanel>
+                            <StackPanel
+                                Grid.Row="2"
+                                Height="50"
+                                VerticalAlignment="Bottom">
+                                <TextBlock
+                                    x:Name="TxtStatus"
+                                    Height="45"
+                                    Margin="0,0,0,0"
+                                    Foreground="Gray"
+                                    TextWrapping="Wrap" />
+                            </StackPanel>
+
+                        </Grid>
+                    </TabItem>
+                    <!--部门管理  <local:DepartmentAdminControl Width="auto" Height="auto" />-->
+                </TabControl>
             </TabItem>
         </TabControl>
 

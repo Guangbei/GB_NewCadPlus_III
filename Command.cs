@@ -137,7 +137,8 @@ namespace GB_NewCadPlus_III
             DateTime setDate = new DateTime(2026, 12, 30);
             if (DateTime.Now < setDate)
             {
-
+                // DEBUG: 临时强制弹出调试器以便附加调试（调试完成后请删除此行并 Rebuild）
+               // System.Diagnostics.Debugger.Launch();
                 var login = new LoginWindow();
                 if (login.ShowDialog() != true) { return; }
                 //FormMain.GB_CadToolsForm.ShowToolsPanel();//启动winForm图库管理窗体；

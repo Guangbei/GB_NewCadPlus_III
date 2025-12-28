@@ -1,4 +1,5 @@
 using GB_NewCadPlus_III.Helpers;
+using GB_NewCadPlus_III;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -279,7 +280,7 @@ namespace GB_NewCadPlus_III.Views
         /// </summary>
         private void UpdateDtoFromGrid()
         {
-            var items = PropertiesGrid.ItemsSource as List<CategoryPropertyEditModel>;
+            var items = PropertiesGrid.ItemsSource as List<WpfMainWindow.CategoryPropertyEditModel>;
             if (items == null) return;
 
             foreach (var item in items)

@@ -1,6 +1,9 @@
 using GB_NewCadPlus_III.Helpers;
+using MySql.Data.MySqlClient;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System;
+using System.Linq;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
@@ -21,6 +24,7 @@ using Border = System.Windows.Controls.Border;
 using Brushes = System.Windows.Media.Brushes;
 using Button = System.Windows.Controls.Button;
 using ComboBox = System.Windows.Controls.ComboBox;
+using Cursors = System.Windows.Input.Cursors;
 using DataGrid = System.Windows.Controls.DataGrid;
 using DataTable = System.Data.DataTable;
 using FontFamily = System.Windows.Media.FontFamily;
@@ -36,6 +40,11 @@ using UserControl = System.Windows.Controls.UserControl;
 //ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
 namespace GB_NewCadPlus_III
 {
+    /*
+     SaveCategoryPropertiesEditsAsync
+     
+     */
+
     /// <summary>
     /// WpfMainWindow.xaml 的交互逻辑
     /// </summary>
@@ -328,7 +337,8 @@ namespace GB_NewCadPlus_III
                         _fileManager = new FileManager(_databaseManager);
                         _categoryManager = new CategoryManager(_databaseManager);
                     }
-
+                    // 初始化部门管理管理模块
+                    InitializeDepartmentAdmin();
                     // 后续数据库相关初始化（例如加载分类树）
                     ReinitializeDatabase();
                     // 根据当前登录用户决定是否显示管理员/部门模块
@@ -345,6 +355,86 @@ namespace GB_NewCadPlus_III
             catch (Exception ex)
             {
                 LogManager.Instance.LogWarning($"WpfMainWindow_Loaded 异常: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 初始化部门管理模块
+        /// </summary>
+        private void InitializeDepartmentAdmin()
+        {
+            try
+            {
+                string host = null;
+                int port = 3306;
+
+                // 1) 优先：如果 LoginWindow 仍在运行，从中读取（公开属性）
+                try
+                {
+                    var loginWin = System.Windows.Application.Current?.Windows
+                        .OfType<LoginWindow>()
+                        .FirstOrDefault();
+                    if (loginWin != null)
+                    {
+                        host = loginWin.ServerIP ?? "127.0.0.1";
+                        port = loginWin.ServerPort;
+                    }
+                }
+                catch
+                {
+                    // 忽略通过 Window 读取失败，继续回退
+                }
+
+                // 2) 回退：从 login_config.json 读取（如果尚未获得 host）
+                if (string.IsNullOrWhiteSpace(host))
+                {
+                    var cfgPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GB_NewCadPlus_III", "login_config.json");
+                    string cfgHost = null;
+                    string cfgPort = null;
+                    if (System.IO.File.Exists(cfgPath))
+                    {
+                        try
+                        {
+                            var json = System.IO.File.ReadAllText(cfgPath);
+                            var ser = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            var cfg = ser.Deserialize<LoginConfig>(json);
+                            if (cfg != null)
+                            {
+                                cfgHost = cfg.ServerIP;
+                                cfgPort = cfg.ServerPort;
+                            }
+                        }
+                        catch
+                        {
+                            // 忽略解析错误
+                        }
+                    }
+
+                    host = !string.IsNullOrWhiteSpace(cfgHost) ? cfgHost : (VariableDictionary._serverIP ?? "127.0.0.1");
+                    if (!string.IsNullOrWhiteSpace(cfgPort) && int.TryParse(cfgPort, out var p2))
+                        port = p2;
+                    else if (VariableDictionary._serverPort > 0)
+                        port = VariableDictionary._serverPort;
+                }
+
+                // 3) 初始化服务并刷新部门（在 UI 线程安全调用异步刷新）
+                _svc = new MySqlAuthService(host, port.ToString());
+                try
+                {
+                    // RefreshDepartmentsAsync 是 async void，直接触发即可
+                    RefreshDepartmentsAsync();
+                }
+                catch (Exception exRefresh)
+                {
+                    try { TxtStatus.Text = "刷新部门失败：" + exRefresh.Message; } catch { }
+                    LogManager.Instance.LogWarning($"InitializeDepartmentAdmin 调用 RefreshDepartmentsAsync 失败: {exRefresh.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                // 保护性设置，避免 UI 崩溃
+                try { TxtStatus.Text = "初始化失败：" + ex.Message; } catch { }
+                LogManager.Instance.LogWarning($"InitializeDepartmentAdmin 失败: {ex.Message}");
             }
         }
 
@@ -597,16 +687,16 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 初始化分类属性编辑网格
         /// </summary>
-        private void InitializeCategoryPropertyGrid()
+        private void InitializeCategoryPropertyGrid(ItemsControl categoryPropertiesDataGrid)
         {
-            var initialRows = new List<CategoryPropertyEditModel>
-                {
-                    new CategoryPropertyEditModel(),
-                    new CategoryPropertyEditModel(),
-                    new CategoryPropertyEditModel()
-                };
+            var initialRows = new ObservableCollection<CategoryPropertyEditModel>
+              {
+                  new CategoryPropertyEditModel(),
+                  new CategoryPropertyEditModel(),
+                  new CategoryPropertyEditModel()
+              };
 
-            CategoryPropertiesDataGrid.ItemsSource = initialRows;
+            categoryPropertiesDataGrid.ItemsSource = initialRows;
             LogManager.Instance.LogInfo("初始化分类属性编辑网格成功:InitializeCategoryPropertyGrid()");
         }
 
@@ -1194,8 +1284,7 @@ namespace GB_NewCadPlus_III
         /// <summary>
         /// 按子分类加载文件
         /// </summary>
-        private async Task LoadFilesBySubcategories(CadCategory category,
-            List<CadSubcategory> subcategories, WrapPanel panel)
+        private async Task LoadFilesBySubcategories(CadCategory category, List<CadSubcategory> subcategories, WrapPanel panel)
         {
             try
             {
@@ -1222,9 +1311,9 @@ namespace GB_NewCadPlus_III
                     Border sectionBorder = CreateSubcategorySection(
                         subcategory.DisplayName,
                         backgroundColors[colorIndex % backgroundColors.Count]);
-
+                    // 创建文件显示区域
                     StackPanel sectionPanel = sectionBorder.Child as StackPanel;
-
+                    // 按显示名称排序 添加文件按钮
                     if (files.Count > 0)
                     {
                         // 按显示名称排序
@@ -1252,34 +1341,35 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private Border CreateSubcategorySection(string title, System.Windows.Media.Color backgroundColor)
         {
+            /// 创建子分类区域
             Border sectionBorder = new Border
             {
-                BorderBrush = new SolidColorBrush(Colors.Gray),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(5),
-                Margin = new Thickness(0, 2, 0, 2),
-                Width = 300,
-                Background = new SolidColorBrush(backgroundColor),
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Left
+                BorderBrush = new SolidColorBrush(Colors.Gray),// 边框颜色
+                BorderThickness = new Thickness(1),// 边框宽度
+                CornerRadius = new CornerRadius(5),// 圆角
+                Margin = new Thickness(0, 2, 0, 2),// 间距 外边距
+                Width = 280,// 宽度
+                Background = new SolidColorBrush(backgroundColor),// 背景色
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left// 水平对齐方式
             };
-
+            // 创建子分类区域内容面板
             StackPanel sectionPanel = new StackPanel
             {
-                Margin = new Thickness(3)
+                Margin = new Thickness(3)// 间距 内边距
             };
-
+            // 创建子分类区域标题
             TextBlock sectionHeader = new TextBlock
             {
-                Text = title,
-                FontSize = 14,
-                FontWeight = FontWeights.Bold,
-                Margin = new Thickness(0, 0, 0, 2),
-                Foreground = new SolidColorBrush(Colors.DarkBlue)
+                Text = title,// 标题 标题文本
+                FontSize = 14,// 字体大小
+                FontWeight = FontWeights.Bold,// 字体粗细
+                Margin = new Thickness(0, 0, 0, 2),// 间距 内边距 间距 底部外边距
+                Foreground = new SolidColorBrush(Colors.DarkBlue)// 字体颜色
             };
-
+            // 将标题添加到面板 将标题添加到内容面板
             sectionPanel.Children.Add(sectionHeader);
-            sectionBorder.Child = sectionPanel;
-
+            sectionBorder.Child = sectionPanel;// 将内容面板添加到边框
+            // 返回子分类区域 返回子分类区域边框
             return sectionBorder;
         }
 
@@ -1344,27 +1434,28 @@ namespace GB_NewCadPlus_III
                     buttonText = buttonText.Trim();
                 }
             }
-            Button btn = new Button
+            Button btn = new Button//创建按钮
             {
-                Content = buttonText,
-                Width = 88,
-                Height = 22,
-                Margin = new Thickness(0, 0, 5, 0),
-                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
-                VerticalAlignment = System.Windows.VerticalAlignment.Top,
-                Tag = new ButtonTagCommandInfo
+                Content = buttonText,//按钮文本按钮显示文本
+                Width = 88,//宽度
+                Height = 22,//高度
+                Margin = new Thickness(0, 0, 5, 0),//间距 内边距间距 右外边距
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Left,//水平对齐方式
+                VerticalAlignment = System.Windows.VerticalAlignment.Top,//垂直对齐方式
+                Tag = new ButtonTagCommandInfo//按钮标签按钮标签命令信息
                 {
-                    Type = "FileStorage",
-                    ButtonName = buttonText,
-                    fileStorage = file
+                    Type = "FileStorage",//类型文件存储
+                    ButtonName = buttonText,//按钮名称 按钮显示文本
+                    fileStorage = file//文件存储对象
                 }
             };
-
+            // 单击检测
             btn.Click += DynamicButton_Click;
             // 双击检测（保留）
             btn.PreviewMouseLeftButtonDown += DynamicButton_PreviewMouseLeftButtonDown;
             // 增加拖拽事件
             btn.PreviewMouseMove += DynamicButton_PreviewMouseMove;
+            // 增加鼠标抬起事件
             btn.PreviewMouseLeftButtonUp += DynamicButton_PreviewMouseLeftButtonUp;
             return btn;
         }
@@ -1379,6 +1470,9 @@ namespace GB_NewCadPlus_III
                 // 检查发送者是否为按钮
                 if (sender is Button btn)
                 {
+                    //System.Diagnostics.Debugger.Launch();
+                    //int __dbg_marker = 0; // 临时：强制生成 IL，调试完成后删除
+
                     FileStorage fileStorage = null;// 获取按钮的 Tag 属性 用于后续处理的文件存储对象
                     LogManager.Instance.LogInfo($"单次点击了按钮: {btn.Content} ");
                     if (_useDatabaseMode && btn.Tag is ButtonTagCommandInfo tagInfo)// 数据库模式
@@ -3553,10 +3647,11 @@ namespace GB_NewCadPlus_III
                 if (e.NewValue is CategoryTreeNode selectedNode)
                 {
                     _selectedCategoryNode = selectedNode;
-                    //LogManager.Instance.LogInfo($"选中分类节点: {selectedNode.DisplayText} (ID: {selectedNode.Id}, Level: {selectedNode.Level})");
                     LogManager.Instance.LogInfo($"选中分类节点: {selectedNode.DisplayText} (ID: {selectedNode.Id}, Level: {selectedNode.Level})");
-                    // 根据选中的节点类型显示相应的属性编辑界面
-                    DisplayNodePropertiesForEditing(selectedNode);
+
+                    // 传入 CategoryPropertiesDataGrid 作为目标控件（修复：缺失的参数）
+                    // 显示节点属性用于编辑
+                    DisplayNodePropertiesForEditing(selectedNode, CategoryPropertiesDataGrid);
 
                     // 加载该分类下的文件
                     await LoadFilesForCategoryAsync(selectedNode);
@@ -3578,15 +3673,16 @@ namespace GB_NewCadPlus_III
         /// 显示节点属性用于编辑
         /// </summary>
         /// <param name="node"></param>
-        private void DisplayNodePropertiesForEditing(CategoryTreeNode node)
+        private void DisplayNodePropertiesForEditing(CategoryTreeNode node, ItemsControl categoryPropertiesDataGrid)
         {
             try
             {
-                var propertyRows = new List<CategoryPropertyEditModel>();
-
+                // 创建一个 ObservableCollection 来保存属性行 准备属性数据
+                var propertyRows = new ObservableCollection<CategoryPropertyEditModel>();
+                // 添加属性行 根据节点类型添加属性行
                 if (node.Level == 0 && node.Data is CadCategory category)
                 {
-                    // 主分类
+                    // 根节点 主分类节点
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
                         PropertyName1 = "ID",
@@ -3609,9 +3705,8 @@ namespace GB_NewCadPlus_III
                         PropertyValue2 = ""
                     });
                 }
-                else if (node.Data is CadSubcategory subcategory)
+                else if (node.Data is CadSubcategory subcategory)//子分类节点
                 {
-                    // 子分类
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
                         PropertyName1 = "ID",
@@ -3636,23 +3731,25 @@ namespace GB_NewCadPlus_III
                     propertyRows.Add(new CategoryPropertyEditModel
                     {
                         PropertyName1 = "子分类数",
-                        PropertyValue1 = GetSubcategoryCount(subcategory).ToString(),
+                        PropertyValue1 = subcategory.SubcategoryIds.Split(',').Length.ToString(),
                         PropertyName2 = "",
                         PropertyValue2 = ""
                     });
                 }
-
-                // 添加空行用于编辑
+                // 添加两个空行 添加空行作为分隔符
                 propertyRows.Add(new CategoryPropertyEditModel());
+                // 添加两个空行
                 propertyRows.Add(new CategoryPropertyEditModel());
-
-                CategoryPropertiesDataGrid.ItemsSource = propertyRows;
+                // 设置属性数据源 将属性行绑定到DataGrid
+                categoryPropertiesDataGrid.ItemsSource = propertyRows;
             }
             catch (Exception ex)
             {
                 LogManager.Instance.LogInfo($"显示节点属性失败: {ex.Message}");
             }
         }
+
+
 
         /// <summary>
         /// 获取分类数量
@@ -3684,15 +3781,14 @@ namespace GB_NewCadPlus_III
         /// 初始化子分类属性编辑界面
         /// </summary>
         /// <param name="parentNode"></param>
-        private void InitializeSubcategoryPropertiesForEditing(CategoryTreeNode parentNode)
+        private void InitializeSubcategoryPropertiesForEditing(CategoryTreeNode parentNode, ItemsControl categoryPropertiesDataGrid)
         {
-            var subcategoryProperties = new List<CategoryPropertyEditModel>
-            {
-                new CategoryPropertyEditModel { PropertyName1 = "父分类ID", PropertyValue1 = parentNode.Id.ToString(), PropertyName2 = "名称", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = "", PropertyName2 = "排序序号", PropertyValue2 = "自动生成" } // 留空，表示自动生成
-            };
+            var subcategoryProperties = new ObservableCollection<CategoryPropertyEditModel>
+    {
+        new CategoryPropertyEditModel { PropertyName1 = "父分类ID", PropertyValue1 = parentNode.Id.ToString(), PropertyName2 = "名称", PropertyValue2 = "" },
+        new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = "", PropertyName2 = "排序序号", PropertyValue2 = "自动生成" }
+    };
 
-            // 添加参考信息
             subcategoryProperties.Add(new CategoryPropertyEditModel
             {
                 PropertyName1 = "父级名称",
@@ -3701,29 +3797,27 @@ namespace GB_NewCadPlus_III
                 PropertyValue2 = ""
             });
 
-            // 添加空行用于用户输入
             subcategoryProperties.Add(new CategoryPropertyEditModel());
             subcategoryProperties.Add(new CategoryPropertyEditModel());
 
-            CategoryPropertiesDataGrid.ItemsSource = subcategoryProperties;
+            categoryPropertiesDataGrid.ItemsSource = subcategoryProperties;
         }
 
         /// <summary>
         /// 初始化主分类属性编辑界面
         /// </summary>
-        private void InitializeCategoryPropertiesForCategory()
+        private void InitializeCategoryPropertiesForCategory(ItemsControl categoryPropertiesDataGrid)
         {
-            var categoryProperties = new List<CategoryPropertyEditModel>
-            {
-                new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = "", PropertyName2 = "显示名称", PropertyValue2 = "" },
-                new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = "自动生成", PropertyName2 = "", PropertyValue2 = "" } // 留空，表示自动生成
-            };
+            var categoryProperties = new ObservableCollection<CategoryPropertyEditModel>
+    {
+        new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = "", PropertyName2 = "显示名称", PropertyValue2 = "" },
+        new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = "自动生成", PropertyName2 = "", PropertyValue2 = "" }
+    };
 
-            // 添加空行用于用户输入
             categoryProperties.Add(new CategoryPropertyEditModel());
             categoryProperties.Add(new CategoryPropertyEditModel());
 
-            CategoryPropertiesDataGrid.ItemsSource = categoryProperties;
+            categoryPropertiesDataGrid.ItemsSource = categoryProperties;
         }
 
         /// <summary>
@@ -4503,20 +4597,19 @@ namespace GB_NewCadPlus_III
                 if (_currentDatabaseType == "CAD")
                 {
                     _currentOperation = ManagementOperationType.AddCategory;
-                    InitializeCategoryPropertiesForCategory();//初始化新建分类界面
+                    // 传入 CategoryPropertiesDataGrid 作为目标控件（修复：缺失的参数）
+                    InitializeCategoryPropertiesForCategory(CategoryPropertiesDataGrid);
                     _selectedCategoryNode = null; // 清除选中节点，表示添加主分类
 
-                    //ShowNewCategoryTips();// 显示提示信息
                     LogManager.Instance.LogInfo("初始化新建主分类界面");
                 }
                 else if (_currentDatabaseType == "SW")
                 {
                     _currentOperation = ManagementOperationType.AddCategory; // 创建新的SW分类
-                    InitializeCategoryPropertiesForCategory();
+                    InitializeCategoryPropertiesForCategory(CategoryPropertiesDataGrid);
                 }
 
                 MessageBox.Show("请在表格中填写分类属性，然后点击'应用属性'按钮", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                //System.Windows.MessageBox.Show("分类创建成功");
             }
             catch (Exception ex)
             {
@@ -4543,8 +4636,8 @@ namespace GB_NewCadPlus_III
                     if (_selectedCategoryNode != null)
                     {
                         _currentOperation = ManagementOperationType.AddSubcategory;
-                        // 初始化子分类属性编辑界面，预填父分类ID
-                        InitializeSubcategoryPropertiesForEditing(_selectedCategoryNode);
+                        // 初始化子分类属性编辑界面，预填父分类ID（补上缺失的 ItemsControl 参数）
+                        InitializeSubcategoryPropertiesForEditing(_selectedCategoryNode, CategoryPropertiesDataGrid);
                         // 显示提示信息
                         //ShowNewSubcategoryTips(_selectedCategoryNode);
 
@@ -4576,8 +4669,8 @@ namespace GB_NewCadPlus_III
             {
                 if (_selectedCategoryNode != null)
                 {
-                    // 显示当前选中节点的属性用于编辑
-                    DisplayNodePropertiesForEditing(_selectedCategoryNode);
+                    // 显示当前选中节点的属性用于编辑（补上缺失的 ItemsControl 参数）
+                    DisplayNodePropertiesForEditing(_selectedCategoryNode, CategoryPropertiesDataGrid);
                     _currentOperation = ManagementOperationType.None; // 设置为编辑模式
 
                     LogManager.Instance.LogInfo($"初始化编辑分类界面: {_selectedCategoryNode.DisplayText}");
@@ -4653,7 +4746,8 @@ namespace GB_NewCadPlus_III
                     // 刷新架构树
                     await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes, _databaseManager);
                     _selectedCategoryNode = null; // 清除选中节点
-                    InitializeCategoryPropertyGrid(); // 清空属性编辑区
+                                                  // 修复：传入必需的 ItemsControl 参数
+                    InitializeCategoryPropertyGrid(CategoryPropertiesDataGrid); // 清空属性编辑区
 
                     MessageBox.Show("分类删除成功", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
@@ -4897,7 +4991,8 @@ namespace GB_NewCadPlus_III
             try
             {
                 _currentOperation = ManagementOperationType.None;
-                InitializeCategoryPropertyGrid();
+                // 传入 CategoryPropertiesDataGrid 作为参数，修复缺失的 ItemsControl 参数调用
+                InitializeCategoryPropertyGrid(CategoryPropertiesDataGrid);
                 ClearFileUploadInterface();
                 MessageBox.Show("操作已取消", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             }
@@ -4909,57 +5004,242 @@ namespace GB_NewCadPlus_III
 
         /// <summary>
         /// 应用属性按钮点击事件
-        /// </summary>
+        /// </summary>      
         private async void ApplyProperties_Btn_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                bool success = false;
+                LogManager.Instance.LogInfo("ApplyProperties_Btn_Click 开始执行");
 
-                switch (_currentOperation)
+                // 读取并校验当前属性表格数据
+                List<CategoryPropertyEditModel> propRows = null;
+                try
                 {
-                    case ManagementOperationType.AddCategory:
-                        success = await _categoryManager.ApplyCategoryPropertiesAsync(CategoryPropertiesDataGrid);
-                        break;
-                    case ManagementOperationType.AddSubcategory:
-                        success = await _categoryManager.ApplySubcategoryPropertiesAsync(CategoryPropertiesDataGrid);
-                        break;
-                    case ManagementOperationType.None:
-                        // 如果没有明确的操作类型，可能是编辑操作
-                        if (_selectedCategoryNode != null)
+                    propRows = (CategoryPropertiesDataGrid.ItemsSource as List<CategoryPropertyEditModel>)
+                               ?? (CategoryPropertiesDataGrid.ItemsSource as System.Collections.IEnumerable)?
+                                    .Cast<object>()
+                                    .OfType<CategoryPropertyEditModel>()
+                                    .ToList();
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Instance.LogError($"解析 CategoryPropertiesDataGrid.ItemsSource 失败: {ex}");
+                    propRows = null;
+                }
+
+                if (propRows == null || propRows.Count == 0)
+                {
+                    MessageBox.Show("没有可应用的属性，请先填写属性。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                // 解析表格到结构化结果，复用已有解析器
+                var parsed = ParseUpdatedCategoryProperties(propRows);
+                string parsedName = parsed.Name?.Trim() ?? string.Empty;
+                string parsedDisplayName = parsed.DisplayName?.Trim() ?? string.Empty;
+                int parsedSort = parsed.SortOrder;
+
+                LogManager.Instance.LogInfo($"解析结果: Name='{parsedName}', DisplayName='{parsedDisplayName}', SortOrder={parsedSort}");
+
+                // 如果需要访问数据库，先确保 _databaseManager 可用
+                if ((_currentOperation == ManagementOperationType.AddCategory ||
+                     _currentOperation == ManagementOperationType.AddSubcategory ||
+                     _currentOperation == ManagementOperationType.None) &&
+                     (_databaseManager == null || !_databaseManager.IsDatabaseAvailable))
+                {
+                    MessageBox.Show("数据库不可用或未连接，无法执行该操作。请先连接数据库。", "数据库不可用", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    LogManager.Instance.LogWarning("ApplyProperties_Btn_Click: 数据库不可用，操作被中止。");
+                    return;
+                }
+
+                // 提示并写回解析结果到 UI 以便用户确认（保留原逻辑）
+                var sb = new StringBuilder();
+                sb.AppendLine("检测到以下解析结果：");
+                sb.AppendLine($"名称: {parsedName}");
+                sb.AppendLine($"显示名称: {parsedDisplayName}");
+                sb.AppendLine($"排序序号: {(parsedSort > 0 ? parsedSort.ToString() : "（未提供/自动生成）")}");
+                if (_currentOperation == ManagementOperationType.None && _selectedCategoryNode != null)
+                {
+                    if (_selectedCategoryNode.Level == 0 && _selectedCategoryNode.Data is CadCategory c)
+                        sb.AppendLine($"当前主分类：名称='{c.Name}', 显示名='{c.DisplayName}', 排序={c.SortOrder}");
+                    else if (_selectedCategoryNode.Data is CadSubcategory s)
+                        sb.AppendLine($"当前子分类：名称='{s.Name}', 显示名='{s.DisplayName}', 排序={s.SortOrder}");
+                }
+                sb.AppendLine();
+                sb.AppendLine("确认将解析结果写回表格并继续执行数据库操作吗？");
+
+                var confirm = MessageBox.Show(sb.ToString(), "确认解析结果并写回表格", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    LogManager.Instance.LogInfo("用户取消 ApplyProperties 操作（确认框）");
+                    return;
+                }
+
+                // 将解析结果写回 UI（允许用户再次确认/编辑）
+                try
+                {
+                    var newRows = new List<CategoryPropertyEditModel>();
+
+                    if (_currentOperation == ManagementOperationType.None && _selectedCategoryNode != null)
+                    {
+                        if (_selectedCategoryNode.Level == 0 && _selectedCategoryNode.Data is CadCategory cat)
                         {
-                            success = await _categoryManager.UpdateCategoryPropertiesAsync(CategoryPropertiesDataGrid, _selectedCategoryNode);
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "ID",
+                                PropertyValue1 = cat.Id.ToString(),
+                                PropertyName2 = "名称",
+                                PropertyValue2 = string.IsNullOrEmpty(parsedName) ? cat.Name : parsedName
+                            });
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "显示名称",
+                                PropertyValue1 = string.IsNullOrEmpty(parsedDisplayName) ? (cat.DisplayName ?? cat.Name) : parsedDisplayName,
+                                PropertyName2 = "排序序号",
+                                PropertyValue2 = (parsedSort > 0 ? parsedSort.ToString() : cat.SortOrder.ToString())
+                            });
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "子分类数",
+                                PropertyValue1 = GetSubcategoryCount(cat).ToString()
+                            });
+                        }
+                        else if (_selectedCategoryNode.Data is CadSubcategory sub)
+                        {
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "ID",
+                                PropertyValue1 = sub.Id.ToString(),
+                                PropertyName2 = "父ID",
+                                PropertyValue2 = sub.ParentId.ToString()
+                            });
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "名称",
+                                PropertyValue1 = string.IsNullOrEmpty(parsedName) ? sub.Name : parsedName,
+                                PropertyName2 = "显示名称",
+                                PropertyValue2 = string.IsNullOrEmpty(parsedDisplayName) ? (sub.DisplayName ?? sub.Name) : parsedDisplayName
+                            });
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "排序序号",
+                                PropertyValue1 = (parsedSort > 0 ? parsedSort.ToString() : sub.SortOrder.ToString()),
+                                PropertyName2 = "层级",
+                                PropertyValue2 = sub.Level.ToString()
+                            });
+                            newRows.Add(new CategoryPropertyEditModel
+                            {
+                                PropertyName1 = "子分类数",
+                                PropertyValue1 = string.IsNullOrWhiteSpace(sub.SubcategoryIds) ? "0" : sub.SubcategoryIds.Split(',').Length.ToString()
+                            });
+                        }
+
+                        newRows.Add(new CategoryPropertyEditModel());
+                        newRows.Add(new CategoryPropertyEditModel());
+                    }
+                    else
+                    {
+                        if (_currentOperation == ManagementOperationType.AddCategory)
+                        {
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = parsedName, PropertyName2 = "显示名称", PropertyValue2 = parsedDisplayName });
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = (parsedSort > 0 ? parsedSort.ToString() : "自动生成") });
+                        }
+                        else if (_currentOperation == ManagementOperationType.AddSubcategory)
+                        {
+                            var parentIdStr = _selectedCategoryNode != null ? _selectedCategoryNode.Id.ToString() : "";
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "父分类ID", PropertyValue1 = parentIdStr, PropertyName2 = "名称", PropertyValue2 = parsedName });
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "显示名称", PropertyValue1 = parsedDisplayName, PropertyName2 = "排序序号", PropertyValue2 = (parsedSort > 0 ? parsedSort.ToString() : "自动生成") });
                         }
                         else
                         {
-                            MessageBox.Show("请先选择要操作的分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            return;
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "名称", PropertyValue1 = parsedName, PropertyName2 = "显示名称", PropertyValue2 = parsedDisplayName });
+                            newRows.Add(new CategoryPropertyEditModel { PropertyName1 = "排序序号", PropertyValue1 = (parsedSort > 0 ? parsedSort.ToString() : "自动生成") });
+                            newRows.Add(new CategoryPropertyEditModel());
                         }
-                        break;
-                    default:
-                        MessageBox.Show("未知操作类型", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
+                    }
+
+                    CategoryPropertiesDataGrid.ItemsSource = newRows;
+                    CategoryPropertiesDataGrid.Items.Refresh();
+                }
+                catch (Exception exWrite)
+                {
+                    LogManager.Instance.LogWarning($"写回属性表失败（但继续操作）: {exWrite}");
                 }
 
+                // 调用 CategoryManager 执行数据库操作，并更详细地捕获异常（记录完整堆栈）
+                bool success = false;
+                try
+                {
+                    switch (_currentOperation)
+                    {
+                        case ManagementOperationType.AddCategory:
+                            success = await _categoryManager.ApplyCategoryPropertiesAsync(CategoryPropertiesDataGrid).ConfigureAwait(true);
+                            break;
+                        case ManagementOperationType.AddSubcategory:
+                            success = await _categoryManager.ApplySubcategoryPropertiesAsync(CategoryPropertiesDataGrid).ConfigureAwait(true);
+                            break;
+                        case ManagementOperationType.None:
+                            if (_selectedCategoryNode == null)
+                            {
+                                MessageBox.Show("请先选择要操作的分类或子分类", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                return;
+                            }
+                            success = await _categoryManager.UpdateCategoryPropertiesAsync(CategoryPropertiesDataGrid, _selectedCategoryNode).ConfigureAwait(true);
+                            break;
+                        default:
+                            MessageBox.Show("未知操作类型", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                    }
+                }
+                catch (Exception exCat)
+                {
+                    // 记录完整异常信息到日志并提示用户
+                    LogManager.Instance.LogError($"CategoryManager 操作失败: {exCat}");
+                    // 如果是 AutoCAD 相关的致命错误，给出引导
+                    if (exCat.Message != null && exCat.Message.IndexOf("Fatal error", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        MessageBox.Show($"操作失败: {exCat.Message}\n详细错误已写入日志。请检查数据库连接并重启 AutoCAD/宿主应用。", "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"操作失败: {exCat.Message}\n详细信息已写入日志。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    return;
+                }
+
+                // 结果处理（成功/失败）
                 if (success)
                 {
-                    // 重置操作状态
                     _currentOperation = ManagementOperationType.None;
-                    InitializeCategoryPropertyGrid();
-
-                    // 刷新架构树显示
-                    await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes, _databaseManager);
-
+                    InitializeCategoryPropertyGrid(CategoryPropertiesDataGrid);
+                    try
+                    {
+                        await _categoryManager.RefreshCategoryTreeAsync(_selectedCategoryNode, CategoryTreeView, _categoryTreeNodes, _databaseManager).ConfigureAwait(true);
+                    }
+                    catch (Exception exRefresh)
+                    {
+                        LogManager.Instance.LogWarning($"刷新架构树时出错: {exRefresh}");
+                    }
                     MessageBox.Show("操作成功，架构树已更新", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    MessageBox.Show("操作失败，请检查输入数据", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("操作未成功，请检查输入数据或查看日志以获取更多信息。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"操作失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                // 捕获事件处理器中未预料的异常，记录完整堆栈并提示用户
+                LogManager.Instance.LogError($"ApplyProperties_Btn_Click 未处理异常: {ex}");
+                // 如果异常信息包含“Fatal error encountered during command execution”，提供特定建议
+                if (ex.Message != null && ex.Message.IndexOf("Fatal error encountered during command execution", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    MessageBox.Show($"操作失败: {ex.Message}\n建议：\n1) 检查并重连数据库；\n2) 关闭并重启宿主程序（AutoCAD）后重试；\n3) 查看日志文件以获取完整堆栈信息。", "致命错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else
+                {
+                    MessageBox.Show($"操作失败: {ex.Message}\n详细信息已写入日志。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
@@ -5301,6 +5581,488 @@ namespace GB_NewCadPlus_III
         }
         #endregion
 
+        #region
+
+        /// <summary>
+        /// 保存 CategoryPropertiesDataGrid 中的编辑内容：
+        /// - 将无法直接映射到旧字段的行写入 attribute_definitions + file_attribute_values（EAV）
+        /// - 同步可映射的旧字段回 `FileAttribute` / `FileStorage`
+        /// </summary>
+        private async Task<bool> SaveCategoryPropertiesEditsAsync()
+        {
+            try
+            {
+                if (_databaseManager == null || !_database_manager_is_available())
+                {
+                    MessageBox.Show("数据库不可用，无法保存属性。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return false;
+                }
+
+                // 读取 UI 行（容错）
+                IEnumerable<CategoryPropertyEditModel> rows = null;
+                if (CategoryPropertiesDataGrid.ItemsSource is IEnumerable<CategoryPropertyEditModel> asStrong)
+                {
+                    rows = asStrong;
+                }
+                else if (CategoryPropertiesDataGrid.ItemsSource is System.Collections.IEnumerable enumSrc)
+                {
+                    // 需要 System.Linq
+                    rows = enumSrc.Cast<object>().OfType<CategoryPropertyEditModel>().ToList();
+                }
+
+                if (rows == null)
+                {
+                    MessageBox.Show("找不到属性行，无法保存。", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return false;
+                }
+
+                // 反查 displayName -> propertyName（用于旧字段映射）
+                var displayToProp = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var kv in _propertyDisplayNameMap)
+                {
+                    if (!string.IsNullOrWhiteSpace(kv.Value) && !displayToProp.ContainsKey(kv.Value))
+                        displayToProp[kv.Value] = kv.Key;
+                }
+
+                var favList = new List<FileAttributeValue>();
+                bool fileAttributeDirty = false;
+                bool fileStorageDirty = false;
+
+                // 确保有当前选择的文件（用于写 EAV 的 file_id）
+                var currentFileId = _selectedFileStorage?.Id ?? 0;
+
+                // 处理每一行两列（Name1/Value1, Name2/Value2）
+                foreach (var r in rows)
+                {
+                    var res1 = await ProcessSinglePropertyRowAsync(r.PropertyName1, r.PropertyValue1, displayToProp, currentFileId).ConfigureAwait(false);
+                    if (res1.FavList != null) favList.AddRange(res1.FavList);
+                    fileAttributeDirty |= res1.FileAttributeDirty;
+                    fileStorageDirty |= res1.FileStorageDirty;
+
+                    var res2 = await ProcessSinglePropertyRowAsync(r.PropertyName2, r.PropertyValue2, displayToProp, currentFileId).ConfigureAwait(false);
+                    if (res2.FavList != null) favList.AddRange(res2.FavList);
+                    fileAttributeDirty |= res2.FileAttributeDirty;
+                    fileStorageDirty |= res2.FileStorageDirty;
+                }
+
+                // 写入 EAV（批量优先）
+                if (favList.Count > 0 && currentFileId > 0)
+                {
+                    try
+                    {
+                        var saveBatchMethod = _databaseManager.GetType().GetMethod("SaveFileAttributeValuesAsync");
+                        if (saveBatchMethod != null)
+                        {
+                            var taskObj = (Task<bool>)saveBatchMethod.Invoke(_databaseManager, new object[] { favList });
+                            bool batchOk = await taskObj.ConfigureAwait(false);
+                            if (!batchOk)
+                            {
+                                foreach (var fav in favList)
+                                {
+                                    await _databaseManager.SaveFileAttributeValueAsync(fav).ConfigureAwait(false);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            foreach (var fav in favList)
+                            {
+                                await _databaseManager.SaveFileAttributeValueAsync(fav).ConfigureAwait(false);
+                            }
+                        }
+                    }
+                    catch (Exception exEav)
+                    {
+                        LogManager.Instance.LogError($"保存 EAV 属性失败: {exEav}");
+                    }
+                }
+
+                // 同步旧字段（如果有变更）
+                if (fileAttributeDirty && _currentFileAttribute != null)
+                {
+                    try
+                    {
+                        await _databaseManager.UpdateFileAttributeAsync(_currentFileAttribute).ConfigureAwait(false);
+                    }
+                    catch (Exception exFa)
+                    {
+                        LogManager.Instance.LogWarning($"更新 FileAttribute 失败: {exFa.Message}");
+                    }
+                }
+
+                if (fileStorageDirty && _selectedFileStorage != null && _selectedFileStorage.Id > 0)
+                {
+                    try
+                    {
+                        var updateFsMethod = _databaseManager.GetType().GetMethod("UpdateFileStorageAsync");
+                        if (updateFsMethod != null)
+                        {
+                            var taskObj = (Task)updateFsMethod.Invoke(_databaseManager, new object[] { _selectedFileStorage });
+                            await taskObj.ConfigureAwait(false);
+                        }
+                    }
+                    catch (Exception exFs)
+                    {
+                        LogManager.Instance.LogWarning($"更新 FileStorage 失败: {exFs.Message}");
+                    }
+                }
+
+                // 刷新 UI：重新加载属性显示
+                if (_selectedFileStorage != null)
+                {
+                    await LoadAndDisplayFileAttributesAsync(_selectedFileStorage).ConfigureAwait(false);
+                }
+                else
+                {
+                    // 在 Dispatcher 上刷新 UI（注意 Dispatcher.InvokeAsync 返回 DispatcherOperation）
+                    await Dispatcher.InvokeAsync(() => CategoryPropertiesDataGrid.Items.Refresh()).Task.ConfigureAwait(false);
+                }
+
+                MessageBox.Show("属性保存完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"SaveCategoryPropertiesEditsAsync 错误: {ex}");
+                MessageBox.Show($"保存属性失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+
+        /// <summary>
+        /// 加载并显示文件属性并显示文件属性到 PropertiesDataGrid 和 CategoryPropertiesDataGrid
+        /// </summary>
+        /// <param name="fileStorage"></param>
+        /// <returns></returns>
+        private async Task LoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
+        {
+            try
+            {
+                if (fileStorage == null)
+                {
+                    LogManager.Instance.LogInfo("LoadAndDisplayFileAttributesAsync: fileStorage 为 null");
+                    // 清空显示
+                    Dispatcher.Invoke(() =>
+                    {
+                        PropertiesDataGrid.ItemsSource = null;
+                        CategoryPropertiesDataGrid.ItemsSource = null;
+                    });
+                    return;
+                }
+
+                if (_databaseManager == null)
+                {
+                    LogManager.Instance.LogWarning("LoadAndDisplayFileAttributesAsync: _databaseManager 为 null");
+                    Dispatcher.Invoke(() =>
+                    {
+                        PropertiesDataGrid.ItemsSource = null;
+                        CategoryPropertiesDataGrid.ItemsSource = null;
+                    });
+                    return;
+                }
+
+                LogManager.Instance.LogInfo($"开始加载文件属性: {fileStorage.DisplayName} (ID={fileStorage.Id})");
+
+                // 1) 旧表属性（legacy）
+                var legacyAttr = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id).ConfigureAwait(false);
+
+                // 2) EAV 值
+                var favs = await _databaseManager.GetFileAttributeValuesAsync(fileStorage.Id).ConfigureAwait(false);
+
+                // 合并为 FileAttribute 供展示
+                FileAttribute merged = legacyAttr ?? new FileAttribute { FileStorageId = fileStorage.Id, FileName = fileStorage.FileName };
+
+                if (favs != null && favs.Count > 0)
+                {
+                    var attrIds = favs.Select(f => f.AttributeId).Where(id => id > 0).Distinct().ToList();
+                    var defs = await _databaseManager.GetAttributeDefinitionsByIdsAsync(attrIds).ConfigureAwait(false);
+
+                    var mergedType = merged.GetType();
+                    foreach (var fav in favs)
+                    {
+                        if (!defs.TryGetValue(fav.AttributeId, out var def)) continue;
+                        var key = def.KeyName;
+                        if (string.IsNullOrWhiteSpace(key)) continue;
+
+                        string propName = SnakeToPascal(key);
+                        var pi = mergedType.GetProperty(propName);
+                        if (pi == null || !pi.CanWrite) continue;
+
+                        try
+                        {
+                            var targetType = Nullable.GetUnderlyingType(pi.PropertyType) ?? pi.PropertyType;
+                            if ((targetType == typeof(decimal) || targetType == typeof(double) || targetType == typeof(float)) && fav.ValueNumber.HasValue)
+                            {
+                                var value = Convert.ChangeType(fav.ValueNumber.Value, targetType);
+                                pi.SetValue(merged, value);
+                            }
+                            else if (targetType == typeof(int) && fav.ValueNumber.HasValue)
+                            {
+                                pi.SetValue(merged, Convert.ChangeType((int)fav.ValueNumber.Value, targetType));
+                            }
+                            else if (targetType == typeof(DateTime) && fav.ValueDate.HasValue)
+                            {
+                                pi.SetValue(merged, fav.ValueDate.Value);
+                            }
+                            else if (!string.IsNullOrEmpty(fav.ValueString))
+                            {
+                                var converted = Convert.ChangeType(fav.ValueString, targetType);
+                                pi.SetValue(merged, converted);
+                            }
+                        }
+                        catch
+                        {
+                            LogManager.Instance.LogInfo($"无法将 attribute_id={fav.AttributeId} 映射到属性 {propName}");
+                        }
+                    }
+                }
+
+                // 保存到字段供后续使用
+                _selectedFileAttribute = merged;
+
+                // 准备 PropertiesDataGrid 的显示数据（兼容旧表 + EAV）
+                var displayData = PrepareFileDisplayData(fileStorage, merged);
+
+                // 在 UI 线程同步赋值，确保 DataGrid 能立即更新
+                Dispatcher.Invoke(() =>
+                {
+                    PropertiesDataGrid.ItemsSource = displayData ?? new List<CategoryPropertyEditModel>();
+                });
+
+                // 构造 CategoryPropertiesDataGrid 的编辑源（优先 EAV）
+                var editableList = new List<CategoryPropertyEditModel>();
+
+                if (favs != null && favs.Count > 0)
+                {
+                    var attrIds = favs.Select(f => f.AttributeId).Where(id => id > 0).Distinct().ToList();
+                    var defs = await _databaseManager.GetAttributeDefinitionsByIdsAsync(attrIds).ConfigureAwait(false);
+
+                    foreach (var fav in favs)
+                    {
+                        if (!defs.TryGetValue(fav.AttributeId, out var def)) continue;
+                        var name = def.DisplayName ?? def.KeyName;
+                        var value = !string.IsNullOrEmpty(fav.ValueString) ? fav.ValueString
+                                    : fav.ValueNumber.HasValue ? fav.ValueNumber.Value.ToString()
+                                    : fav.ValueDate.HasValue ? fav.ValueDate.Value.ToString("o") : "";
+
+                        editableList.Add(new CategoryPropertyEditModel
+                        {
+                            PropertyName1 = name,
+                            PropertyValue1 = value,
+                            PropertyName2 = def.KeyName,
+                            PropertyValue2 = fav.AttributeId.ToString()
+                        });
+                    }
+                }
+                else if (legacyAttr != null)
+                {
+                    // 回退：把 legacyAttr 的非空属性逐行放入编辑网格
+                    var props = typeof(FileAttribute).GetProperties().Where(p => p.CanRead && p.Name != "Id" && p.Name != "FileStorageId");
+                    foreach (var p in props)
+                    {
+                        var v = p.GetValue(legacyAttr);
+                        if (v == null) continue;
+                        editableList.Add(new CategoryPropertyEditModel
+                        {
+                            PropertyName1 = GetPropertyDisplayName(p.Name),
+                            PropertyValue1 = v.ToString(),
+                            PropertyName2 = p.Name,
+                            PropertyValue2 = ""
+                        });
+                    }
+                }
+
+                // 确保有至少一行以防空
+                if (editableList.Count == 0)
+                {
+                    editableList.Add(new CategoryPropertyEditModel());
+                    editableList.Add(new CategoryPropertyEditModel());
+                }
+
+                // 在 UI 线程同步赋值
+                Dispatcher.Invoke(() =>
+                {
+                    CategoryPropertiesDataGrid.ItemsSource = editableList;
+                    CategoryPropertiesDataGrid.Items.Refresh();
+                });
+
+                LogManager.Instance.LogInfo($"LoadAndDisplayFileAttributesAsync: 完成属性加载 ({fileStorage.DisplayName})");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"LoadAndDisplayFileAttributesAsync 错误: {ex.Message}");
+                // 发生错误时清空显示并提示
+                Dispatcher.Invoke(() =>
+                {
+                    PropertiesDataGrid.ItemsSource = null;
+                    CategoryPropertiesDataGrid.ItemsSource = null;
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 处理单个属性项（可能是显示名映射到旧字段，或 EAV 属性）
+        /// - displayToProp: 显示名 -> 属性名（例如 "长度" -> "Length"）
+        /// - favList: 收集待保存的 FileAttributeValue
+        /// - fileAttributeDirty/fileStorageDirty: 标记旧表需要更新ProcessSinglePropertyRowAsync
+        /// </summary>
+        private async Task<(List<FileAttributeValue> FavList, bool FileAttributeDirty, bool FileStorageDirty)> ProcessSinglePropertyRowAsync(
+           string propNameDisplay, string propValue, Dictionary<string, string> displayToProp, int currentFileId)
+        {
+            var favs = new List<FileAttributeValue>();
+            bool fileAttributeDirty = false;
+            bool fileStorageDirty = false;
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(propNameDisplay) || string.IsNullOrWhiteSpace(propValue))
+                    return (favs, fileAttributeDirty, fileStorageDirty);
+
+                var name = propNameDisplay.Trim();
+                var val = propValue.Trim();
+
+                // 1) 尝试通过显示名映射到旧字段（FileAttribute 或 FileStorage）
+                if (displayToProp != null && displayToProp.TryGetValue(name, out var mappedProp))
+                {
+                    var faType = typeof(FileAttribute);
+                    var fsType = typeof(FileStorage);
+                    var piFa = faType.GetProperty(mappedProp);
+                    var piFs = fsType.GetProperty(mappedProp);
+
+                    if (piFa != null && _currentFileAttribute != null)
+                    {
+                        TrySetPropertyValue(_currentFileAttribute, piFa, val);
+                        fileAttributeDirty = true;
+                        return (favs, fileAttributeDirty, fileStorageDirty);
+                    }
+                    if (piFs != null && _selectedFileStorage != null)
+                    {
+                        TrySetPropertyValue(_selectedFileStorage, piFs, val);
+                        fileStorageDirty = true;
+                        return (favs, fileAttributeDirty, fileStorageDirty);
+                    }
+                }
+
+                // 2) 作为 EAV
+                string keyNameCandidate = IsLikelyKeyName(name) ? name.ToLowerInvariant() : BuildKeyNameFromDisplay(name);
+                string displayName = name;
+
+                int? attrId = null;
+                try
+                {
+                    var ensureMethod = _databaseManager.GetType().GetMethod("EnsureAttributeDefinitionExistsAsync", new[] { typeof(string), typeof(string), typeof(string) });
+                    if (ensureMethod != null)
+                    {
+                        var taskObj = (Task<int?>)ensureMethod.Invoke(_databaseManager, new object[] { keyNameCandidate, displayName, "string" });
+                        attrId = await taskObj.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        var getByKey = _databaseManager.GetType().GetMethod("GetAttributeDefinitionIdByKeyNameAsync");
+                        if (getByKey != null)
+                        {
+                            var t = (Task<int?>)getByKey.Invoke(_databaseManager, new object[] { keyNameCandidate });
+                            attrId = await t.ConfigureAwait(false);
+                        }
+                    }
+                }
+                catch (Exception exEnsure)
+                {
+                    LogManager.Instance.LogWarning($"EnsureAttributeDefinitionExistsAsync 调用失败: {exEnsure.Message}");
+                }
+
+                if (!attrId.HasValue)
+                {
+                    LogManager.Instance.LogWarning($"无法确保 attribute_definitions 中的 key='{keyNameCandidate}'，跳过写入 EAV");
+                    return (favs, fileAttributeDirty, fileStorageDirty);
+                }
+
+                var fav = new FileAttributeValue
+                {
+                    FileId = currentFileId,
+                    AttributeId = attrId.Value,
+                    ValueString = null,
+                    ValueNumber = null,
+                    ValueDate = null,
+                    ValueJson = null,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                if (decimal.TryParse(val, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var dec))
+                {
+                    fav.ValueNumber = (double)dec;
+                }
+                else if (DateTime.TryParse(val, out var dt))
+                {
+                    fav.ValueDate = dt;
+                }
+                else
+                {
+                    fav.ValueString = val;
+                }
+
+                favs.Add(fav);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogWarning($"ProcessSinglePropertyRowAsync 处理属性 '{propNameDisplay}' 失败: {ex.Message}");
+            }
+
+            return (favs, fileAttributeDirty, fileStorageDirty);
+        }
+
+        /// <summary>
+        /// 简单判定某字符串是否可能已经是 key_name（snake_case）
+        /// </summary>
+        private static bool IsLikelyKeyName(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            // 含下划线并且没有中文
+            if (s.IndexOf('_') >= 0 && s.Any(c => c <= 127)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// 从显示名生成 key_name（简化）：移除空白，转成 ascii 小写，非字母数字替换为下划线
+        /// 例如 "外径" -> "waijing"（中文会被保留为拼接，实际在无法拼音时会使用原始字符的 unicode 编码段）
+        /// 为保证可用性，我们使用：英文转小写并替换空格为下划线；中文直接使用拼接后的 Unicode code points 作为后缀（尽量唯一）。
+        /// </summary>
+        private static string BuildKeyNameFromDisplay(string display)
+        {
+            if (string.IsNullOrWhiteSpace(display)) return string.Empty;
+            var sb = new StringBuilder();
+            foreach (var ch in display.Trim())
+            {
+                if (char.IsLetterOrDigit(ch))
+                {
+                    sb.Append(char.ToLowerInvariant(ch));
+                }
+                else if (char.IsWhiteSpace(ch) || ch == '-' || ch == '/')
+                {
+                    sb.Append('_');
+                }
+                else
+                {
+                    // 对中文及其他字符使用其 Unicode 十六进制表示，以减少冲突（可读性差但保证唯一）
+                    sb.AppendFormat("u{0:X4}", (int)ch);
+                }
+            }
+            var key = sb.ToString();
+            // 规整重复下划线
+            while (key.Contains("__")) key = key.Replace("__", "_");
+            if (key.StartsWith("_")) key = key.Substring(1);
+            if (key.EndsWith("_")) key = key.Substring(0, key.Length - 1);
+            if (string.IsNullOrWhiteSpace(key)) key = "attr_" + Math.Abs(display.GetHashCode());
+            return key.ToLowerInvariant();
+        }
+
+        #endregion
+
+
+
+
         #region 文件处理
 
         /// <summary>
@@ -5443,6 +6205,12 @@ namespace GB_NewCadPlus_III
             }
         }
 
+        /// <summary>
+        /// 设置文件属性
+        /// </summary>
+        /// <param name="storage"></param>
+        /// <param name="propertyName"></param>
+        /// <param name="propertyValue"></param>
         public void SetFileStorageProperty(FileStorage storage, string propertyName, string propertyValue)
         {
             if (string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(propertyValue) || storage == null)
@@ -5537,25 +6305,23 @@ namespace GB_NewCadPlus_III
             {
                 if (StroageFileDataGrid.SelectedItem is FileStorage selectedFile)
                 {
-                    LogManager.Instance.LogInfo($"选中文件: {selectedFile.DisplayName} (ID: {selectedFile.Id})");
+                    LogManager.Instance.LogInfo($"StroageFileDataGrid SelectionChanged: 选中文件 {selectedFile.DisplayName} (ID={selectedFile.Id})");
                     _selectedFileStorage = selectedFile;
 
-                    // 显示文件基本信息
-                    DisplayFileBasicInfo(selectedFile);
-                    // 加载并显示文件属性
-                    await LoadAndDisplayFileAttributesAsync(selectedFile);
+                    // 显示基础信息（UI 线程）
+                    try { DisplayFileBasicInfo(selectedFile); } catch { /* 忽略显示失败 */ }
 
-                    // 加载预览图片
-                    var previewImage = await GetPreviewImageAsync(selectedFile);
-                    // 预览图片会在PreviewImage_Loaded事件中处理
-                    // 初始化属性编辑界面
-                    //InitializeFilePropertiesGrid();
+                    // 加载并显示属性（异步）
+                    await LoadAndDisplayFileAttributesAsync(selectedFile).ConfigureAwait(true);
+                }
+                else
+                {
+                    LogManager.Instance.LogInfo("StroageFileDataGrid SelectionChanged: 未选中文件或选中为空");
                 }
             }
             catch (Exception ex)
             {
-                LogManager.Instance.LogInfo($"处理文件选择时出错: {ex.Message}");
-                MessageBox.Show($"处理文件选择时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                LogManager.Instance.LogError($"StroageFileDataGrid_SelectionChanged 异常: {ex.Message}");
             }
         }
 
@@ -5579,38 +6345,25 @@ namespace GB_NewCadPlus_III
             }
         }
 
-        /// <summary>
-        /// 加载并显示文件属性（修改现有方法）
-        /// </summary>
-        /// <param name="fileStorage">数据库储存的文件</param>
-        /// <returns></returns>
-        private async Task LoadAndDisplayFileAttributesAsync(FileStorage fileStorage)
+       
+
+       /// <summary>
+       /// 蛇形命名转换为帕斯卡命名
+       /// </summary>
+       /// <param name="key">蛇形命名字符串</param>
+       /// <returns>转换后的帕斯卡命名字符串</returns>
+        private static string SnakeToPascal(string key)
         {
-            try
+            if (string.IsNullOrEmpty(key)) return key;
+            var parts = key.Split(new[] { '_', '-' }, StringSplitOptions.RemoveEmptyEntries);
+            var sb = new StringBuilder();
+            foreach (var p in parts)
             {
-                LogManager.Instance.LogInfo($"开始加载文件 {fileStorage.DisplayName} 的属性");
-
-                if (_databaseManager == null)
-                {
-                    LogManager.Instance.LogWarning("数据库管理器为空");
-                    return;
-                }
-
-                // 获取文件属性
-                var fileAttribute = await _databaseManager.GetFileAttributeByGraphicIdAsync(fileStorage.Id);
-                _selectedFileAttribute = fileAttribute;
-
-                // 准备显示数据
-                var displayData = PrepareFileDisplayData(fileStorage, fileAttribute);
-                CategoryPropertiesDataGrid.ItemsSource = displayData;
-
-                LogManager.Instance.LogInfo("文件属性加载完成");
+                if (p.Length == 0) continue;
+                sb.Append(char.ToUpperInvariant(p[0]));
+                if (p.Length > 1) sb.Append(p.Substring(1));
             }
-            catch (Exception ex)
-            {
-                LogManager.Instance.LogError($"加载文件属性时出错: {ex.Message}");
-                MessageBox.Show($"加载文件属性时出错: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            return sb.ToString();
         }
 
         /// <summary>
@@ -5920,7 +6673,7 @@ namespace GB_NewCadPlus_III
         }
 
         /// <summary>
-        /// 获取当前选中的TabItem标题  _selectedCategoryNode  RefreshCategoryTreeAsync
+        /// 获取当前选中的TabItem标题  _selectedCategoryNode  RefreshCategoryTreeAsync   LoadAndDisplayFileAttributesAsync
         /// </summary>
         /// <returns>TabItem标题</returns>
         private string GetCurrentSelectedTabHeader()
@@ -6429,7 +7182,7 @@ namespace GB_NewCadPlus_III
         /// </summary>
         private readonly Dictionary<string, string> _propertyDisplayNameMap = new Dictionary<string, string>
         {
-            // FileStorage 属性映射
+           // FileStorage 属性映射
             { "Id", "文件ID" },
             { "FileName", "文件名" },
             { "CategoryId", "分类ID" },
@@ -6457,7 +7210,8 @@ namespace GB_NewCadPlus_III
             { "Keywords", "关键字" },
             { "IsPublic", "是否公开" },
             { "UpdatedBy", "更新者" },
-             //FileAttribute 属性映射
+           
+            // FileAttribute 属性映射（原有 + 新增物性/测量字段）
             { "FileStorageId", "存储文件ID" },
             { "Length", "长度" },
             { "Width", "宽度" },
@@ -6483,7 +7237,21 @@ namespace GB_NewCadPlus_III
             { "Remarks", "备注" },
             { "Customize1", "自定义1" },
             { "Customize2", "自定义2" },
-            { "Customize3", "自定义3" }
+            { "Customize3", "自定义3" },
+           
+            // 新增物性/测量字段的中文映射
+            { "Density", "密度" },
+            { "Voltage", "电压" },
+            { "Current", "电流" },
+            { "Flow", "流量" },
+            { "Moisture", "含水率" },
+            { "Humidity", "湿度" },
+            { "Vacuum", "真空" },
+            { "Radiation", "辐射" },
+            { "Velocity", "速度" },
+            { "Frequency", "频率" },
+            { "Conductivity", "电导率" },
+            { "Lift", "扬程" }
         };
 
         #region 批量添加文件
@@ -6753,11 +7521,11 @@ namespace GB_NewCadPlus_III
         {
             try
             {
-                if (_databaseManager == null || !_databaseManager.IsDatabaseAvailable)
+                if (_database_manager_is_available() == false)
                 {
                     MessageBox.Show("数据库未连接，无法执行导入操作。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
-                }
+                }             
 
                 if (_selectedCategoryNode == null)
                 {
@@ -6807,16 +7575,33 @@ namespace GB_NewCadPlus_III
 
                 if (dialogResult == true)
                 {
+
+                    // 确认后执行保存流程（使用本类的 UploadFileAndSaveToDatabase(ImportEntityDto)）
                     try
                     {
-                        // 导入后刷新当前分类文件列表（在 UI 线程上安全等待）
-                        await LoadFilesForCategoryAsync(_selectedCategoryNode);
-                        MessageBox.Show("图元导入成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        // 基本校验：必须有文件路径或已导出的临时文件
+                        if (dto.FileStorage == null || string.IsNullOrWhiteSpace(dto.FileStorage.FilePath) || !File.Exists(dto.FileStorage.FilePath))
+                        {
+                            MessageBox.Show("未找到待上传的文件路径，无法继续保存。请确认已从CAD导出文件并重试。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                        //获取待上传的文件路径
+                        Mouse.OverrideCursor = Cursors.Wait;
+                        //创建DTO对象
+                        await UploadFileAndSaveToDatabase(dto).ConfigureAwait(true);
+
+                        // 上传/保存成功后刷新当前分类列表（确保在 UI 线程）
+                        await LoadFilesForCategoryAsync(_selectedCategoryNode).ConfigureAwait(true);
+                        MessageBox.Show("图元导入并保存成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
-                    catch (Exception exRefresh)
+                    catch (Exception exSave)
                     {
-                        LogManager.Instance.LogError($"导入后刷新列表失败: {exRefresh.Message}");
-                        MessageBox.Show($"导入完成，但刷新列表失败: {exRefresh.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        LogManager.Instance.LogError($"导入并保存图元失败: {exSave}");
+                        MessageBox.Show($"导入失败: {exSave.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    finally
+                    {
+                        Mouse.OverrideCursor = null;
                     }
                 }
             }
@@ -6838,6 +7623,7 @@ namespace GB_NewCadPlus_III
             _currentFileStorage = dto.FileStorage;
             _currentFileAttribute = dto.FileAttribute;
         }
+
         /// <summary>
         /// 确认导入
         /// </summary>
@@ -7119,7 +7905,7 @@ namespace GB_NewCadPlus_III
 
         private void 绘制进口管道_Click(object sender, RoutedEventArgs e)
         {
-           
+
             Env.Document.SendStringToExecute("DrawInletPipeByClicks ", false, false, false);
             //Env.Document.SendStringToExecute("Draw_GD_PipeLine_DynamicBlock ", false, false, false);
         }
@@ -7133,6 +7919,7 @@ namespace GB_NewCadPlus_III
         #endregion
 
         #region 图层管理器相关
+
         /// <summary>
         /// [加载当前图层]按键事件 - 完善版
         /// </summary>
@@ -7156,6 +7943,7 @@ namespace GB_NewCadPlus_III
                 Env.Editor?.WriteMessage($"\n加载图层时出错: {ex.Message}");
             }
         }
+
         /// <summary>
         /// [保存图层配置]按键事件 - 完善版
         /// </summary>
@@ -7658,10 +8446,10 @@ namespace GB_NewCadPlus_III
         private async void 生成管道表_Click(object sender, RoutedEventArgs e)
         {
             Env.Document.SendStringToExecute("GeneratePipeTableFromSelection ", false, false, false);
-        
+
         }
 
-        
+
         /// <summary>
         /// 插入管道表
         /// </summary>
@@ -8369,7 +9157,7 @@ namespace GB_NewCadPlus_III
         /// 在类成员区域添加 CategoryNames 集合与加载方法
         /// </summary>
         private readonly ObservableCollection<string> _categoryNames = new ObservableCollection<string>();
-      
+
         /// <summary>
         /// UI 绑定集合：用于绑定到 LayerDictionary_DataGrid.ItemsSource
         /// </summary>
@@ -8405,7 +9193,7 @@ namespace GB_NewCadPlus_III
                 LogManager.Instance.LogInfo($"LoadCategoryNamesAsync 失败: {ex.Message}");
             }
         }
-             
+
         private void 图层字典_Btn_Click(object sender, RoutedEventArgs e)
         {
 
@@ -9194,7 +9982,7 @@ namespace GB_NewCadPlus_III
                                     continue;
                                 }
 
-                                 double sizeX = Math.Abs((double)ext.MaxPoint.X - (double)ext.MinPoint.X);
+                                double sizeX = Math.Abs((double)ext.MaxPoint.X - (double)ext.MinPoint.X);
                                 double sizeY = Math.Abs((double)ext.MaxPoint.Y - (double)ext.MinPoint.Y);
                                 double sizeZ = Math.Abs((double)ext.MaxPoint.Z - (double)ext.MinPoint.Z);
                                 if (sizeX <= 0.0) continue;
@@ -9579,196 +10367,1211 @@ namespace GB_NewCadPlus_III
         {
 
         }
-    }
-    /// <summary>
-    /// DataGrid 绑定使用的行模型（用于 LayerDictionary_DataGrid）
-    /// </summary>
-    public class LayerDictionaryRow
-    {
+
+
+
+        #region 数据库初始化相关
+
         /// <summary>
-        /// 数据库 id，0 表示新行（未持久化）
+        /// 清空数据库中所有表的数据，但保留表结构（schema）。
+        /// 优先使用 _databaseManager 中的实现（检测方法名 ClearAllDataAsync/TruncateAllTablesAsync），否则回退到直接执行 MySQL TRUNCATE。
         /// </summary>
-        public int Id { get; set; }
-        /// <summary>
-        /// 显示序号
-        /// </summary>
-        public int DisplayIndex { get; set; }
-        /// <summary>
-        /// 专业列（可填写或来自部门）
-        /// </summary>
-        public string Major { get; set; } = "";
-        /// <summary>
-        /// 原图层名（只读显示）
-        /// </summary>
-        public string LayerName { get; set; } = "";
-        /// <summary>
-        /// 解释图层名（可编辑）
-        /// </summary>
-        public string DicLayerName { get; set; } = "";
-        /// <summary>
-        /// 来源（personal/standard）
-        /// </summary>
-        public string Source { get; set; } = "personal"; 
-    }
-
-    /// <summary>
-    /// 图层信息类
-    /// </summary>
-    public class LayerInfo : INotifyPropertyChanged
-    {
-        private int _index;              // 原始序号
-        private int _displayIndex;       // 显示序号
-        private string _name;
-        private bool _isOn;
-        private bool _isFrozen;
-        private short _colorIndex;
-        private bool _toDelete;
-        private Autodesk.AutoCAD.Colors.Color _color;
-
-        public int Index
+        /// <param name="connectionString">完整连接字符串，要求包含 Database</param>
+        /// <param name="results">可选：向调用方返回执行信息</param>
+        private async Task<bool> ClearDatabaseDataAsync(string connectionString, StringBuilder results = null)
         {
-            get => _index;
-            set { _index = value; OnPropertyChanged(); }
-        }
-
-        public int DisplayIndex
-        {
-            get => _displayIndex;
-            set { _displayIndex = value; OnPropertyChanged(); }
-        }
-
-        public string Name
-        {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
-        }
-
-        public bool IsOn
-        {
-            get => _isOn;
-            set { _isOn = value; OnPropertyChanged(); }
-        }
-
-        public bool IsFrozen
-        {
-            get => _isFrozen;
-            set { _isFrozen = value; OnPropertyChanged(); }
-        }
-
-        public short ColorIndex
-        {
-            get => _colorIndex;
-            set { _colorIndex = value; OnPropertyChanged(); }
-        }
-
-        public bool ToDelete
-        {
-            get => _toDelete;
-            set { _toDelete = value; OnPropertyChanged(); }
-        }
-
-        public Autodesk.AutoCAD.Colors.Color Color
-        {
-            get => _color;
-            set { _color = value; OnPropertyChanged(); }
-        }
-        /// <summary>
-        /// 属性变更通知
-        /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
-        /// <summary>
-        /// 属性变更通知方法
-        /// </summary>
-        /// <param name="propertyName"></param>
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
-
-    /// <summary>
-    /// 图层状态快照类（用于还原功能）
-    /// </summary>
-    public class LayerStateSnapshot
-    {
-        public Dictionary<string, LayerInfo> Layers { get; set; }
-        public DateTime Timestamp { get; set; }
-
-        public LayerStateSnapshot()
-        {
-            Layers = new Dictionary<string, LayerInfo>();
-            Timestamp = DateTime.Now;
-        }
-    }
-
-    /// <summary>
-    /// 分类属性编辑模型
-    /// </summary>
-    public class CategoryPropertyEditModel : INotifyPropertyChanged
-    {
-        private string _propertyName1;
-        private string _propertyValue1;
-        private string _propertyName2;
-        private string _propertyValue2;
-
-        public string PropertyName1
-        {
-            get => _propertyName1;
-            set
+            try
             {
-                if (_propertyName1 != value)
+                // 1) 优先尝试 DatabaseManager 提供的高层方法（反射）
+                if (_databaseManager != null)
                 {
-                    _propertyName1 = value;
-                    OnPropertyChanged();
+                    var dmType = _databaseManager.GetType();
+                    var preferredNames = new[] { "ClearAllDataAsync", "TruncateAllTablesAsync", "WipeAllDataAsync" };
+                    foreach (var name in preferredNames)
+                    {
+                        var m = dmType.GetMethod(name);
+                        if (m != null)
+                        {
+                            var taskObj = m.Invoke(_databaseManager, null) as Task;
+                            if (taskObj != null)
+                            {
+                                await taskObj.ConfigureAwait(false);
+                                results?.AppendLine($"调用 DatabaseManager.{name} 完成。");
+                                return true;
+                            }
+                        }
+                    }
                 }
+
+                // 2) 回退：使用 MySql 直接清空（要求 connectionString 为 MySQL 格式）
+                // 需要引用 MySql.Data（MySql.Data.MySqlClient）
+                try
+                {
+                    using (var conn = new MySqlConnection(connectionString))
+                    {
+                        await conn.OpenAsync().ConfigureAwait(false);
+
+                        // 获取当前库名（若连接串中指定）
+                        string database = conn.Database;
+                        if (string.IsNullOrWhiteSpace(database))
+                        {
+                            results?.AppendLine("未能从连接字符串中解析到数据库名，操作中止。");
+                            return false;
+                        }
+
+                        // 禁用外键检查以便 TRUNCATE
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = "SET FOREIGN_KEY_CHECKS=0;";
+                            cmd.CommandTimeout = 60;
+                            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        }
+
+                        // 查询所有基础表（不含视图）
+                        var tables = new List<string>();
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = "SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = @db AND table_type = 'BASE TABLE';";
+                            cmd.Parameters.AddWithValue("@db", database);
+                            cmd.CommandTimeout = 60;
+                            using (var r = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
+                            {
+                                while (await r.ReadAsync().ConfigureAwait(false))
+                                {
+                                    tables.Add(r.GetString(0));
+                                }
+                            }
+                        }
+
+                        // 按依赖顺序删除可能更安全，但我们已禁用外键检查，所以依次 TRUNCATE 即可
+                        foreach (var t in tables)
+                        {
+                            try
+                            {
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = $"TRUNCATE TABLE `{database}`.`{t}`;";
+                                    cmd.CommandTimeout = 120;
+                                    await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                                    results?.AppendLine($"TRUNCATE `{t}` 成功。");
+                                }
+                            }
+                            catch (Exception exT)
+                            {
+                                // 若 TRUNCATE 失败，尝试 DELETE（更慢但有时更兼容）
+                                try
+                                {
+                                    using (var cmd2 = conn.CreateCommand())
+                                    {
+                                        cmd2.CommandText = $"DELETE FROM `{database}`.`{t}`;";
+                                        cmd2.CommandTimeout = 300;
+                                        await cmd2.ExecuteNonQueryAsync().ConfigureAwait(false);
+                                        results?.AppendLine($"DELETE `{t}` 成功（TRUNCATE 失败，已回退）。");
+                                    }
+                                }
+                                catch (Exception exD)
+                                {
+                                    results?.AppendLine($"清空表 `{t}` 失败: {exT.Message} / 回退 DELETE 失败: {exD.Message}");
+                                    // 不立即中止：记录并继续以便尽量清理更多表
+                                }
+                            }
+                        }
+
+                        // 恢复外键检查
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = "SET FOREIGN_KEY_CHECKS=1;";
+                            cmd.CommandTimeout = 60;
+                            await cmd.ExecuteNonQueryAsync().ConfigureAwait(false);
+                        }
+
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results?.AppendLine($"直接通过 MySQL 清空表失败: {ex.Message}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                results?.AppendLine($"ClearDatabaseDataAsync 异常: {ex.Message}");
+                return false;
             }
         }
 
-        public string PropertyValue1
+        // 在初始化入口中加入交互选择：清空数据（保留结构）或重建表结构（初始化）
+        private async void 初始化所有表_Click(object sender, RoutedEventArgs e)
         {
-            get => _propertyValue1;
-            set
+            var btn = sender as Button;
+            try
             {
-                if (_propertyValue1 != value)
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                // 读取 UI 输入（与既有逻辑保持一致）
+                string server = "127.0.0.1";
+                int port = 3306;
+                string user = "root";
+                string password = "root";
+                string database = "cad_sw_library";
+
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    _propertyValue1 = value;
-                    OnPropertyChanged();
+                    server = (TextBox_Set_ServiceIP.Text ?? "127.0.0.1").Trim();
+                    if (string.IsNullOrWhiteSpace(server)) server = "127.0.0.1";
+
+                    var portText = TextBox_Set_ServicePort.Text ?? string.Empty;
+                    if (!int.TryParse(portText.Trim(), out port) || port <= 0 || port > 65535)
+                    {
+                        port = 3306;
+                    }
+
+                    user = (TextBox_Set_Username.Text ?? "root").Trim();
+                    if (string.IsNullOrWhiteSpace(user)) user = "root";
+
+                    password = (PasswordBox_Set_Password.Text ?? "root");
+
+                    database = (TextBox_Set_DatabaseName.Text ?? "cad_sw_library").Trim();
+                    if (string.IsNullOrWhiteSpace(database)) database = "cad_sw_library";
+                });
+
+                // 连接字符串
+                string conn = $"Server={server};Port={port};Database={database};Uid={user};Pwd={password};SslMode=None;";
+
+                // 弹出确认对话：Yes = 清空数据（保留结构）；No = 重新创建/初始化表结构；Cancel = 取消
+                var msg = "请选择初始化方式：\n\n是 (Yes) — 仅清空所有表数据，保留表结构（推荐：快速、保持架构）\n否 (No) — 重新初始化核心表（可能会尝试创建/修复表结构）\n取消 (Cancel) — 放弃操作";
+                var res = MessageBox.Show(msg, "初始化数据库 - 选择操作", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                if (res == MessageBoxResult.Cancel)
+                {
+                    return;
                 }
+
+                var results = new StringBuilder();
+                bool opOk = false;
+
+                if (res == MessageBoxResult.Yes)
+                {
+                    // 清空数据但保留结构
+                    results.AppendLine("操作：清空所有表数据（保留表结构）");
+                    // 确保 _databaseManager 可用（若未创建则临时创建）
+                    if (_databaseManager == null || !_databaseManager.IsDatabaseAvailable)
+                    {
+                        try
+                        {
+                            _databaseManager = new DatabaseManager(conn);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Instance.LogError($"构造 DatabaseManager 失败: {ex.Message}");
+                            MessageBox.Show($"无法连接数据库：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
+
+                    bool cleared = await ClearDatabaseDataAsync(conn, results).ConfigureAwait(false);
+                    opOk = cleared;
+                    results.AppendLine(cleared ? "清空数据操作完成。" : "清空数据操作部分或全部失败，请查看日志。");
+                }
+                else // No -> 重新初始化表结构
+                {
+                    results.AppendLine("操作：重新初始化核心表（创建/修复表结构）");
+                    if (_databaseManager == null || !_database_manager_is_available())
+                    {
+                        try
+                        {
+                            _databaseManager = new DatabaseManager(conn);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Instance.LogError($"构造 DatabaseManager 失败: {ex.Message}");
+                            MessageBox.Show($"无法连接数据库：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            return;
+                        }
+                    }
+
+                    try
+                    {
+                        var initAllMethod = _databaseManager.GetType().GetMethod("InitializeAllCoreTablesAsync");
+                        if (initAllMethod != null)
+                        {
+                            var task = initAllMethod.Invoke(_databaseManager, new object[] { server, port, user, password, database }) as Task<bool>;
+                            if (task != null)
+                            {
+                                bool ok = await task.ConfigureAwait(false);
+                                results.AppendLine(ok ? "- 所有核心表 初始化完成" : "- 所有核心表 初始化可能部分失败（请查看日志）");
+                                opOk = ok;
+                            }
+                            else
+                            {
+                                await InitializeCoreTablesByPartsAsync(results).ConfigureAwait(false);
+                                opOk = true;
+                            }
+                        }
+                        else
+                        {
+                            await InitializeCoreTablesByPartsAsync(results).ConfigureAwait(false);
+                            opOk = true;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Instance.LogError($"初始化所有表主流程出错: {ex.Message}");
+                        results.AppendLine($"- 总体初始化失败: {ex.Message}");
+                        opOk = false;
+                    }
+                }
+
+                // 显示结果（在 UI 线程）
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    MessageBox.Show(results.ToString(), "初始化完成", MessageBoxButton.OK, opOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
+                    try
+                    {
+                        ReinitializeDatabase();
+                    }
+                    catch (Exception reEx)
+                    {
+                        LogManager.Instance.LogWarning($"ReinitializeDatabase 失败: {reEx.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                LogManager.Instance.LogError($"初始化所有表失败: {ex.Message}");
+                MessageBox.Show($"初始化失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
             }
         }
 
-        public string PropertyName2
+        /// <summary>
+        /// 辅助：按表逐一初始化（兼容 DatabaseManager 或本地方法）
+        /// </summary>
+        /// <param name="results"></param>
+        /// <returns></returns>
+        private async Task InitializeCoreTablesByPartsAsync(StringBuilder results)
         {
-            get => _propertyName2;
-            set
+            // 每步均先尝试 DatabaseManager 的公开方法，再回退到本地实现（若存在）
+            try
             {
-                if (_propertyName2 != value)
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
                 {
-                    _propertyName2 = value;
-                    OnPropertyChanged();
+                    // Department
+                    try
+                    {
+                        var m = _databaseManager.GetType().GetMethod("InitializeDepartmentsAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializeDepartmentTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 部门表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 部门表 初始化失败: {ex.Message}");
+                    }
+
+                    // Personnel / Users
+                    try
+                    {
+                        var m = _database_manager_method_or_null(_databaseManager, "InitializeUsersAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializePersonnelTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 人员表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 人员表 初始化失败: {ex.Message}");
+                    }
+
+                    // Categories
+                    try
+                    {
+                        var m = _database_manager_method_or_null(_databaseManager, "InitializeCategoriesAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializeCategoryTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 分类表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 分类表 初始化失败: {ex.Message}");
+                    }
+
+                    // Subcategories
+                    try
+                    {
+                        var m = _database_manager_method_or_null(_databaseManager, "InitializeSubcategoriesAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializeSubcategoryTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 子分类表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 子分类表 初始化失败: {ex.Message}");
+                    }
+
+                    // FileStorage
+                    try
+                    {
+                        var m = _database_manager_method_or_null(_databaseManager, "InitializeFileStorageAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializeFileStorageTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 文件表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 文件表 初始化失败: {ex.Message}");
+                    }
+
+                    // FileAttributes
+                    try
+                    {
+                        var m = _database_manager_method_or_null(_databaseManager, "InitializeFileAttributesAsync");
+                        if (m != null)
+                        {
+                            var t = (Task)m.Invoke(_databaseManager, null);
+                            await t.ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await InitializeFileAttributeTableAsync().ConfigureAwait(false);
+                        }
+                        results.AppendLine("- 文件属性表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 文件属性表 初始化失败: {ex.Message}");
+                    }
                 }
+                else
+                {
+                    // 数据库管理器不可用，回退调用当前类内的方法（这些方法在本类中也实现过）
+                    try
+                    {
+                        await InitializeDepartmentTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 部门表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 部门表 初始化失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InitializePersonnelTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 人员表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 人员表 初始化失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InitializeCategoryTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 分类表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 分类表 初始化失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InitializeSubcategoryTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 子分类表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 子分类表 初始化失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InitializeFileStorageTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 文件表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 文件表 初始化失败: {ex.Message}");
+                    }
+
+                    try
+                    {
+                        await InitializeFileAttributeTableAsync().ConfigureAwait(false);
+                        results.AppendLine("- 文件属性表 初始化完成");
+                    }
+                    catch (Exception ex)
+                    {
+                        results.AppendLine($"- 文件属性表 初始化失败: {ex.Message}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                results.AppendLine($"- 逐表初始化异常: {ex.Message}");
             }
         }
 
-        public string PropertyValue2
+        /// <summary>
+        /// 小工具：返回 DatabaseManager 上的方法（若存在），否则 null
+        /// </summary>
+        /// <param name="dm"> DatabaseManager</param>
+        /// <param name="name">方法名</param>
+        /// <returns></returns>
+        private System.Reflection.MethodInfo _database_manager_method_or_null(DatabaseManager dm, string name)
         {
-            get => _propertyValue2;
-            set
+            try
             {
-                if (_propertyValue2 != value)
-                {
-                    _propertyValue2 = value;
-                    OnPropertyChanged();
-                }
+                return dm.GetType().GetMethod(name);
+            }
+            catch
+            {
+                return null;
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private async void 初始化子分类表_Click(object sender, RoutedEventArgs e)
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            var btn = sender as Button;// 按钮
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;// 禁用按钮
+                Mouse.OverrideCursor = Cursors.Wait;// 等待光标 设置等待光标
+                // 调用 DatabaseManager 的初始化方法（若存在），否则调用本地实现
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    // 子分类 尝试调用 DatabaseManager.InitializeSubcategoriesAsync
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeSubcategoriesAsync");
+                    if (m != null)
+                    {
+                        var t = (Task)m.Invoke(_databaseManager, null);
+                        await t.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await InitializeSubcategoryTableAsync().ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    await InitializeSubcategoryTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("子分类表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化子分类表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
         }
+
+        private async void 初始化分类表_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeCategoriesAsync");
+                    if (m != null)
+                    {
+                        var t = (Task)m.Invoke(_databaseManager, null);
+                        await t.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await InitializeCategoryTableAsync().ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    await InitializeCategoryTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("分类表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化分类表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
+        }
+
+        private async void 初始化文件表_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeFileStorageAsync");
+                    if (m != null)
+                    {
+                        var t = (Task)m.Invoke(_databaseManager, null);
+                        await t.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await InitializeFileStorageTableAsync().ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    await InitializeFileStorageTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("文件表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化文件表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
+        }
+
+        private async void 初始化文件属性表_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeFileAttributesAsync");
+                    if (m != null)
+                    {
+                        var t = (Task)m.Invoke(_databaseManager, null);
+                        await t.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await InitializeFileAttributeTableAsync().ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    await InitializeFileAttributeTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("文件属性表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化文件属性表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
+        }
+
+        private async void 初始化部门表_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                if (_databaseManager != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeDepartmentsAsync");
+                    if (m != null)
+                    {
+                        var t = (Task)m.Invoke(_databaseManager, null);
+                        await t.ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        await InitializeDepartmentTableAsync().ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    await InitializeDepartmentTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("部门表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化部门表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
+        }
+
+        private async void 初始化人员表_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = sender as Button;
+            try
+            {
+                if (btn != null) btn.IsEnabled = false;
+                Mouse.OverrideCursor = Cursors.Wait;
+
+                if (_databaseManager != null && _database_manager_method_or_null(_databaseManager, "InitializeUsersAsync") != null && _databaseManager.IsDatabaseAvailable)
+                {
+                    var m = _database_manager_method_or_null(_databaseManager, "InitializeUsersAsync");
+                    var t = (Task)m.Invoke(_databaseManager, null);
+                    await t.ConfigureAwait(false);
+                }
+                else
+                {
+                    await InitializePersonnelTableAsync().ConfigureAwait(false);
+                }
+
+                MessageBox.Show("人员表初始化完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化人员表失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                Mouse.OverrideCursor = null;
+                if (btn != null) btn.IsEnabled = true;
+            }
+        }
+
+        // ---- 新增：本地初始化方法的轻量包装（调用 DatabaseManager 的实现） ----
+        // 这些方法解决 "当前上下文中不存在名称 'InitializeDepartmentTableAsync'" 的编译错误。
+        // 原则：优先调用 _databaseManager 的公开初始化方法；若 _databaseManager 未准备好则抛出友好异常。
+
+        private async Task InitializeDepartmentTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化部门表。请先连接数据库。");
+
+            if (!_databaseManager.IsDatabaseAvailable)
+                throw new InvalidOperationException("数据库不可用，无法初始化部门表。");
+
+            await _databaseManager.InitializeDepartmentsAsync().ConfigureAwait(false);
+        }
+
+        private async Task InitializePersonnelTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化人员表。请先连接数据库。");
+
+            if (!_database_manager_is_available())
+                throw new InvalidOperationException("数据库不可用，无法初始化人员表。");
+
+            await _databaseManager.InitializeUsersAsync().ConfigureAwait(false);
+        }
+
+        private async Task InitializeCategoryTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化分类表。请先连接数据库。");
+
+            if (!_database_manager_is_available())
+                throw new InvalidOperationException("数据库不可用，无法初始化分类表。");
+
+            await _databaseManager.InitializeCategoriesAsync().ConfigureAwait(false);
+        }
+
+        private async Task InitializeSubcategoryTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化子分类表。请先连接数据库。");
+
+            if (!_database_manager_is_available())
+                throw new InvalidOperationException("数据库不可用，无法初始化子分类表。");
+
+            await _databaseManager.InitializeSubcategoriesAsync().ConfigureAwait(false);
+        }
+
+        private async Task InitializeFileStorageTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化文件表。请先连接数据库。");
+
+            if (!_database_manager_is_available())
+                throw new InvalidOperationException("数据库不可用，无法初始化文件表。");
+
+            await _databaseManager.InitializeFileStorageAsync().ConfigureAwait(false);
+        }
+
+        private async Task InitializeFileAttributeTableAsync()
+        {
+            if (_databaseManager == null)
+                throw new InvalidOperationException("数据库管理器未初始化，无法创建/初始化文件属性表。请先连接数据库。");
+
+            if (!_database_manager_is_available())
+                throw new InvalidOperationException("数据库不可用，无法初始化文件属性表。");
+
+            await _databaseManager.InitializeFileAttributesAsync().ConfigureAwait(false);
+        }
+
+        // 用于复用的私有判断函数（保持一致的错误信息）
+        private bool _database_manager_is_available()
+        {
+            return _databaseManager != null && _databaseManager.IsDatabaseAvailable;
+        }
+
+        #endregion
+
+        #region 部门与人员管理
+
+        /// <summary>
+        /// 数据库服务
+        /// </summary>
+        private MySqlAuthService _svc;
+
+        /// <summary>
+        /// 刷新部门
+        /// </summary>
+        private async void RefreshDepartmentsAsync()
+        {
+            TxtStatus.Text = "正在刷新部门...";
+            await Task.Run(() =>
+            {
+                try
+                {
+                    _svc.EnsureCategoriesTableExists();
+                    _svc.EnsureDepartmentsTableExists();
+                }
+                catch { }
+            });
+
+            await Task.Delay(50);
+            try
+            {
+                var depts = await Task.Run(() => _svc.GetDepartmentsWithCounts());
+                DepartmentsGrid.ItemsSource = depts;
+                TxtStatus.Text = $"加载完成，共 {depts.Count} 个部门。";
+                UsersGrid.ItemsSource = null;
+            }
+            catch (Exception ex)
+            {
+                TxtStatus.Text = "刷新部门失败：" + ex.Message;
+            }
+        }
+        /// <summary>
+        /// 按分类同步部门
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void BtnSync_Click(object sender, RoutedEventArgs e)
+        {
+            TxtStatus.Text = "正在按分类同步部门...";
+            try
+            {
+                await Task.Run(() =>
+                {
+                    _svc.EnsureCategoriesTableExists();
+                    _svc.EnsureDepartmentsTableExists();
+                    _svc.SyncDepartmentsFromCadCategories();
+                });
+                RefreshDepartmentsAsync();
+                MessageBox.Show("同步完成。", "信息", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                TxtStatus.Text = "同步失败：" + ex.Message;
+            }
+        }
+        /// <summary>
+        /// 新增部门
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnAddDept_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new DepartmentEditWindow();
+            if (dlg.ShowDialog() == true)
+            {
+                try
+                {
+                    var id = _svc.AddDepartment(dlg.DeptName, dlg.DisplayName, dlg.Description, null, dlg.SortOrder);
+                    if (id > 0)
+                    {
+                        RefreshDepartmentsAsync();
+                        MessageBox.Show("新增部门成功。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else MessageBox.Show("新增部门失败。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("新增部门异常：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+        /// <summary>
+        /// 修改部门
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnEditDept_Click(object sender, RoutedEventArgs e)
+        {
+            var sel = DepartmentsGrid.SelectedItem as DepartmentModel;
+            if (sel == null) { MessageBox.Show("请先选择一个部门", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            var dlg = new DepartmentEditWindow(sel.Name, sel.DisplayName, sel.Description, sel.SortOrder, sel.ManagerUserId);
+            if (dlg.ShowDialog() == true)
+            {
+                var ok = _svc.UpdateDepartment(sel.Id, dlg.DeptName, dlg.DisplayName, dlg.Description, dlg.SortOrder, dlg.ManagerUserId, dlg.IsActive);
+                if (ok)
+                {
+                    RefreshDepartmentsAsync();
+                    MessageBox.Show("修改成功。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else MessageBox.Show("修改失败。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        /// <summary>
+        /// 删除部门
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnDeleteDept_Click(object sender, RoutedEventArgs e)
+        {
+            var sel = DepartmentsGrid.SelectedItem as DepartmentModel;
+            if (sel == null) { MessageBox.Show("请先选择一个部门", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            if (MessageBox.Show($"确认删除部门：{sel.DisplayName} ?\n删除后该部门下用户将被置为未分配。", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            var ok = _svc.DeleteDepartment(sel.Id);
+            if (ok)
+            {
+                RefreshDepartmentsAsync();
+                MessageBox.Show("删除成功。", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else MessageBox.Show("删除失败。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        /// <summary>
+        /// 部门选择变更
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DepartmentsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var sel = DepartmentsGrid.SelectedItem as DepartmentModel;
+            if (sel == null) { UsersGrid.ItemsSource = null; return; }
+            LoadUsersForDepartment(sel.Id);
+        }
+        /// <summary>
+        /// 加载部门用户
+        /// </summary>
+        /// <param name="departmentId"></param>
+        private async void LoadUsersForDepartment(int departmentId)
+        {
+            TxtStatus.Text = "正在加载用户...";
+            try
+            {
+                var users = await Task.Run(() => _svc.GetUsersByDepartmentId(departmentId));
+                UsersGrid.ItemsSource = users;
+                TxtStatus.Text = $"部门用户：{users.Count} 个";
+            }
+            catch (Exception ex)
+            {
+                TxtStatus.Text = "加载用户失败：" + ex.Message;
+            }
+        }
+        /// <summary>
+        /// 分配用户
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnAssignUser_Click(object sender, RoutedEventArgs e)
+        {
+            var sel = DepartmentsGrid.SelectedItem as DepartmentModel;
+            if (sel == null) { MessageBox.Show("请先选择部门", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+            var username = (TxtSearchUser.Text ?? "").Trim();
+            if (string.IsNullOrEmpty(username)) { MessageBox.Show("请输入要分配的用户名", "提示", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+
+            var ok = _svc.AssignUserToDepartmentByUsername(username, sel.Id);
+            if (ok)
+            {
+                LoadUsersForDepartment(sel.Id);
+                MessageBox.Show($"用户 {username} 已分配到 {sel.DisplayName}", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show($"分配失败，检查用户名是否存在或数据库状态。", "失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        /// <summary>
+        /// 刷新部门
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            RefreshDepartmentsAsync();
+        }
+
+
+        #endregion
+
+
+
+
+        private void 同步文件属性_列_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = _databaseManager.EnsureFileAttributesTableSchemaAsync();
+
+            if (btn.Result)
+            {
+                MessageBox.Show("文件属性表已同步。", "完成", MessageBoxButton.OK, MessageBoxImage.Information); MessageBox.Show("文件属性表列同步完成。", "完成", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            }
+            else
+            {
+                MessageBox.Show("文件属性表列同步失败，请查看日志。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        /// <summary>
+        /// DataGrid 绑定使用的行模型（用于 LayerDictionary_DataGrid）
+        /// </summary>
+        public class LayerDictionaryRow
+        {
+            /// <summary>
+            /// 数据库 id，0 表示新行（未持久化）
+            /// </summary>
+            public int Id { get; set; }
+            /// <summary>
+            /// 显示序号
+            /// </summary>
+            public int DisplayIndex { get; set; }
+            /// <summary>
+            /// 专业列（可填写或来自部门）
+            /// </summary>
+            public string Major { get; set; } = "";
+            /// <summary>
+            /// 原图层名（只读显示）
+            /// </summary>
+            public string LayerName { get; set; } = "";
+            /// <summary>
+            /// 解释图层名（可编辑）
+            /// </summary>
+            public string DicLayerName { get; set; } = "";
+            /// <summary>
+            /// 来源（personal/standard）
+            /// </summary>
+            public string Source { get; set; } = "personal";
+        }
+
+        /// <summary>
+        /// 图层信息类
+        /// </summary>
+        public class LayerInfo : INotifyPropertyChanged
+        {
+            private int _index;              // 原始序号
+            private int _displayIndex;       // 显示序号
+            private string _name;
+            private bool _isOn;
+            private bool _isFrozen;
+            private short _colorIndex;
+            private bool _toDelete;
+            private Autodesk.AutoCAD.Colors.Color _color;
+
+            public int Index
+            {
+                get => _index;
+                set { _index = value; OnPropertyChanged(); }
+            }
+
+            public int DisplayIndex
+            {
+                get => _displayIndex;
+                set { _displayIndex = value; OnPropertyChanged(); }
+            }
+
+            public string Name
+            {
+                get => _name;
+                set { _name = value; OnPropertyChanged(); }
+            }
+
+            public bool IsOn
+            {
+                get => _isOn;
+                set { _isOn = value; OnPropertyChanged(); }
+            }
+
+            public bool IsFrozen
+            {
+                get => _isFrozen;
+                set { _isFrozen = value; OnPropertyChanged(); }
+            }
+
+            public short ColorIndex
+            {
+                get => _colorIndex;
+                set { _colorIndex = value; OnPropertyChanged(); }
+            }
+
+            public bool ToDelete
+            {
+                get => _toDelete;
+                set { _toDelete = value; OnPropertyChanged(); }
+            }
+
+            public Autodesk.AutoCAD.Colors.Color Color
+            {
+                get => _color;
+                set { _color = value; OnPropertyChanged(); }
+            }
+            /// <summary>
+            /// 属性变更通知
+            /// </summary>
+            public event PropertyChangedEventHandler PropertyChanged;
+            /// <summary>
+            /// 属性变更通知方法
+            /// </summary>
+            /// <param name="propertyName"></param>
+            protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+        /// <summary>
+        /// 图层状态快照类（用于还原功能）
+        /// </summary>
+        public class LayerStateSnapshot
+        {
+            public Dictionary<string, LayerInfo> Layers { get; set; }
+            public DateTime Timestamp { get; set; }
+
+            public LayerStateSnapshot()
+            {
+                Layers = new Dictionary<string, LayerInfo>();
+                Timestamp = DateTime.Now;
+            }
+        }
+
+        /// <summary>
+        /// 分类属性编辑模型
+        /// </summary>
+        public class CategoryPropertyEditModel : INotifyPropertyChanged
+        {
+            private string _propertyName1 = string.Empty;
+            private string _propertyValue1 = string.Empty;
+            private string _propertyName2 = string.Empty;
+            private string _propertyValue2 = string.Empty;
+
+            public string PropertyName1
+            {
+                get => _propertyName1;
+                set
+                {
+                    if (_propertyName1 != value)
+                    {
+                        _propertyName1 = value;
+                        OnPropertyChanged();
+                    }
+                }
+            }
+
+            public string PropertyValue1
+            {
+                get => _propertyValue1;
+                set
+                {
+                    if (_propertyValue1 != value)
+                    {
+                        _propertyValue1 = value;
+                        OnPropertyChanged();
+                    }
+                }
+            }
+
+            public string PropertyName2
+            {
+                get => _propertyName2;
+                set
+                {
+                    if (_propertyName2 != value)
+                    {
+                        _propertyName2 = value;
+                        OnPropertyChanged();
+                    }
+                }
+            }
+
+            public string PropertyValue2
+            {
+                get => _propertyValue2;
+                set
+                {
+                    if (_propertyValue2 != value)
+                    {
+                        _propertyValue2 = value;
+                        OnPropertyChanged();
+                    }
+                }
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+        }
+
+
     }
-
 }

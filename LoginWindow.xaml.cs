@@ -23,11 +23,34 @@ using UserControl = System.Windows.Controls.UserControl;
 
 namespace GB_NewCadPlus_III
 {
+
     /// <summary>
     /// LoginWindow.xaml 的交互逻辑
     /// </summary>
     public partial class LoginWindow : Window
     {
+        /// <summary>
+        /// 服务器IP
+        /// </summary>
+        public string ServerIP
+        {
+            get
+            {
+                try { return TxtServerIP?.Text?.Trim() ?? "127.0.0.1"; }
+                catch { return "127.0.0.1"; }
+            }
+        }
+        /// <summary>
+        /// 服务器端口
+        /// </summary>
+        public int ServerPort
+        {
+            get
+            {
+                try { return int.TryParse(TxtServerPort?.Text, out var p) ? p : 3306; }
+                catch { return 3306; }
+            }
+        }
         /// <summary>
         /// 登录配置
         /// </summary>
